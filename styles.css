@@ -1,0 +1,418 @@
+:root {
+    --primary-hue: 250;
+    --primary-color: hsl(var(--primary-hue), 70%, 60%);
+    --secondary-color: hsl(210, 80%, 60%);
+    
+    --bg-body: #ffffff;
+    --bg-sidebar: #f8f9fa;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    
+    --text-main: #1a202c;
+    --text-muted: #718096;
+    
+    --code-bg: #1e1e1e;
+    --code-text: #d4d4d4;
+    
+    --sidebar-width: 280px;
+    --header-height: 64px;
+    
+    --radius: 8px;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+    --bg-body: #0f1117;
+    --bg-sidebar: #161b22;
+    --bg-card: #161b22;
+    --border-color: #30363d;
+    
+    --text-main: #e2e8f0;
+    --text-muted: #a0aec0;
+    
+    --primary-color: hsl(var(--primary-hue), 80%, 70%);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Layout */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    z-index: 100;
+}
+
+.sidebar-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--primary-color);
+    letter-spacing: -0.025em;
+}
+
+.sidebar-nav {
+    padding: 24px;
+}
+
+.nav-section {
+    margin-bottom: 32px;
+}
+
+.nav-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.nav-links {
+    list-style: none;
+}
+
+.nav-links li {
+    margin-bottom: 4px;
+}
+
+.nav-links a {
+    display: block;
+    padding: 8px 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.nav-links a:hover {
+    color: var(--primary-color);
+    background-color: rgba(100, 100, 255, 0.05);
+}
+
+.nav-links a.active {
+    color: var(--primary-color);
+    background-color: rgba(100, 100, 255, 0.1);
+    font-weight: 500;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    min-width: 0; /* Prevent flex items from overflowing */
+}
+
+/* Top Bar */
+.top-bar {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    background-color: var(--bg-body); /* Translucent effect could be added here */
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    backdrop-filter: blur(8px);
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    width: 300px;
+    color: var(--text-muted);
+}
+
+.search-bar input {
+    background: none;
+    border: none;
+    outline: none;
+    margin-left: 8px;
+    color: var(--text-main);
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 8px;
+    border-radius: 50%;
+    transition: color 0.2s, background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    color: var(--text-main);
+    background-color: var(--bg-sidebar);
+}
+
+/* Content Layout */
+.content-wrapper {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+.doc-content {
+    flex: 1;
+    min-width: 0;
+    padding-right: 40px;
+}
+
+.on-this-page {
+    width: 240px;
+    position: sticky;
+    top: 100px;
+    align-self: start;
+    display: none; /* Hidden on small screens default, visible on large */
+}
+
+@media (min-width: 1024px) {
+    .on-this-page {
+        display: block;
+    }
+}
+
+.on-this-page h4 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--text-main);
+    margin-bottom: 16px;
+}
+
+.on-this-page ul {
+    list-style: none;
+    border-left: 2px solid var(--border-color);
+}
+
+.on-this-page li a {
+    display: block;
+    padding: 4px 0 4px 16px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.on-this-page li a:hover {
+    color: var(--primary-color);
+}
+
+/* Typography & Elements */
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: 1.8rem;
+    margin-top: 48px;
+    margin-bottom: 24px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+p {
+    margin-bottom: 24px;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+}
+
+.lead {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-right: 12px;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--bg-sidebar);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    border-color: var(--text-muted);
+}
+
+/* Code Blocks */
+.code-block {
+    background-color: var(--code-bg);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    overflow: hidden;
+    color: var(--code-text);
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #a0aec0;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.copy-btn:hover {
+    color: #fff;
+}
+
+pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.95rem;
+}
+
+code {
+    font-family: inherit;
+}
+
+.language-bash {
+    color: #a5d6ff;
+}
+
+/* Dark Mode Toggle */
+.sun-icon { display: none; }
+.moon-icon { display: block; }
+
+[data-theme="light"] .sun-icon { display: block; }
+[data-theme="light"] .moon-icon { display: none; }
+
+/* Mobile Responsiveness */
+#mobile-menu-btn, #mobile-close-btn {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 0px;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        width: 280px; /* Restore width for when it IS open */
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 20px 0 50px rgba(0,0,0,0.3);
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    #mobile-menu-btn {
+        display: block;
+        margin-right: 16px;
+    }
+
+    #mobile-close-btn {
+        display: block;
+    }
+    
+    .top-bar {
+        padding: 0 20px;
+    }
+
+    .content-wrapper {
+        padding: 24px;
+    }
+    
+    .search-bar {
+        display: none;
+    }
+    
+    .logo {
+        margin-left: 0;
+    }
+}
