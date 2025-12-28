@@ -1,418 +1,744 @@
 :root {
-    --primary-hue: 250;
-    --primary-color: hsl(var(--primary-hue), 70%, 60%);
-    --secondary-color: hsl(210, 80%, 60%);
-    
-    --bg-body: #ffffff;
-    --bg-sidebar: #f8f9fa;
-    --bg-card: #ffffff;
-    --border-color: #e2e8f0;
-    
-    --text-main: #1a202c;
-    --text-muted: #718096;
-    
-    --code-bg: #1e1e1e;
-    --code-text: #d4d4d4;
-    
-    --sidebar-width: 280px;
-    --header-height: 64px;
-    
-    --radius: 8px;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --primary-hue: 260;
+  /* Deep Purple */
+  --primary-color: hsl(var(--primary-hue), 80%, 65%);
+  --secondary-color: hsl(300, 70%, 60%);
+  /* Pinkish accent */
+
+  --bg-body: #ffffff;
+  --bg-sidebar: #f8f9fa;
+  --bg-card: #ffffff;
+  --border-color: #e2e8f0;
+
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+
+  --code-bg: #1e1e1e;
+  --code-text: #d4d4d4;
+
+  --sidebar-width: 280px;
+  --header-height: 70px;
+
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="dark"] {
-    --bg-body: #0f1117;
-    --bg-sidebar: #161b22;
-    --bg-card: #161b22;
-    --border-color: #30363d;
-    
-    --text-main: #e2e8f0;
-    --text-muted: #a0aec0;
-    
-    --primary-color: hsl(var(--primary-hue), 80%, 70%);
+  --bg-body: #0b0c15;
+  /* Very dark blue-black */
+  --bg-sidebar: #11131f;
+  --bg-card: #1a1d2d;
+  --border-color: #2d3748;
+
+  --text-main: #f1f5f9;
+  --text-muted: #cbd5e1;
+  --text-light: #64748b;
+
+  --primary-color: hsl(var(--primary-hue), 90%, 75%);
+  --secondary-color: hsl(300, 90%, 70%);
 }
 
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-body);
-    color: var(--text-main);
-    line-height: 1.6;
-    transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  line-height: 1.7;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+.logo,
+.header-title {
+  font-family: 'Outfit', sans-serif;
 }
 
 /* Layout */
 .app-layout {
-    display: flex;
-    min-height: 100vh;
+  display: flex;
+  min-height: 100vh;
 }
 
 /* Sidebar */
 .sidebar {
-    width: var(--sidebar-width);
-    background-color: var(--bg-sidebar);
-    border-right: 1px solid var(--border-color);
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    overflow-y: auto;
-    transition: transform 0.3s ease;
-    z-index: 100;
+  width: var(--sidebar-width);
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+  z-index: 100;
 }
 
 .sidebar-header {
-    height: var(--header-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--border-color);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .logo {
-    font-weight: 700;
-    font-size: 1.25rem;
-    color: var(--primary-color);
-    letter-spacing: -0.025em;
+  font-weight: 800;
+  font-size: 1.25rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
 .sidebar-nav {
-    padding: 24px;
+  padding: 32px 24px;
 }
 
 .nav-section {
-    margin-bottom: 32px;
+  margin-bottom: 32px;
 }
 
 .nav-title {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-    font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-light);
+  margin-bottom: 16px;
+  font-weight: 700;
 }
 
 .nav-links {
-    list-style: none;
+  list-style: none;
 }
 
 .nav-links li {
-    margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .nav-links a {
-    display: block;
-    padding: 8px 12px;
-    color: var(--text-muted);
-    text-decoration: none;
-    border-radius: var(--radius);
-    transition: all 0.2s;
-    font-size: 0.95rem;
+  display: block;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .nav-links a:hover {
-    color: var(--primary-color);
-    background-color: rgba(100, 100, 255, 0.05);
+  color: var(--primary-color);
+  background-color: rgba(var(--primary-hue), 100, 200, 0.05);
+  /* Approximate rgba manually */
 }
 
+/* Better hover effect using generic opacity */
+[data-theme="dark"] .nav-links a:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .nav-links a:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+
 .nav-links a.active {
-    color: var(--primary-color);
-    background-color: rgba(100, 100, 255, 0.1);
-    font-weight: 500;
+  color: var(--primary-color);
+  background-color: rgba(120, 100, 255, 0.1);
+  font-weight: 600;
 }
 
 /* Main Content */
 .main-content {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    min-width: 0; /* Prevent flex items from overflowing */
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-width: 0;
 }
 
 /* Top Bar */
 .top-bar {
-    height: var(--header-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 40px;
-    background-color: var(--bg-body); /* Translucent effect could be added here */
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 90;
-    backdrop-filter: blur(8px);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background-color: rgba(var(--bg-body), 0.8);
+  /* Falls back if vars dont work in rgba, but standard css handles colors slightly diff. */
+  background-color: var(--bg-body);
+  /* fallback */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.search-bar {
-    display: flex;
-    align-items: center;
-    background-color: var(--bg-sidebar);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    padding: 6px 12px;
-    width: 300px;
-    color: var(--text-muted);
+/* Note: proper semi-transparent background requires hex or rgb decomposition, for now just using solid bg with opacity relies on browser support or just solid color. Let's make it slightly transparent using data-theme colors if possible. */
+[data-theme="dark"] .top-bar {
+  background-color: rgba(11, 12, 21, 0.85);
 }
 
-.search-bar input {
-    background: none;
-    border: none;
-    outline: none;
-    margin-left: 8px;
-    color: var(--text-main);
-    width: 100%;
-    font-size: 0.9rem;
+[data-theme="light"] .top-bar {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+
+.header-title {
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .top-actions {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .icon-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted);
-    padding: 8px;
-    border-radius: 50%;
-    transition: color 0.2s, background-color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:hover {
-    color: var(--text-main);
-    background-color: var(--bg-sidebar);
+  color: var(--text-main);
+  background-color: var(--border-color);
 }
 
-/* Content Layout */
+/* Content */
 .content-wrapper {
-    display: flex;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px;
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 60px 40px;
 }
 
 .doc-content {
-    flex: 1;
-    min-width: 0;
-    padding-right: 40px;
+  flex: 1;
+  min-width: 0;
+  padding-right: 60px;
 }
 
-.on-this-page {
-    width: 240px;
-    position: sticky;
-    top: 100px;
-    align-self: start;
-    display: none; /* Hidden on small screens default, visible on large */
+/* Sections */
+section {
+  padding-bottom: 60px;
+  border-bottom: 1px dashed var(--border-color);
+  margin-bottom: 60px;
 }
 
-@media (min-width: 1024px) {
-    .on-this-page {
-        display: block;
-    }
+section:last-child {
+  border-bottom: none;
 }
 
-.on-this-page h4 {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    color: var(--text-main);
-    margin-bottom: 16px;
+/* Hero */
+.hero-section h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--text-main) 30%, var(--text-muted));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.on-this-page ul {
-    list-style: none;
-    border-left: 2px solid var(--border-color);
+/* On dark mode, make the gradient pop more */
+[data-theme="dark"] .hero-section h1 {
+  background: linear-gradient(135deg, #fff 30%, #94a3b8);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.on-this-page li a {
-    display: block;
-    padding: 4px 0 4px 16px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 0.9rem;
-    transition: color 0.2s;
-}
-
-.on-this-page li a:hover {
-    color: var(--primary-color);
-}
-
-/* Typography & Elements */
-h1 {
-    font-size: 2.5rem;
-    margin-bottom: 16px;
-    line-height: 1.2;
-}
-
-h2 {
-    font-size: 1.8rem;
-    margin-top: 48px;
-    margin-bottom: 24px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-p {
-    margin-bottom: 24px;
-    color: var(--text-muted);
-    font-size: 1.05rem;
-}
-
-.lead {
-    font-size: 1.25rem;
-    color: var(--text-muted);
+.subtitle {
+  font-size: 1.5rem;
+  margin-bottom: 40px;
+  font-weight: 500;
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* Buttons */
-.btn {
-    display: inline-block;
-    padding: 10px 24px;
-    border-radius: var(--radius);
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.2s;
-    margin-right: 12px;
+.text-block p {
+  margin-bottom: 24px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
 }
 
-.btn-primary {
-    background-color: var(--primary-color);
-    color: #fff;
+.text-block ul,
+.text-block ol {
+  margin-bottom: 24px;
+  padding-left: 24px;
+  color: var(--text-muted);
 }
 
-.btn-primary:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
+.text-block li {
+  margin-bottom: 8px;
 }
 
-.btn-secondary {
-    background-color: var(--bg-sidebar);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
+/* Figure Placeholder */
+.figure-placeholder {
+  margin-top: 40px;
+  background-color: var(--bg-sidebar);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-secondary:hover {
-    border-color: var(--text-muted);
+.repo-figure {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 16px;
 }
 
-/* Code Blocks */
-.code-block {
-    background-color: var(--code-bg);
-    border-radius: var(--radius);
-    margin-bottom: 24px;
-    overflow: hidden;
-    color: var(--code-text);
+.caption {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 10px;
 }
 
-.code-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 16px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: #a0aec0;
+
+/* Resources Grid */
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 32px;
 }
 
-.copy-btn {
-    background: none;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    font-size: 0.8rem;
+.resource-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
-.copy-btn:hover {
-    color: #fff;
+.resource-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-color);
 }
 
-pre {
-    padding: 20px;
-    overflow-x: auto;
-    font-family: 'Fira Code', 'Consolas', monospace;
-    font-size: 0.95rem;
+.resource-card h3 {
+  color: var(--primary-color);
+  margin-bottom: 8px;
+  font-size: 1.1rem;
 }
 
-code {
-    font-family: inherit;
+.resource-card p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin: 0;
 }
 
-.language-bash {
-    color: #a5d6ff;
+
+/* Timeline / Schedule */
+.timeline {
+  margin-top: 32px;
+  position: relative;
+  border-left: 2px solid var(--border-color);
+  padding-left: 32px;
 }
 
-/* Dark Mode Toggle */
-.sun-icon { display: none; }
-.moon-icon { display: block; }
+.timeline-item {
+  position: relative;
+  margin-bottom: 40px;
+}
 
-[data-theme="light"] .sun-icon { display: block; }
-[data-theme="light"] .moon-icon { display: none; }
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -39px;
+  /* adjust based on border width and padding */
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--bg-body);
+  border: 2px solid var(--primary-color);
+}
 
-/* Mobile Responsiveness */
-#mobile-menu-btn, #mobile-close-btn {
+.timeline-item .time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.timeline-item .content h3 {
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.timeline-item .content p {
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+.timeline-item .content ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.timeline-item .content li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.timeline-item .content li::before {
+  content: '•';
+  color: var(--primary-color);
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.timeline-break {
+  margin: 32px 0;
+  padding: 12px;
+  background-color: var(--bg-sidebar);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+/* Organizers Grid */
+.organizers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 32px;
+  margin-top: 40px;
+}
+
+.organizer-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+  transition: transform 0.2s;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.organizer-card:hover {
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+.photo-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-sidebar), var(--border-color));
+  margin: 0 auto 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Initials fallback */
+.photo-placeholder::after {
+  content: attr(data-initials);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.organizer-card h3 {
+  font-size: 1.15rem;
+  margin-bottom: 4px;
+}
+
+.organizer-card .affiliation {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.organizer-card .bio {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+
+/* On This Page Aside */
+.on-this-page {
+  width: 240px;
+  position: sticky;
+  top: 100px;
+  align-self: start;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .on-this-page {
+    display: block;
+  }
+}
+
+.on-this-page h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-main);
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+
+.on-this-page ul {
+  list-style: none;
+  border-left: 2px solid var(--border-color);
+}
+
+.on-this-page li a {
+  display: block;
+  padding: 4px 0 4px 16px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.on-this-page li a:hover {
+  color: var(--primary-color);
+}
+
+
+/* Footer */
+.site-footer {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-light);
+  border-top: 1px solid var(--border-color);
+  margin-top: auto;
+}
+
+/* Mobile */
+/* Ensure menu button is visible on desktop too (for hiddable sidebar) */
+#mobile-menu-btn {
+  display: block;
+  margin-right: 16px;
+}
+
+#mobile-close-btn {
+  display: none;
+}
+
+/* Hiddable Sidebar Logic for Desktop */
+body.sidebar-hidden .sidebar {
+  transform: translateX(-100%);
+}
+
+body.sidebar-hidden .main-content {
+  margin-left: 0;
+}
+
+@media (min-width: 769px) {
+
+  /* On desktop, close button inside sidebar is not needed if we use the top bar button */
+  /* But if we want to closable from inside, we can show it. Let's keep it hidden on desktop for now and rely on top bar button. */
+  #mobile-close-btn {
     display: none;
+  }
 }
+
 
 @media (max-width: 768px) {
-    :root {
-        --sidebar-width: 0px;
-    }
+  :root {
+    --sidebar-width: 0px;
+  }
 
-    .sidebar {
-        transform: translateX(-100%);
-        width: 280px; /* Restore width for when it IS open */
-    }
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: none;
+  }
 
-    .sidebar.open {
-        transform: translateX(0);
-        box-shadow: 20px 0 50px rgba(0,0,0,0.3);
-    }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.3);
+  }
 
-    .main-content {
-        margin-left: 0;
-    }
+  .main-content {
+    margin-left: 0;
+  }
 
-    #mobile-menu-btn {
-        display: block;
-        margin-right: 16px;
-    }
+  #mobile-menu-btn {
+    display: block;
+    margin-right: 16px;
+  }
 
-    #mobile-close-btn {
-        display: block;
-    }
-    
-    .top-bar {
-        padding: 0 20px;
-    }
+  #mobile-close-btn {
+    display: block;
+  }
 
-    .content-wrapper {
-        padding: 24px;
-    }
-    
-    .search-bar {
-        display: none;
-    }
-    
-    .logo {
-        margin-left: 0;
-    }
+  .top-bar {
+    padding: 0 20px;
+  }
+
+  /* When on mobile, .sidebar-hidden logic shouldn't interfere with .open logic or vice versa. 
+     Mobile uses .open to show. Desktop uses .sidebar-hidden to hide.
+     We need to ensure mobile defaults are correct.
+     Mobile default: sidebar hidden (transform -100%).
+     Desktop default: sidebar shown (transform 0).
+  */
+
+  .content-wrapper {
+    padding: 40px 20px;
+    flex-direction: column;
+  }
+
+  .doc-content {
+    padding-right: 0;
+  }
+
+  .hero-section h1 {
+    font-size: 2.5rem;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-light);
+}
+
+/* Organizer Photos */
+.photo-placeholder {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-sidebar), var(--border-color));
+  margin: 0 auto 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 4px solid var(--bg-card);
+  box-shadow: var(--shadow-md), 0 0 0 2px var(--border-color);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.photo-placeholder:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg), 0 0 0 2px var(--primary-color);
+}
+
+.photo-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Sponsors Section */
+.sponsors-section {
+  padding: 60px 0;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-sidebar);
+}
+
+.sponsors-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding: 0 20px;
+}
+
+.sponsor-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  /* Removed grayscale to make them colorful by default */
+  opacity: 0.9;
+  transition: all 0.3s ease;
+}
+
+/* User requested same height, so removing specific overrides */
+/* .sponsor-logo[alt*="Georgia Tech"] ... */
+
+.sponsor-logo:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Adjustments for dark mode brightness if needed */
+[data-theme="dark"] .sponsor-logo {
+  /* Keep colors but ensure visibility */
+  filter: brightness(1.2);
+  opacity: 0.9;
+}
+
+[data-theme="dark"] .sponsor-logo:hover {
+  filter: brightness(1.3);
+  opacity: 1;
 }

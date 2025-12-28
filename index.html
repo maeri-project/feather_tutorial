@@ -1,144 +1,349 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tutorial | Getting Started</title>
-    <meta name="description" content="A premium tutorial site hosted on GitHub Pages.">
-    
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAIC: Reconfigurable AI Computing</title>
+  <meta name="description" content="ASPLOS Tutorial on Privacy-Preserving AI Computing via HE and ZKP.">
+
+  <!-- Google Fonts: Inter & Outfit for a more modern look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
-    <div class="app-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">TUTORIAL</div>
-                <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <h3 class="nav-title">Introduction</h3>
-                    <ul class="nav-links">
-                        <li><a href="#welcome" class="active">Welcome</a></li>
-                        <li><a href="#installation">Installation</a></li>
-                        <li><a href="#quickstart">Quick Start</a></li>
-                    </ul>
-                </div>
-                
-                <div class="nav-section">
-                    <h3 class="nav-title">Core Concepts</h3>
-                    <ul class="nav-links">
-                        <li><a href="#architecture">Architecture</a></li>
-                        <li><a href="#components">Components</a></li>
-                        <li><a href="#routing">Routing</a></li>
-                    </ul>
-                </div>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
-                <div class="nav-section">
-                    <h3 class="nav-title">Advanced</h3>
-                    <ul class="nav-links">
-                        <li><a href="#deployment">Deployment</a></li>
-                        <li><a href="#configuration">Configuration</a></li>
-                    </ul>
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-title">tutorial</h3>
+          <ul class="nav-links">
+            <li><a href="index.html" class="active">ASPLOS'26@Pittsburgh</a></li>
+          </ul>
+        </div>
+
+        <div class="nav-section">
+          <h3 class="nav-title">docs</h3>
+          <ul class="nav-links">
+            <li><a href="beginner.html">beginner</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
+        </button>
+
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+
+        <div class="top-actions">
+          <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+            <!-- Sun Icon -->
+            <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="5" />
+              <path
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+            <!-- Moon Icon -->
+            <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-wrapper">
+        <article class="doc-content">
+
+          <!-- Hero / Abstract Section -->
+          <section id="abstract" class="hero-section">
+            <h1>Reconfigurable AI Computing</h1>
+            <p class="subtitle"><span class="gradient-text">Mar 23 (Afternoon) @ ASPLOS'26</span></p>
+
+            <div class="text-block">
+              <p><strong>Abstract:</strong> The rapid proliferation of AI workloads across devices with vastly different
+                computational capabilities has created an ecosystem of irregular and dynamic runtime demands. No single
+                dataflow or layout can optimally serve all workloads, motivating years of research into reconfigurable
+                accelerators that can flexibly adapt their dataflow and layout to the workload’s needs. However, despite
+                significant academic progress, no publicly available reconfigurable accelerator platform currently
+                exists for the community to learn from or build upon.</p>
+
+              <p>This tutorial fills that gap by offering the first hands-on experience in learning, simulating, and
+                deploying a reconfigurable accelerator, from hardware to compiler co-design. Participants will gain
+                practical knowledge across three pillars:</p>
+
+              <ul>
+                <li><strong>Pillar 1 – Hardware (FEATHER):</strong> We introduce FEATHER, a state-of-the-art
+                  reconfigurable accelerator architecture that enables low-cost switching between dataflows and layouts,
+                  efficiently supporting diverse workload patterns. The tutorial provides RTL simulation guidance and
+                  hands-on exercises to explore how FEATHER achieves this flexibility.</li>
+                <li><strong>Pillar 2 – Accelerator Design Language (ALLO):</strong> To enable scalable accelerator
+                  generation, we present ALLO, an Accelerator Design Language that allows participants to generate
+                  FEATHER variants of different scales with only minor frontend program modifications. This facilitates
+                  rapid scaling and evolution of the accelerator for various device classes and feature extensions.</li>
+                <li><strong>Pillar 3 – Compiler Infrastructure (ACT):</strong> Distinct workloads demand specialized
+                  dataflow and layout mappings for optimal performance. We introduce ACT, an ecosystem that
+                  automatically generates software tools like compilers for the ALLO-generated FEATHER accelerator. The
+                  generated compiler explores the large space of dataflow and layout mappings to identify the most
+                  latency-efficient configurations for workloads.</li>
+              </ul>
+
+              <p>By the end of the tutorial, participants will understand how to compile diverse workloads, generate
+                scalable accelerators, simulate performance via deployable RTL models, and tune the system for
+                real-world deployment scenarios, empowering the ASPLOS community to advance the next generation of
+                reconfigurable AI accelerators.</p>
+            </div>
+          </section>
+
+          <!-- Resources Section -->
+          <section id="resources">
+            <h2>RAIC Resources</h2>
+            <div class="resources-grid">
+              <a href="https://act-compiler.github.io/" target="_blank" class="resource-card">
+                <h3>ACT Ecosystem</h3>
+                <p>Ecosystem that automatically generates software tools like compilers for the ALLO-generated FEATHER
+                  accelerator.</p>
+              </a>
+              <a href="https://github.com/maeri-project/FEATHER" target="_blank" class="resource-card">
+                <h3>FEATHER</h3>
+                <p>Reconfigurable accelerator architecture enabling low-cost switching between dataflows and layouts.
+                </p>
+              </a>
+              <a href="https://github.com/cornell-zhang/allo" target="_blank" class="resource-card">
+                <h3>Allo</h3>
+                <p>Hardware compiler and accelerator design language for scalable accelerator generation.</p>
+              </a>
+            </div>
+          </section>
+
+          <!-- Schedule Section -->
+          <section id="schedule">
+            <h2>List of Topics</h2>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="time">1:00 PM ~ 1:10 PM</div>
+                <div class="content">
+                  <h3>Overview of the tutorial</h3>
                 </div>
-            </nav>
+              </div>
+              <div class="timeline-item">
+                <div class="time">1:10 PM ~ 1:30 PM</div>
+                <div class="content">
+                  <h3>Introduce to reconfigurable AI Computing</h3>
+                  <ul>
+                    <li>Flexible Dataflow Demand</li>
+                    <li>Flexible Layout Demand</li>
+                    <li>Various Deployment Scenarios</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time">1:30 PM ~ 1:40 PM</div>
+                <div class="content">
+                  <h3>Jupyter Notebook Setup</h3>
+                  <p>(give people paper with credentials)</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time">1:40 PM ~ 2:30 PM</div>
+                <div class="content">
+                  <h3>FEATHER – reconfigurable AI Accelerator</h3>
+                  <ul>
+                    <li>Introduction of FEATHER microarchitecture (15 min)</li>
+                    <li>Introduction to the FEATHER ISA (5 min)</li>
+                    <li><strong>Hands-on:</strong> RTL simulation for various layout choices</li>
+                    <li><strong>Hands-on:</strong> RTL simulation for various dataflow choices</li>
+                    <li><strong>Hands-on:</strong> Analytic Performance Estimation and standalone layout search</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="timeline-break">
+                <span>Break (2:30 PM ~ 3:00 PM)</span>
+              </div>
+              <div class="timeline-item">
+                <div class="time">3:00 PM ~ 3:50 PM</div>
+                <div class="content">
+                  <h3>Allo – Python-embedded Accelerator Design Language (ADL)</h3>
+                  <ul>
+                    <li>Introduction Talk (20 min)</li>
+                    <li><strong>Hands-on:</strong> Distribute Credentials and environment setup for jupyter hub</li>
+                    <li><strong>Hands-on:</strong> automated FEATHER generation via ALLO ADL</li>
+                    <li><strong>Hands-on:</strong> configuration tuning of Allo-FEATHER</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time">3:50 PM ~ 4:40 PM</div>
+                <div class="content">
+                  <h3>ACT Ecosystem – Automatically generating software support for accelerators</h3>
+                  <ul>
+                    <li>Talk: Introduction to ACT Ecosystem (20 min)</li>
+                    <li><strong>Hands-on:</strong> Quick tutorial on TAIDL (ACT’s ISA specification language) (10 min)
+                    </li>
+                    <li><strong>Hands-on:</strong> Writing FEATHER ISA in TAIDL and generating its compiler (10 min)
+                    </li>
+                    <li><strong>Hands-on:</strong> Compilation using the generated FEATHER compiler (10 min)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time">4:40 PM ~ 5:00 PM</div>
+                <div class="content">
+                  <h3>Conclusion and Ongoing Development</h3>
+                  <ul>
+                    <li>Summary of key TakeAways (1 min)</li>
+                    <li>FEATHER – ongoing projects (call for actions)</li>
+                    <li>Allo – Niansong or Hongzheng</li>
+                    <li>ACT – Devansh (3~5 min)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Organizers Section -->
+          <section id="organizers">
+            <h2>Organizers</h2>
+            <div class="organizers-grid">
+
+              <!-- Jianming Tong -->
+              <a href="https://jianmingtong.github.io/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/jianming.jpg" alt="Jianming Tong"></div>
+                <h3>Jianming Tong</h3>
+                <p class="affiliation">Georgia Institute of Technology</p>
+                <p class="bio">5th-year PhD candidate focusing on full-stack optimizations for efficiency and privacy of
+                  AI systems. Designer of FEATHER.</p>
+              </a>
+
+              <!-- Niansong Zhang -->
+              <a href="https://www.zzzdavid.tech/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/niansong.png" alt="Niansong Zhang"></div>
+                <h3>Niansong Zhang</h3>
+                <p class="affiliation">Cornell University</p>
+                <p class="bio">5th-year PhD student. Research explores accelerator programming models, compute-in-SRAM
+                  techniques, and design automation.</p>
+              </a>
+
+              <!-- Devansh Jain -->
+              <a href="https://devansh-dvj.github.io/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/devansh.png" alt="Devansh Jain"></div>
+                <h3>Devansh Jain</h3>
+                <p class="affiliation">UIUC</p>
+                <p class="bio">Ph.D. student. Primary research objective is to develop a unified compiler infrastructure
+                  for tensor architectures.</p>
+              </a>
+
+              <!-- Tushar Krishna -->
+              <a href="https://tusharkrishna.ece.gatech.edu/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/tushar.png" alt="Tushar Krishna"></div>
+                <h3>Tushar Krishna</h3>
+                <p class="affiliation">Georgia Institute of Technology</p>
+                <p class="bio">Associate Professor in ECE. Research spans computer architecture, interconnection
+                  networks, and AI/ML accelerator systems.</p>
+              </a>
+
+              <!-- Zhiru Zhang -->
+              <a href="https://www.csl.cornell.edu/~zhiruz/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/zhiru.png" alt="Zhiru Zhang"></div>
+                <h3>Zhiru Zhang</h3>
+                <p class="affiliation">Cornell University</p>
+                <p class="bio">Professor in ECE. IEEE Fellow. Research investigates new algorithms, design
+                  methodologies, and automation tools for heterogeneous computing.</p>
+              </a>
+
+              <!-- Charith Mendis -->
+              <a href="https://charithmendis.com/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/charith.png" alt="Charith Mendis"></div>
+                <h3>Charith Mendis</h3>
+                <p class="affiliation">UIUC</p>
+                <p class="bio">Assistant Professor. Research interests are at the intersection of compilers, program
+                  optimization, and machine learning.</p>
+              </a>
+
+              <!-- Hongzheng Chen -->
+              <a href="https://chhzh123.github.io/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/hongzheng.jpg" alt="Hongzheng Chen"></div>
+                <h3>Hongzheng Chen</h3>
+                <p class="affiliation">Cornell University</p>
+                <p class="bio">5th-year Ph.D. candidate. Research interests lie in compilers, programming systems, and
+                  accelerator architecture.</p>
+              </a>
+
+              <!-- Akash Pardeshi -->
+              <a href="https://www.linkedin.com/in/akashpardeshi/" target="_blank" class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/akash.png" alt="Akash Pardeshi"></div>
+                <h3>Akash Pardeshi</h3>
+                <p class="affiliation">UIUC</p>
+                <p class="bio">M.S. student. Research focuses on techniques such as equality saturation and e-graph
+                  applications to ML compilers.</p>
+              </a>
+
+              <!-- Yujie Li -->
+              <a href="https://www.linkedin.com/in/yujie-li-620009237/?originalSubdomain=uk" target="_blank"
+                class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/yujie.png" alt="Yujie Li"></div>
+                <h3>Yujie Li</h3>
+                <p class="affiliation">Georgia Institute of Technology</p>
+                <p class="bio">First-year MS student working on microarchitecture design and RTL simulation for FEATHER.
+                </p>
+              </a>
+            </div>
+          </section>
+
+        </article>
+
+        <aside class="on-this-page">
+          <h4>On this page</h4>
+          <ul>
+            <li><a href="#abstract">Abstract</a></li>
+            <li><a href="#resources">Resources</a></li>
+            <li><a href="#schedule">Schedule</a></li>
+            <li><a href="#organizers">Organizers</a></li>
+          </ul>
         </aside>
+      </div>
 
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <header class="top-bar">
-                <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-                </button>
-                
-                <div class="search-bar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search documentation...">
-                </div>
+      <!-- Sponsors Section -->
+      <section id="sponsors" class="sponsors-section">
+        <div class="sponsors-container">
+          <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo">
+          <img src="fig/uiuc.png" alt="UIUC" class="sponsor-logo">
+          <img src="fig/cornell.png" alt="Cornell University" class="sponsor-logo">
+        </div>
+      </section>
 
-                <div class="top-actions">
-                    <a href="https://github.com" target="_blank" class="github-link" aria-label="GitHub">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
-                    </a>
-                    <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
-                        <!-- Sun Icon -->
-                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                        <!-- Moon Icon -->
-                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                    </button>
-                </div>
-            </header>
+      <footer class="site-footer">
+        <p>&copy; 2026 FEATHER Tutorial.</p>
+      </footer>
+    </main>
+  </div>
 
-            <div class="content-wrapper">
-                <article class="doc-content">
-                    <section id="welcome" class="hero-section">
-                        <h1>Welcome to <span class="gradient-text">FHE/CROSS</span></h1>
-                        <p class="lead">A comprehensive guide to understanding and implementing Fully Homomorphic Encryption with CROSS.</p>
-                        
-                        <div class="cta-buttons">
-                            <a href="#quickstart" class="btn btn-primary">Get Started</a>
-                            <a href="https://github.com" class="btn btn-secondary">View Source</a>
-                        </div>
-                    </section>
-
-                    <section id="installation">
-                        <h2>Installation</h2>
-                        <p>Get up and running with FHE/CROSS in minutes.</p>
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="lang">bash</span>
-                                <button class="copy-btn">Copy</button>
-                            </div>
-                            <pre><code class="language-bash">pip install fhe-cross
-# Or clone the repository
-git clone https://github.com/example/fhe-cross.git</code></pre>
-                        </div>
-                    </section>
-
-                    <section id="quickstart">
-                        <h2>Quick Start</h2>
-                        <p>Initialize your first secure context.</p>
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="lang">python</span>
-                                <button class="copy-btn">Copy</button>
-                            </div>
-                            <pre><code>import fhe_cross as fc
-
-# Initialize context
-ctx = fc.Context(security_level=128)
-print("Context initialized")</code></pre>
-                        </div>
-                    </section>
-
-                </article>
-                
-                <aside class="on-this-page">
-                    <h4>On this page</h4>
-                    <ul>
-                        <li><a href="#welcome">Welcome</a></li>
-                        <li><a href="#installation">Installation</a></li>
-                        <li><a href="#quickstart">Quick Start</a></li>
-                    </ul>
-                </aside>
-            </div>
-            
-            <footer class="site-footer">
-                <p>&copy; 2025 FHE/CROSS Project. Built with &hearts; and Code.</p>
-            </footer>
-        </main>
-    </div>
-
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
+
 </html>

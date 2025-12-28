@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAIC: Reconfigurable AI Computing</title>
+  <meta name="description" content="ASPLOS Tutorial on Privacy-Preserving AI Computing via HE and ZKP.">
+
+  <!-- Google Fonts: Inter & Outfit for a more modern look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-title">tutorial</h3>
+          <ul class="nav-links">
+            <li><a href="index.html">ASPLOS'26@Pittsburgh</a></li>
+          </ul>
+        </div>
+
+        <div class="nav-section">
+          <h3 class="nav-title">docs</h3>
+          <ul class="nav-links">
+            <li><a href="beginner.html" class="active">beginner</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
+        </button>
+
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+
+        <div class="top-actions">
+          <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+            <!-- Sun Icon -->
+            <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="5" />
+              <path
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+            <!-- Moon Icon -->
+            <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-wrapper">
+        <article class="doc-content">
+          <section id="intro" class="hero-section">
+            <h1>Beginner Guide</h1>
+            <p class="subtitle">Getting Started with FEATHER</p>
+            <div class="text-block">
+              <p>Welcome to the beginner guide. This page introduces how the FEATHER ecosystem works.</p>
+            </div>
+          </section>
+
+          <section id="how-it-works">
+            <h2>How this works</h2>
+            <div class="text-block">
+              <p>Detailed introduction of the word...</p>
+            </div>
+          </section>
+
+          <section id="terminology">
+            <h2>Terminology</h2>
+            <div class="text-block">
+              <p>Explanation of key terms...</p>
+            </div>
+          </section>
+
+          <section id="setup">
+            <h2>Setup</h2>
+            <div class="text-block">
+              <p>Setup instructions...</p>
+            </div>
+          </section>
+        </article>
+
+        <aside class="on-this-page">
+          <h4>On this page</h4>
+          <ul>
+            <li><a href="#intro">Introduction</a></li>
+            <li><a href="#how-it-works">How this works</a></li>
+            <li><a href="#terminology">Terminology</a></li>
+            <li><a href="#setup">Setup</a></li>
+          </ul>
+        </aside>
+      </div>
+
+      <!-- Sponsors Section -->
+      <section id="sponsors" class="sponsors-section">
+        <div class="sponsors-container">
+          <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo">
+          <img src="fig/uiuc.png" alt="UIUC" class="sponsor-logo">
+          <img src="fig/cornell.png" alt="Cornell University" class="sponsor-logo">
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 FEATHER Tutorial.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

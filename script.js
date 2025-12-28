@@ -28,7 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.querySelector('.sidebar');
 
   function toggleMenu() {
-    sidebar.classList.toggle('open');
+    if (window.innerWidth > 768) {
+      document.body.classList.toggle('sidebar-hidden');
+    } else {
+      sidebar.classList.toggle('open');
+    }
   }
 
   if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMenu);
@@ -68,20 +72,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('scroll', highlightNavigation);
 
   // --- Copy Code to Clipboard ---
-  const copyBtns = document.querySelectorAll('.copy-btn');
-
-  copyBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const codeBlock = btn.closest('.code-block');
-      const code = codeBlock.querySelector('code').innerText;
-
-      navigator.clipboard.writeText(code).then(() => {
-        const originalText = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => {
-          btn.innerText = originalText;
-        }, 2000);
-      });
-    });
-  });
+  // (Removed as per new content requirements)
 });
