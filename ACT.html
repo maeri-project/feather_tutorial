@@ -4,10 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RAIC: Reconfigurable AI Computing</title>
-  <meta name="description" content="ASPLOS Tutorial on Privacy-Preserving AI Computing via HE and ZKP.">
+  <title>ACT - RAIC Tutorial</title>
+  <meta name="description" content="ACT Ecosystem documentation for the RAIC Tutorial.">
 
-  <!-- Google Fonts: Inter & Outfit for a more modern look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -42,10 +41,10 @@
         <div class="nav-section">
           <h3 class="nav-title">docs</h3>
           <ul class="nav-links">
-            <li><a href="beginner.html" class="active">beginner</a></li>
+            <li><a href="beginner.html">beginner</a></li>
             <li><a href="setup.html">setup</a></li>
             <li><a href="FEATHER.html">FEATHER</a></li>
-            <li><a href="ACT.html">ACT</a></li>
+            <li><a href="ACT.html" class="active">ACT</a></li>
             <li><a href="Allo.html">Allo</a></li>
             <li><a href="hands_on.html">hands-on</a></li>
           </ul>
@@ -66,14 +65,12 @@
 
         <div class="top-actions">
           <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
-            <!-- Sun Icon -->
             <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2">
               <circle cx="12" cy="12" r="5" />
               <path
                 d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
             </svg>
-            <!-- Moon Icon -->
             <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
@@ -85,31 +82,31 @@
       <div class="content-wrapper">
         <article class="doc-content">
           <section id="intro" class="hero-section">
-            <h1>Beginner Guide</h1>
-            <p class="subtitle">Getting Started with FEATHER</p>
+            <h1>ACT Ecosystem</h1>
+            <p class="subtitle">Automatically Generating Software Support for Accelerators</p>
             <div class="text-block">
-              <p>Welcome to the beginner guide. This page introduces how the FEATHER ecosystem works.</p>
+              <p>ACT is an ecosystem that automatically generates software tools like compilers for the ALLO-generated FEATHER accelerator. The generated compiler explores the large space of dataflow and layout mappings to identify the most latency-efficient configurations for workloads.</p>
             </div>
           </section>
 
-          <section id="how-it-works">
-            <h2>How this works</h2>
+          <section id="taidl">
+            <h2>TAIDL</h2>
             <div class="text-block">
-              <p>Detailed introduction of the word...</p>
+              <p>Introduction to TAIDL, ACT's ISA specification language...</p>
             </div>
           </section>
 
-          <section id="terminology">
-            <h2>Terminology</h2>
+          <section id="isa-spec">
+            <h2>Writing FEATHER ISA in TAIDL</h2>
             <div class="text-block">
-              <p>Explanation of key terms...</p>
+              <p>How to write FEATHER ISA in TAIDL and generate its compiler...</p>
             </div>
           </section>
 
-          <section id="setup">
-            <h2>Setup</h2>
+          <section id="compilation">
+            <h2>Compilation</h2>
             <div class="text-block">
-              <p>Setup instructions...</p>
+              <p>Using the generated FEATHER compiler for compilation...</p>
             </div>
           </section>
         </article>
@@ -118,14 +115,13 @@
           <h4>On this page</h4>
           <ul>
             <li><a href="#intro">Introduction</a></li>
-            <li><a href="#how-it-works">How this works</a></li>
-            <li><a href="#terminology">Terminology</a></li>
-            <li><a href="#setup">Setup</a></li>
+            <li><a href="#taidl">TAIDL</a></li>
+            <li><a href="#isa-spec">FEATHER ISA in TAIDL</a></li>
+            <li><a href="#compilation">Compilation</a></li>
           </ul>
         </aside>
       </div>
 
-      <!-- Sponsors Section -->
       <section id="sponsors" class="sponsors-section">
         <div class="sponsors-container">
           <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo">
