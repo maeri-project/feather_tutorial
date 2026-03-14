@@ -427,7 +427,25 @@ pre code {
 
 .timeline-item .content h3 {
   font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.timeline-item .content .speaker {
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-weight: 600;
   margin-bottom: 12px;
+}
+
+.timeline-item .content .speaker a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.timeline-item .content .speaker a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
 }
 
 .timeline-item .content p {
