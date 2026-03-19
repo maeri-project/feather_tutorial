@@ -245,6 +245,129 @@
             </div>
           </section>
 
+          <!-- =========================================================
+               MINISA Interactive Visualizer (Hands-on Tool)
+               ========================================================= -->
+          <section id="minisa-tool">
+            <h2>MINISA Interactive Visualizer</h2>
+            <div class="text-block">
+              <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
+                build ISA traces, and visualize the cycle-accurate NEST PE array pipeline, BIRRD reduction network,
+                and VN buffer layouts. The tool resets on page refresh.</p>
+            </div>
+
+            <!-- The MINISA GUI application -->
+            <div class="mg-app">
+              <!-- LEFT PANEL -->
+              <div class="mg-left">
+                <!-- HW Config -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Hardware Configuration</div>
+                  <div class="mg-section-body">
+                    <div class="mg-row">
+                      <label>NEST Size:</label>
+                      <select id="mgNestSize" onchange="mgOnNestSizeChange()">
+                        <option value="4">4x4</option><option value="8">8x8</option><option value="16">16x16</option>
+                      </select>
+                    </div>
+                    <div class="mg-row">
+                      <label>SRAM (MB):</label>
+                      <input type="number" id="mgSramMB" value="4" min="1" max="4096" step="0.5" onchange="mgOnSramChange()">
+                    </div>
+                  </div>
+                </div>
+                <!-- Workload -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Workload (GEMM)</div>
+                  <div class="mg-section-body">
+                    <div class="mg-row">
+                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536">
+                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536">
+                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536">
+                    </div>
+                  </div>
+                </div>
+                <!-- ISA Trace -->
+                <div class="mg-section">
+                  <div class="mg-section-title">ISA Trace Sequence</div>
+                  <div class="mg-section-body">
+                    <div class="mg-isa-list" id="mgIsaList"></div>
+                    <div class="mg-btn-row" style="margin-top:8px;">
+                      <select id="mgIsaTypeSelect" style="font-size:12px;padding:4px;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+                        <option value="SetIVNLayout">SetIVNLayout</option>
+                        <option value="SetWVNLayout" selected>SetWVNLayout</option>
+                        <option value="SetOVNLayout">SetOVNLayout</option>
+                        <option value="ExecuteMapping">ExecuteMapping</option>
+                        <option value="ExecuteStreaming">ExecuteStreaming</option>
+                      </select>
+                      <button class="mg-btn primary" onclick="mgAddInstruction()">Add</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgEditInstruction()">Edit</button>
+                      <button class="mg-btn" onclick="mgDeleteInstruction()">Delete</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(-1)">Up</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(1)">Down</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn success" onclick="mgValidateTrace()">Validate</button>
+                      <button class="mg-btn" onclick="mgClearAll()">Clear</button>
+                      <button class="mg-btn" onclick="mgResetDefault()">Reset Default</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Details -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Instruction Details</div>
+                  <div class="mg-section-body">
+                    <div class="mg-details" id="mgDetailsBox">Select an instruction to view details.</div>
+                  </div>
+                </div>
+                <!-- Animation Controls -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Animation Controls</div>
+                  <div class="mg-section-body">
+                    <button class="mg-btn primary" onclick="mgGenerateAnimation()" style="width:100%;margin-bottom:8px;">Generate Animation</button>
+                    <div id="mgAnimInfo" style="font-size:11px;color:var(--text-light);margin-bottom:6px;">No animation generated</div>
+                    <div class="mg-btn-row" style="align-items:center;">
+                      <button class="mg-btn" onclick="mgStepAnim(-10)">&lt;&lt;</button>
+                      <button class="mg-btn" onclick="mgStepAnim(-1)">&lt;</button>
+                      <button class="mg-btn" id="mgPlayBtn" onclick="mgTogglePlay()" style="min-width:50px;">Play</button>
+                      <button class="mg-btn" onclick="mgStepAnim(1)">&gt;</button>
+                      <button class="mg-btn" onclick="mgStepAnim(10)">&gt;&gt;</button>
+                      <label style="font-size:11px;margin-left:6px;color:var(--text-light);">Speed:</label>
+                      <input type="range" id="mgSpeedSlider" style="width:70px;" min="0.1" max="5" step="0.1" value="1">
+                      <span id="mgFrameInfo" style="font-size:11px;color:var(--text-light);">0/0</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- File Ops -->
+                <div class="mg-section">
+                  <div class="mg-section-title">File Operations</div>
+                  <div class="mg-section-body">
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgSaveTrace()">Save JSON</button>
+                      <button class="mg-btn" onclick="document.getElementById('mgLoadFile').click()">Load JSON</button>
+                      <input type="file" id="mgLoadFile" accept=".json" style="display:none" onchange="mgLoadTrace(event)">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT PANEL -->
+              <div class="mg-right">
+                <div class="mg-tab-bar">
+                  <div class="mg-tab active" onclick="mgSwitchTab('nest')">NEST PE Array</div>
+                  <div class="mg-tab" onclick="mgSwitchTab('birrd')">BIRRD Network</div>
+                  <div class="mg-tab" onclick="mgSwitchTab('buffer')">VN Buffers</div>
+                </div>
+                <div class="mg-legend" id="mgLegend"></div>
+                <div class="mg-tab-content active" id="mg-tab-nest"><canvas id="mgNestCanvas"></canvas></div>
+                <div class="mg-tab-content" id="mg-tab-birrd"><canvas id="mgBirrdCanvas"></canvas></div>
+                <div class="mg-tab-content" id="mg-tab-buffer"><canvas id="mgBufferCanvas"></canvas></div>
+              </div>
+            </div>
+          </section>
+
           <!-- Microarchitecture -->
           <section id="microarchitecture">
             <h2>Microarchitecture</h2>
@@ -508,128 +631,6 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
             </div>
           </section>
 
-          <!-- =========================================================
-               MINISA Interactive Visualizer (Hands-on Tool)
-               ========================================================= -->
-          <section id="minisa-tool">
-            <h2>MINISA Interactive Visualizer</h2>
-            <div class="text-block">
-              <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
-                build ISA traces, and visualize the cycle-accurate NEST PE array pipeline, BIRRD reduction network,
-                and VN buffer layouts. The tool resets on page refresh.</p>
-            </div>
-
-            <!-- The MINISA GUI application -->
-            <div class="mg-app">
-              <!-- LEFT PANEL -->
-              <div class="mg-left">
-                <!-- HW Config -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Hardware Configuration</div>
-                  <div class="mg-section-body">
-                    <div class="mg-row">
-                      <label>NEST Size:</label>
-                      <select id="mgNestSize" onchange="mgOnNestSizeChange()">
-                        <option value="4">4x4</option><option value="8">8x8</option><option value="16">16x16</option>
-                      </select>
-                    </div>
-                    <div class="mg-row">
-                      <label>SRAM (MB):</label>
-                      <input type="number" id="mgSramMB" value="4" min="1" max="4096" step="0.5" onchange="mgOnSramChange()">
-                    </div>
-                  </div>
-                </div>
-                <!-- Workload -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Workload (GEMM)</div>
-                  <div class="mg-section-body">
-                    <div class="mg-row">
-                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536">
-                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536">
-                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536">
-                    </div>
-                  </div>
-                </div>
-                <!-- ISA Trace -->
-                <div class="mg-section">
-                  <div class="mg-section-title">ISA Trace Sequence</div>
-                  <div class="mg-section-body">
-                    <div class="mg-isa-list" id="mgIsaList"></div>
-                    <div class="mg-btn-row" style="margin-top:8px;">
-                      <select id="mgIsaTypeSelect" style="font-size:12px;padding:4px;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
-                        <option value="SetIVNLayout">SetIVNLayout</option>
-                        <option value="SetWVNLayout" selected>SetWVNLayout</option>
-                        <option value="SetOVNLayout">SetOVNLayout</option>
-                        <option value="ExecuteMapping">ExecuteMapping</option>
-                        <option value="ExecuteStreaming">ExecuteStreaming</option>
-                      </select>
-                      <button class="mg-btn primary" onclick="mgAddInstruction()">Add</button>
-                    </div>
-                    <div class="mg-btn-row">
-                      <button class="mg-btn" onclick="mgEditInstruction()">Edit</button>
-                      <button class="mg-btn" onclick="mgDeleteInstruction()">Delete</button>
-                      <button class="mg-btn" onclick="mgMoveInstruction(-1)">Up</button>
-                      <button class="mg-btn" onclick="mgMoveInstruction(1)">Down</button>
-                    </div>
-                    <div class="mg-btn-row">
-                      <button class="mg-btn success" onclick="mgValidateTrace()">Validate</button>
-                      <button class="mg-btn" onclick="mgClearAll()">Clear</button>
-                      <button class="mg-btn" onclick="mgResetDefault()">Reset Default</button>
-                    </div>
-                  </div>
-                </div>
-                <!-- Details -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Instruction Details</div>
-                  <div class="mg-section-body">
-                    <div class="mg-details" id="mgDetailsBox">Select an instruction to view details.</div>
-                  </div>
-                </div>
-                <!-- Animation Controls -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Animation Controls</div>
-                  <div class="mg-section-body">
-                    <button class="mg-btn primary" onclick="mgGenerateAnimation()" style="width:100%;margin-bottom:8px;">Generate Animation</button>
-                    <div id="mgAnimInfo" style="font-size:11px;color:var(--text-light);margin-bottom:6px;">No animation generated</div>
-                    <div class="mg-btn-row" style="align-items:center;">
-                      <button class="mg-btn" onclick="mgStepAnim(-10)">&lt;&lt;</button>
-                      <button class="mg-btn" onclick="mgStepAnim(-1)">&lt;</button>
-                      <button class="mg-btn" id="mgPlayBtn" onclick="mgTogglePlay()" style="min-width:50px;">Play</button>
-                      <button class="mg-btn" onclick="mgStepAnim(1)">&gt;</button>
-                      <button class="mg-btn" onclick="mgStepAnim(10)">&gt;&gt;</button>
-                      <label style="font-size:11px;margin-left:6px;color:var(--text-light);">Speed:</label>
-                      <input type="range" id="mgSpeedSlider" style="width:70px;" min="0.1" max="5" step="0.1" value="1">
-                      <span id="mgFrameInfo" style="font-size:11px;color:var(--text-light);">0/0</span>
-                    </div>
-                  </div>
-                </div>
-                <!-- File Ops -->
-                <div class="mg-section">
-                  <div class="mg-section-title">File Operations</div>
-                  <div class="mg-section-body">
-                    <div class="mg-btn-row">
-                      <button class="mg-btn" onclick="mgSaveTrace()">Save JSON</button>
-                      <button class="mg-btn" onclick="document.getElementById('mgLoadFile').click()">Load JSON</button>
-                      <input type="file" id="mgLoadFile" accept=".json" style="display:none" onchange="mgLoadTrace(event)">
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- RIGHT PANEL -->
-              <div class="mg-right">
-                <div class="mg-tab-bar">
-                  <div class="mg-tab active" onclick="mgSwitchTab('nest')">NEST PE Array</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('birrd')">BIRRD Network</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('buffer')">VN Buffers</div>
-                </div>
-                <div class="mg-legend" id="mgLegend"></div>
-                <div class="mg-tab-content active" id="mg-tab-nest"><canvas id="mgNestCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-birrd"><canvas id="mgBirrdCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-buffer"><canvas id="mgBufferCanvas"></canvas></div>
-              </div>
-            </div>
-          </section>
 
         </article>
 
@@ -637,6 +638,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
           <h4>On this page</h4>
           <ul>
             <li><a href="#intro">Introduction</a></li>
+            <li><a href="#minisa-tool">MINISA Visualizer</a></li>
             <li><a href="#microarchitecture">Microarchitecture</a></li>
             <li><a href="#isa">MINISA ISA 2.0</a></li>
             <li style="padding-left:12px;"><a href="#isa-summary">Instruction Set</a></li>
@@ -647,7 +649,6 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
             <li><a href="#mapper">Mapper</a></li>
             <li><a href="#layoutloop">LayoutLoop</a></li>
             <li><a href="#rtl-simulation">RTL Simulation</a></li>
-            <li><a href="#minisa-tool">MINISA Visualizer</a></li>
           </ul>
         </aside>
       </div>
