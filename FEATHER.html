@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FEATHER - RAIC Tutorial</title>
-  <meta name="description" content="FEATHER reconfigurable AI accelerator documentation.">
+  <meta name="description" content="FEATHER reconfigurable AI accelerator documentation and interactive MINISA visualizer.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +14,164 @@
     rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Scoped styles for MINISA interactive tool -->
+  <style>
+    /* ================================================================
+       MINISA GUI Tool – all selectors prefixed with .mg- to avoid
+       collisions with the tutorial site styles.css
+       ================================================================ */
+    .mg-app {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      height: 820px;
+      background: var(--bg-card);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 13px;
+      color: var(--text-main);
+      margin-top: 24px;
+    }
+    /* left config panel */
+    .mg-left {
+      width: 400px; min-width: 340px; overflow-y: auto;
+      border-right: 1px solid var(--border-color);
+      padding: 10px;
+      background: var(--bg-sidebar);
+    }
+    .mg-right {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .mg-section {
+      border: 1px solid var(--border-color);
+      border-radius: 8px; margin-bottom: 10px;
+    }
+    .mg-section-title {
+      background: rgba(120,100,255,0.08);
+      padding: 7px 12px; font-weight: 600; font-size: 12px;
+      border-bottom: 1px solid var(--border-color);
+      border-radius: 8px 8px 0 0;
+      color: var(--text-main);
+    }
+    .mg-section-body { padding: 10px; }
+    .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .mg-row label { font-size: 12px; font-weight: 500; min-width: 60px; color: var(--text-muted); }
+    .mg-row input, .mg-row select {
+      padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;
+      font-size: 12px; background: var(--bg-body); color: var(--text-main);
+    }
+    .mg-row input[type=number] { width: 72px; }
+    .mg-row select { min-width: 90px; }
+    .mg-btn {
+      padding: 5px 12px; border: 1px solid var(--border-color); border-radius: 4px;
+      background: var(--bg-card); cursor: pointer; font-size: 12px;
+      color: var(--text-main); transition: background 0.15s;
+    }
+    .mg-btn:hover { background: rgba(120,100,255,0.1); }
+    .mg-btn.primary { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+    .mg-btn.primary:hover { filter: brightness(1.15); }
+    .mg-btn.danger { background: #C62828; color: #fff; border-color: #C62828; }
+    .mg-btn.success { background: #2E7D32; color: #fff; border-color: #2E7D32; }
+    .mg-btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    /* ISA list */
+    .mg-isa-list {
+      border: 1px solid var(--border-color); border-radius: 4px;
+      max-height: 180px; overflow-y: auto; background: var(--bg-body);
+    }
+    .mg-isa-item {
+      padding: 5px 10px; font-size: 12px; cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-main);
+    }
+    .mg-isa-item:hover { background: rgba(120,100,255,0.08); }
+    .mg-isa-item.selected { background: rgba(120,100,255,0.18); font-weight: 600; }
+    .mg-isa-item .mg-idx { font-weight: 700; color: var(--text-light); min-width: 18px; }
+    .mg-badge {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 600;
+    }
+    .mg-badge-ivn { background: #E8F5E9; color: #2E7D32; }
+    .mg-badge-wvn { background: #FFF9C4; color: #F57C00; }
+    .mg-badge-ovn { background: #E1BEE7; color: #7B1FA2; }
+    .mg-badge-em  { background: #FFCDD2; color: #C62828; }
+    .mg-badge-es  { background: #BBDEFB; color: #1565C0; }
+    .mg-details {
+      background: var(--bg-body); border: 1px solid var(--border-color);
+      border-radius: 4px; padding: 8px; font-size: 11px;
+      min-height: 60px; max-height: 120px; overflow-y: auto;
+      font-family: 'SF Mono','Fira Code','Consolas',monospace;
+      white-space: pre-wrap; color: var(--text-muted);
+    }
+    /* tabs */
+    .mg-tab-bar {
+      display: flex; background: rgba(120,100,255,0.06);
+      border-bottom: 2px solid var(--primary-color);
+    }
+    .mg-tab {
+      padding: 9px 18px; cursor: pointer; font-weight: 500; font-size: 13px;
+      border: none; background: transparent;
+      border-bottom: 3px solid transparent; transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .mg-tab:hover { background: rgba(120,100,255,0.1); }
+    .mg-tab.active { background: var(--bg-card); border-bottom-color: var(--primary-color); font-weight: 700; color: var(--text-main); }
+    .mg-tab-content { flex:1; display:none; overflow:hidden; position:relative; }
+    .mg-tab-content.active { display:flex; justify-content:center; align-items:center; }
+    .mg-tab-content canvas { display:block; }
+    .mg-legend {
+      display:flex; gap:10px; flex-wrap:wrap; padding:6px 12px;
+      background: var(--bg-sidebar); border-bottom:1px solid var(--border-color); font-size:11px;
+      color: var(--text-muted);
+    }
+    .mg-legend-item { display:flex; align-items:center; gap:4px; }
+    .mg-legend-swatch { width:14px; height:14px; border-radius:3px; border:1px solid #999; }
+    /* modal */
+    .mg-modal-overlay {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;
+    }
+    .mg-modal-overlay.show { display:flex; }
+    .mg-modal {
+      background: var(--bg-card); border-radius: 10px; padding: 20px;
+      min-width: 420px; max-width: 520px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3); color: var(--text-main);
+    }
+    .mg-modal h3 { margin-bottom: 12px; font-size: 16px; font-family: 'Outfit', sans-serif; }
+    .mg-modal .mg-desc {
+      background: var(--bg-sidebar); padding: 8px; border-radius: 4px;
+      font-size: 11px; margin-bottom: 12px; line-height: 1.5; color: var(--text-muted);
+    }
+    .mg-modal .mg-param-grid {
+      display: grid; grid-template-columns: auto 1fr auto auto;
+      gap: 6px 10px; align-items: center; margin-bottom: 14px;
+    }
+    .mg-modal .mg-param-grid label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .mg-modal .mg-param-grid input {
+      padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;
+      font-size: 12px; width: 90px; background: var(--bg-body); color: var(--text-main);
+    }
+    .mg-modal .mg-param-grid .mg-range { font-size: 10px; color: var(--text-light); }
+    .mg-modal .mg-param-grid .mg-hint { font-size: 10px; color: var(--primary-color); }
+    .mg-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+    .mg-toast {
+      position:fixed; top:20px; right:20px; padding:12px 20px; border-radius:6px;
+      color:white; font-size:13px; z-index:2000; animation: mgFadeIn 0.3s; max-width:400px;
+    }
+    .mg-toast.success { background:#2E7D32; }
+    .mg-toast.error { background:#C62828; }
+    .mg-toast.warning { background:#F57C00; }
+    .mg-toast.info { background: hsl(260,80%,55%); }
+    @keyframes mgFadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+
+    /* Responsive: on small screens stack vertically */
+    @media (max-width: 900px) {
+      .mg-app { flex-direction: column; height: auto; }
+      .mg-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
+      .mg-right { min-height: 500px; }
+    }
+  </style>
 </head>
 
 <body>
@@ -81,6 +239,8 @@
 
       <div class="content-wrapper">
         <article class="doc-content">
+
+          <!-- Hero -->
           <section id="intro" class="hero-section">
             <h1>FEATHER</h1>
             <p class="subtitle">Reconfigurable AI Accelerator</p>
@@ -89,6 +249,7 @@
             </div>
           </section>
 
+          <!-- Microarchitecture -->
           <section id="microarchitecture">
             <h2>Microarchitecture</h2>
             <div class="text-block">
@@ -96,6 +257,7 @@
             </div>
           </section>
 
+          <!-- MINISA ISA -->
           <section id="isa">
             <h2>MINISA (ISA)</h2>
             <div class="text-block">
@@ -103,6 +265,7 @@
             </div>
           </section>
 
+          <!-- Mapper -->
           <section id="mapper">
             <h2>Mapper</h2>
             <div class="text-block">
@@ -110,6 +273,7 @@
             </div>
           </section>
 
+          <!-- LayoutLoop -->
           <section id="layoutloop">
             <h2>LayoutLoop</h2>
             <div class="text-block">
@@ -117,12 +281,137 @@
             </div>
           </section>
 
+          <!-- RTL Simulation -->
           <section id="rtl-simulation">
             <h2>RTL Simulation</h2>
             <div class="text-block">
               <p>RTL simulation flow for FEATHER(+)...</p>
             </div>
           </section>
+
+          <!-- =========================================================
+               MINISA Interactive Visualizer (Hands-on Tool)
+               ========================================================= -->
+          <section id="minisa-tool">
+            <h2>MINISA Interactive Visualizer</h2>
+            <div class="text-block">
+              <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
+                build ISA traces, and visualize the cycle-accurate NEST PE array pipeline, BIRRD reduction network,
+                and VN buffer layouts. The tool resets on page refresh.</p>
+            </div>
+
+            <!-- The MINISA GUI application -->
+            <div class="mg-app">
+              <!-- LEFT PANEL -->
+              <div class="mg-left">
+                <!-- HW Config -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Hardware Configuration</div>
+                  <div class="mg-section-body">
+                    <div class="mg-row">
+                      <label>NEST Size:</label>
+                      <select id="mgNestSize" onchange="mgOnNestSizeChange()">
+                        <option value="4">4x4</option><option value="8">8x8</option><option value="16">16x16</option>
+                      </select>
+                    </div>
+                    <div class="mg-row">
+                      <label>SRAM (MB):</label>
+                      <input type="number" id="mgSramMB" value="4" min="1" max="4096" step="0.5" onchange="mgOnSramChange()">
+                    </div>
+                  </div>
+                </div>
+                <!-- Workload -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Workload (GEMM)</div>
+                  <div class="mg-section-body">
+                    <div class="mg-row">
+                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536">
+                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536">
+                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536">
+                    </div>
+                  </div>
+                </div>
+                <!-- ISA Trace -->
+                <div class="mg-section">
+                  <div class="mg-section-title">ISA Trace Sequence</div>
+                  <div class="mg-section-body">
+                    <div class="mg-isa-list" id="mgIsaList"></div>
+                    <div class="mg-btn-row" style="margin-top:8px;">
+                      <select id="mgIsaTypeSelect" style="font-size:12px;padding:4px;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+                        <option value="SetIVNLayout">SetIVNLayout</option>
+                        <option value="SetWVNLayout" selected>SetWVNLayout</option>
+                        <option value="SetOVNLayout">SetOVNLayout</option>
+                        <option value="ExecuteMapping">ExecuteMapping</option>
+                        <option value="ExecuteStreaming">ExecuteStreaming</option>
+                      </select>
+                      <button class="mg-btn primary" onclick="mgAddInstruction()">Add</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgEditInstruction()">Edit</button>
+                      <button class="mg-btn" onclick="mgDeleteInstruction()">Delete</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(-1)">Up</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(1)">Down</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn success" onclick="mgValidateTrace()">Validate</button>
+                      <button class="mg-btn" onclick="mgClearAll()">Clear</button>
+                      <button class="mg-btn" onclick="mgResetDefault()">Reset Default</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Details -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Instruction Details</div>
+                  <div class="mg-section-body">
+                    <div class="mg-details" id="mgDetailsBox">Select an instruction to view details.</div>
+                  </div>
+                </div>
+                <!-- Animation Controls -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Animation Controls</div>
+                  <div class="mg-section-body">
+                    <button class="mg-btn primary" onclick="mgGenerateAnimation()" style="width:100%;margin-bottom:8px;">Generate Animation</button>
+                    <div id="mgAnimInfo" style="font-size:11px;color:var(--text-light);margin-bottom:6px;">No animation generated</div>
+                    <div class="mg-btn-row" style="align-items:center;">
+                      <button class="mg-btn" onclick="mgStepAnim(-10)">&lt;&lt;</button>
+                      <button class="mg-btn" onclick="mgStepAnim(-1)">&lt;</button>
+                      <button class="mg-btn" id="mgPlayBtn" onclick="mgTogglePlay()" style="min-width:50px;">Play</button>
+                      <button class="mg-btn" onclick="mgStepAnim(1)">&gt;</button>
+                      <button class="mg-btn" onclick="mgStepAnim(10)">&gt;&gt;</button>
+                      <label style="font-size:11px;margin-left:6px;color:var(--text-light);">Speed:</label>
+                      <input type="range" id="mgSpeedSlider" style="width:70px;" min="0.1" max="5" step="0.1" value="1">
+                      <span id="mgFrameInfo" style="font-size:11px;color:var(--text-light);">0/0</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- File Ops -->
+                <div class="mg-section">
+                  <div class="mg-section-title">File Operations</div>
+                  <div class="mg-section-body">
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgSaveTrace()">Save JSON</button>
+                      <button class="mg-btn" onclick="document.getElementById('mgLoadFile').click()">Load JSON</button>
+                      <input type="file" id="mgLoadFile" accept=".json" style="display:none" onchange="mgLoadTrace(event)">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT PANEL -->
+              <div class="mg-right">
+                <div class="mg-tab-bar">
+                  <div class="mg-tab active" onclick="mgSwitchTab('nest')">NEST PE Array</div>
+                  <div class="mg-tab" onclick="mgSwitchTab('birrd')">BIRRD Network</div>
+                  <div class="mg-tab" onclick="mgSwitchTab('buffer')">VN Buffers</div>
+                </div>
+                <div class="mg-legend" id="mgLegend"></div>
+                <div class="mg-tab-content active" id="mg-tab-nest"><canvas id="mgNestCanvas"></canvas></div>
+                <div class="mg-tab-content" id="mg-tab-birrd"><canvas id="mgBirrdCanvas"></canvas></div>
+                <div class="mg-tab-content" id="mg-tab-buffer"><canvas id="mgBufferCanvas"></canvas></div>
+              </div>
+            </div>
+          </section>
+
         </article>
 
         <aside class="on-this-page">
@@ -134,6 +423,7 @@
             <li><a href="#mapper">Mapper</a></li>
             <li><a href="#layoutloop">LayoutLoop</a></li>
             <li><a href="#rtl-simulation">RTL Simulation</a></li>
+            <li><a href="#minisa-tool">MINISA Visualizer</a></li>
           </ul>
         </aside>
       </div>
@@ -152,7 +442,311 @@
     </main>
   </div>
 
-  <script src="script.js"></script>
-</body>
+  <!-- Modal for ISA Config -->
+  <div class="mg-modal-overlay" id="mgModalOverlay">
+    <div class="mg-modal" id="mgModalContent"></div>
+  </div>
 
+  <script src="script.js"></script>
+
+  <script>
+  // ============================================================================
+  // MINISA GUI – all globals/functions prefixed mg to avoid collisions
+  // ============================================================================
+  const MG_ORDER_PERMS = {
+    0:{W:"kL1 -> nL0 -> nL1",I:"jL1 -> mL0 -> mL1",O:"pL1 -> pL0 -> qL1"},
+    1:{W:"kL1 -> nL1 -> nL0",I:"jL1 -> mL1 -> mL0",O:"pL1 -> qL1 -> pL0"},
+    2:{W:"nL0 -> kL1 -> nL1",I:"mL0 -> jL1 -> mL1",O:"pL0 -> pL1 -> qL1"},
+    3:{W:"nL0 -> nL1 -> kL1",I:"mL0 -> mL1 -> jL1",O:"pL0 -> qL1 -> pL1"},
+    4:{W:"nL1 -> kL1 -> nL0",I:"mL1 -> jL1 -> mL0",O:"qL1 -> pL1 -> pL0"},
+    5:{W:"nL1 -> nL0 -> kL1",I:"mL1 -> mL0 -> jL1",O:"qL1 -> pL0 -> pL1"},
+  };
+  const MG_PERM_TABLE = {
+    0:{W:["kL1","nL0","nL1"],I:["jL1","mL0","mL1"],O:["pL1","pL0","qL1"]},
+    1:{W:["kL1","nL1","nL0"],I:["jL1","mL1","mL0"],O:["pL1","qL1","pL0"]},
+    2:{W:["nL0","kL1","nL1"],I:["mL0","jL1","mL1"],O:["pL0","pL1","qL1"]},
+    3:{W:["nL0","nL1","kL1"],I:["mL0","mL1","jL1"],O:["pL0","qL1","pL1"]},
+    4:{W:["nL1","kL1","nL0"],I:["mL1","jL1","mL0"],O:["qL1","pL1","pL0"]},
+    5:{W:["nL1","nL0","kL1"],I:["mL1","mL0","jL1"],O:["qL1","pL0","pL1"]},
+  };
+  const MG_PE_COLORS = {idle:'#E8EAED',loading:'#FFF9C4',ready:'#C8E6C9',computing:'#FFE082',outputting:'#FFAB91',input:'#BBDEFB'};
+  const MG_EGG_MODES = {0:{name:'Pass',bg:'#E8F5E9',edge:'#2E7D32'},3:{name:'Swap',bg:'#FFF3E0',edge:'#E65100'},1:{name:'Add-L',bg:'#E3F2FD',edge:'#1565C0'},2:{name:'Add-R',bg:'#F3E5F5',edge:'#7B1FA2'}};
+
+  let mgHW = {AH:4,AW:4,sram_mb:4,frac_stream:0.4,frac_stationary:0.4,frac_output:0.2};
+  let mgInstructions = [];
+  let mgSelectedIdx = -1;
+  let mgAnimFrames = [], mgCurrentFrame = 0, mgPlaying = false, mgTimer = null;
+  let mgActiveTab = 'nest';
+
+  function mgCD(a,b){return Math.ceil(a/b);}
+  function mgCL2(x){return x<=1?0:Math.ceil(Math.log2(x));}
+  function mgGetWL(d){return parseInt(document.getElementById('mgWl'+d).value)||16;}
+
+  // ---------- Short/Full Desc ----------
+  function mgShortDesc(ins){const p=ins.params;switch(ins.type){
+    case 'SetIVNLayout':return`IVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].I})`;
+    case 'SetWVNLayout':return`WVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].W})`;
+    case 'SetOVNLayout':return`OVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].O})`;
+    case 'ExecuteMapping':return`Map(r0=${p.r0},c0=${p.c0},Gr=${p.Gr},Gc=${p.Gc})`;
+    case 'ExecuteStreaming':return`ES(T=${p.T},vn=${p.vn_size},df=${p.dataflow===0?'IO-S':'WO-S'})`;
+  }return ins.type;}
+  function mgFullDesc(ins){const p=ins.params;switch(ins.type){
+    case 'SetIVNLayout':return`SetIVNLayout(Order=${p.order},M_L0=${p.M_L0},M_L1=${p.M_L1},J_L1=${p.J_L1})`;
+    case 'SetWVNLayout':return`SetWVNLayout(Order=${p.order},N_L0=${p.N_L0},N_L1=${p.N_L1},K_L1=${p.K_L1})`;
+    case 'SetOVNLayout':return`SetOVNLayout(Order=${p.order},P_L0=${p.P_L0},P_L1=${p.P_L1},Q_L1=${p.Q_L1})`;
+    case 'ExecuteMapping':return`ExecuteMapping(r0=${p.r0},c0=${p.c0},Gr=${p.Gr},Gc=${p.Gc},sr=${p.sr},sc=${p.sc})`;
+    case 'ExecuteStreaming':return`ExecuteStreaming(df=${p.dataflow===0?'IO-S':'WO-S'},m_0=${p.m_0},s_m=${p.s_m},T=${p.T},vn=${p.vn_size})`;
+  }return ins.type;}
+  function mgBadgeCls(t){return{SetIVNLayout:'mg-badge-ivn',SetWVNLayout:'mg-badge-wvn',SetOVNLayout:'mg-badge-ovn',ExecuteMapping:'mg-badge-em',ExecuteStreaming:'mg-badge-es'}[t]||'';}
+
+  // ---------- Validation ----------
+  function mgBufDepths(){const t=mgHW.sram_mb*1024*1024,AH=mgHW.AH;return{D_str:Math.max(1,Math.floor(t*mgHW.frac_stream/Math.max(1,AH))),D_sta:Math.max(1,Math.floor(t*mgHW.frac_stationary/Math.max(1,AH))),D_out:Math.max(1,Math.floor(t*mgHW.frac_output/Math.max(1,AH*4)))};}
+  function mgValInstr(ins){const e=[],p=ins.params,AH=mgHW.AH,AW=mgHW.AW,M=mgGetWL('M'),K=mgGetWL('K'),N=mgGetWL('N'),bd=mgBufDepths();
+    if(ins.type==='SetIVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.M_L0<1||p.M_L0>AW)e.push(`M_L0 must be [1,${AW}]`);if(p.M_L0>0&&p.M_L1*p.J_L1>bd.D_str/p.M_L0)e.push(`M_L1*J_L1 exceeds buffer`);}
+    else if(ins.type==='SetWVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.N_L0<1||p.N_L0>AW)e.push(`N_L0 must be [1,${AW}]`);if(p.N_L0>0&&p.N_L1*p.K_L1>bd.D_sta/p.N_L0)e.push(`N_L1*K_L1 exceeds buffer`);}
+    else if(ins.type==='SetOVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.P_L0<1||p.P_L0>AW)e.push(`P_L0 must be [1,${AW}]`);if(p.P_L0>0&&p.P_L1*p.Q_L1>bd.D_out/p.P_L0)e.push(`P_L1*Q_L1 exceeds buffer`);}
+    else if(ins.type==='ExecuteMapping'){const mR=mgCD(K,AH);if(p.r0<0||p.r0>=mR)e.push(`r0 must be [0,${mR-1}]`);if(p.c0<0||p.c0>=N)e.push(`c0 must be [0,${N-1}]`);if(p.Gr<1||p.Gr>AH)e.push(`Gr must be [1,${AH}]`);if(p.Gc<1||p.Gc>AW)e.push(`Gc must be [1,${AW}]`);}
+    else if(ins.type==='ExecuteStreaming'){if(p.dataflow!==0&&p.dataflow!==1)e.push(`dataflow must be 0 or 1`);if(p.m_0<0)e.push(`m_0>=0`);if(p.s_m<1)e.push(`s_m>=1`);if(p.T<1)e.push(`T>=1`);if(p.vn_size<0||p.vn_size>=AH)e.push(`vn_size must be [0,${AH-1}]`);}
+    return e;}
+  function mgValSeq(){const e=[];let hI=0,hW=0,hO=0,mc=0,sc=0,lm=0;
+    for(let i=0;i<mgInstructions.length;i++){const ins=mgInstructions[i];mgValInstr(ins).forEach(x=>e.push(`Instr ${i+1}: ${x}`));
+      if(ins.type==='SetIVNLayout'){hI=1;lm=0;}else if(ins.type==='SetWVNLayout'){hW=1;lm=0;}else if(ins.type==='SetOVNLayout'){hO=1;lm=0;}
+      else if(ins.type==='ExecuteMapping'){mc++;if(!hI||!hW||!hO)e.push(`Instr ${i+1}: EM before layouts`);lm=1;}
+      else if(ins.type==='ExecuteStreaming'){sc++;if(!lm)e.push(`Instr ${i+1}: ES must follow EM`);lm=0;}}
+    if(sc===0&&mgInstructions.length>0)e.push('Warning: No ExecuteStreaming');
+    if(mc!==sc&&mc>0&&sc>0)e.push(`Warning: Mismatched EM/ES (${mc} vs ${sc})`);return e;}
+
+  // ---------- Toast ----------
+  function mgToast(msg,type='info',dur=3000){const t=document.createElement('div');t.className=`mg-toast ${type}`;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},dur);}
+
+  // ---------- ISA List UI ----------
+  function mgRenderList(){const l=document.getElementById('mgIsaList');l.innerHTML='';
+    mgInstructions.forEach((ins,i)=>{const d=document.createElement('div');d.className=`mg-isa-item${i===mgSelectedIdx?' selected':''}`;
+      d.innerHTML=`<span class="mg-idx">${i+1}.</span><span class="mg-badge ${mgBadgeCls(ins.type)}">${ins.type.replace('Set','').replace('Layout','').replace('Execute','')}</span><span>${mgShortDesc(ins)}</span>`;
+      d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDrawActive();}
+  function mgShowDetails(idx){const b=document.getElementById('mgDetailsBox');if(idx<0||idx>=mgInstructions.length){b.textContent='Select an instruction.';return;}
+    const ins=mgInstructions[idx];let t=`Instruction ${idx+1}: ${ins.type}\n\nParameters:\n`;
+    for(const[k,v]of Object.entries(ins.params))t+=`  ${k}: ${v}\n`;
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(ins.type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[ins.type];t+=`\nLoop Order: ${MG_ORDER_PERMS[ins.params.order][op]}\n`;}
+    const errs=mgValInstr(ins);t+=`\nValidation: ${errs.length===0?'OK':'ERRORS\n'+errs.map(e=>'  * '+e).join('\n')}`;b.textContent=t;}
+
+  // ---------- Modal ----------
+  function mgOpenModal(type,existing,onSave){const ov=document.getElementById('mgModalOverlay'),co=document.getElementById('mgModalContent');
+    const AH=mgHW.AH,AW=mgHW.AW,M=mgGetWL('M'),K=mgGetWL('K'),N=mgGetWL('N');const p=existing||{};let desc='',fields=[];
+    if(type==='SetIVNLayout'){desc=`Input VN layout. Order(0-5) | M_L0:[1,${AW}] | M_L1:rows/M_L0 | J_L1:reduction/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'M_L0',l:'M_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'M_L1',l:'M_L1',d:1,mn:1,mx:Math.max(1,mgCD(M,AW)),h:'Rows'},{k:'J_L1',l:'J_L1',d:1,mn:1,mx:Math.max(1,mgCD(K,AH)),h:'Red/AH'}];}
+    else if(type==='SetWVNLayout'){desc=`Weight VN layout. Order(0-5) | N_L0:[1,${AW}] | N_L1:cols/N_L0 | K_L1:rows/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'N_L0',l:'N_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'N_L1',l:'N_L1',d:1,mn:1,mx:Math.max(1,mgCD(N,AW)),h:'Cols'},{k:'K_L1',l:'K_L1',d:1,mn:1,mx:Math.max(1,mgCD(K,AH)),h:'Rows/AH'}];}
+    else if(type==='SetOVNLayout'){desc=`Output VN layout. Order(0-5) | P_L0:[1,${AW}] | P_L1:rows/P_L0 | Q_L1:cols/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'P_L0',l:'P_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'P_L1',l:'P_L1',d:1,mn:1,mx:Math.max(1,mgCD(M,AW)),h:'Rows'},{k:'Q_L1',l:'Q_L1',d:1,mn:1,mx:Math.max(1,mgCD(N,AH)),h:'Cols/AH'}];}
+    else if(type==='ExecuteMapping'){const mR=Math.max(1,mgCD(K,AH));
+      desc=`Map tile to PEs. r0,c0:start | Gr:[1,${AH}] | Gc:[1,${AW}] | sr,sc:strides`;
+      fields=[{k:'r0',l:'r0',d:0,mn:0,mx:mR-1,h:'Row'},{k:'c0',l:'c0',d:0,mn:0,mx:Math.max(0,N-1),h:'Col'},{k:'Gr',l:'Gr',d:1,mn:1,mx:AH,h:'RowMC'},{k:'Gc',l:'Gc',d:1,mn:1,mx:AW,h:'ColGrp'},{k:'sr',l:'sr',d:0,mn:0,mx:Math.max(AH,Math.floor(mR/2)),h:'StrR'},{k:'sc',l:'sc',d:0,mn:0,mx:Math.max(AW,Math.floor(N/2)),h:'StrC'}];}
+    else if(type==='ExecuteStreaming'){desc=`Stream inputs. dataflow:0=IO-S,1=WO-S | T:steps | vn_size:[0,${AH-1}]`;
+      fields=[{k:'dataflow',l:'dataflow',d:1,mn:0,mx:1,h:'0/1'},{k:'m_0',l:'m_0',d:0,mn:0,mx:Math.max(0,M-1),h:'Base'},{k:'s_m',l:'s_m',d:1,mn:1,mx:Math.max(1,M),h:'Stride'},{k:'T',l:'T',d:AH,mn:1,mx:Math.max(1,M),h:'Steps'},{k:'vn_size',l:'vn_size',d:AH-1,mn:0,mx:AH-1,h:`AH-1`}];}
+    let h=`<h3>Configure ${type}</h3><div class="mg-desc">${desc}</div><div class="mg-param-grid">`;
+    fields.forEach(f=>{const v=p[f.k]!==undefined?p[f.k]:f.d;h+=`<label>${f.l}:</label><input type="number" id="mgm_${f.k}" value="${v}" min="${f.mn}" max="${f.mx}"><span class="mg-range">[${f.mn},${f.mx}]</span><span class="mg-hint">${f.h}</span>`;});
+    h+=`</div>`;
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[type];h+=`<div id="mgOrderPrev" style="font-size:11px;color:var(--primary-color);margin-bottom:10px;">Order: ${MG_ORDER_PERMS[p.order||0][op]}</div>`;}
+    h+=`<div class="mg-modal-btns"><button class="mg-btn" onclick="mgModalVal('${type}')">Validate</button><button class="mg-btn" onclick="mgCloseModal()">Cancel</button><button class="mg-btn primary" id="mgModalOk">OK</button></div>`;
+    co.innerHTML=h;ov.classList.add('show');
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[type];
+      document.getElementById('mgm_order').addEventListener('input',function(){const o=parseInt(this.value);if(o>=0&&o<=5)document.getElementById('mgOrderPrev').textContent='Order: '+MG_ORDER_PERMS[o][op];});}
+    document.getElementById('mgModalOk').onclick=()=>{const r={};fields.forEach(f=>{r[f.k]=parseInt(document.getElementById('mgm_'+f.k).value)||f.d;});mgCloseModal();onSave(r);};}
+  function mgModalVal(type){const fs=document.querySelectorAll('.mg-param-grid input');const p={};fs.forEach(f=>{p[f.id.replace('mgm_','')]=parseInt(f.value)||0;});
+    const e=mgValInstr({type,params:p});if(e.length===0)mgToast('Valid!','success');else mgToast('Errors: '+e.join('; '),'error',5000);}
+  function mgCloseModal(){document.getElementById('mgModalOverlay').classList.remove('show');}
+
+  // ---------- List Operations ----------
+  function mgAddInstruction(){const t=document.getElementById('mgIsaTypeSelect').value;mgOpenModal(t,null,p=>{const ins={type:t,params:p};
+    if(mgSelectedIdx>=0&&mgSelectedIdx<mgInstructions.length)mgInstructions.splice(mgSelectedIdx+1,0,ins);else mgInstructions.push(ins);mgSelectedIdx=mgInstructions.length-1;mgRenderList();mgToast('Added '+t,'success');});}
+  function mgEditInstruction(){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length){mgToast('Select first','warning');return;}const ins=mgInstructions[mgSelectedIdx];
+    mgOpenModal(ins.type,{...ins.params},p=>{mgInstructions[mgSelectedIdx]={type:ins.type,params:p};mgRenderList();mgShowDetails(mgSelectedIdx);mgToast('Updated','success');});}
+  function mgDeleteInstruction(){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length){mgToast('Select first','warning');return;}
+    if(confirm(`Delete instruction ${mgSelectedIdx+1}?\n\n${mgFullDesc(mgInstructions[mgSelectedIdx])}`)){mgInstructions.splice(mgSelectedIdx,1);if(mgSelectedIdx>=mgInstructions.length)mgSelectedIdx=mgInstructions.length-1;mgRenderList();mgToast('Deleted','info');}}
+  function mgMoveInstruction(dir){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length)return;const n=mgSelectedIdx+dir;if(n<0||n>=mgInstructions.length)return;
+    [mgInstructions[mgSelectedIdx],mgInstructions[n]]=[mgInstructions[n],mgInstructions[mgSelectedIdx]];mgSelectedIdx=n;mgRenderList();}
+  function mgClearAll(){if(!mgInstructions.length)return;if(confirm('Clear all?')){mgInstructions=[];mgSelectedIdx=-1;mgRenderList();mgToast('Cleared','info');}}
+  function mgValidateTrace(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}const e=mgValSeq();
+    if(e.length===0)mgToast(`Valid! (${mgInstructions.length} instrs, ${mgHW.AH}x${mgHW.AW})`,'success',4000);
+    else{mgToast(`${e.length} error(s)`,'error',4000);alert('Errors:\n\n'+e.map((x,i)=>`${i+1}. ${x}`).join('\n'));}}
+  function mgResetDefault(){if(mgInstructions.length&&!confirm('Reset to default?'))return;const AH=mgHW.AH;
+    mgInstructions=[{type:'SetOVNLayout',params:{order:0,P_L0:4,P_L1:4,Q_L1:2}},{type:'SetIVNLayout',params:{order:5,M_L0:4,M_L1:4,J_L1:3}},{type:'SetWVNLayout',params:{order:2,N_L0:4,N_L1:2,K_L1:3}},
+      {type:'ExecuteMapping',params:{r0:0,c0:0,Gr:2,Gc:2,sr:1,sc:4}},{type:'ExecuteStreaming',params:{dataflow:1,m_0:0,s_m:1,T:16,vn_size:AH-1}},
+      {type:'ExecuteMapping',params:{r0:2,c0:0,Gr:4,Gc:2,sr:1,sc:4}},{type:'ExecuteStreaming',params:{dataflow:1,m_0:0,s_m:2,T:8,vn_size:AH-1}}];
+    mgSelectedIdx=-1;mgRenderList();mgToast('Reset','success');}
+
+  // ---------- Save/Load ----------
+  function mgSaveTrace(){if(!mgInstructions.length){mgToast('Nothing to save','warning');return;}
+    const d={version:'1.0',hardware:{AH:mgHW.AH,AW:mgHW.AW,sram_mb:mgHW.sram_mb},workload:{M:mgGetWL('M'),K:mgGetWL('K'),N:mgGetWL('N')},instructions:mgInstructions.map(i=>({type:i.type,params:i.params}))};
+    const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='minisa_trace.json';a.click();mgToast('Saved','success');}
+  function mgLoadTrace(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);mgInstructions=(d.instructions||[]).map(i=>({type:i.type,params:i.params}));
+    if(d.hardware){mgHW.AH=d.hardware.AH||4;mgHW.AW=d.hardware.AW||4;mgHW.sram_mb=d.hardware.sram_mb||4;document.getElementById('mgNestSize').value=mgHW.AH;document.getElementById('mgSramMB').value=mgHW.sram_mb;}
+    if(d.workload){document.getElementById('mgWlM').value=d.workload.M||16;document.getElementById('mgWlK').value=d.workload.K||16;document.getElementById('mgWlN').value=d.workload.N||16;}
+    mgSelectedIdx=-1;mgRenderList();mgToast(`Loaded ${mgInstructions.length} instrs`,'success');}catch(err){mgToast('Load failed: '+err.message,'error');}};r.readAsText(f);ev.target.value='';}
+
+  // ---------- HW Changes ----------
+  function mgOnNestSizeChange(){const s=parseInt(document.getElementById('mgNestSize').value);mgHW.AH=s;mgHW.AW=s;mgDrawActive();}
+  function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;if(mgActiveTab==='buffer')mgDrawBuffer();}
+
+  // ---------- Tabs ----------
+  function mgSwitchTab(name){mgActiveTab=name;document.querySelectorAll('.mg-tab').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));
+    document.querySelectorAll('.mg-tab-content').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));mgUpdateLegend();mgDrawActive();}
+  function mgUpdateLegend(){const l=document.getElementById('mgLegend');
+    if(mgActiveTab==='nest')l.innerHTML=[['Idle','#E8EAED'],['Loading W','#FFF9C4'],['W Ready','#C8E6C9'],['Computing','#FFE082'],['Outputting','#FFAB91']].map(([n,c])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c}"></div>${n}</div>`).join('');
+    else if(mgActiveTab==='birrd')l.innerHTML=Object.entries(MG_EGG_MODES).map(([_,v])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${v.bg};border-color:${v.edge}"></div>${v.name}</div>`).join('');
+    else l.innerHTML=[['Streaming','#C8E6C9','#2E7D32'],['Stationary','#FFF9C4','#F57C00'],['Output','#E1BEE7','#7B1FA2']].map(([n,c,e])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c};border-color:${e}"></div>${n}</div>`).join('');}
+  function mgDrawActive(){if(mgActiveTab==='nest')mgDrawNest();else if(mgActiveTab==='birrd')mgDrawBirrd();else mgDrawBuffer();}
+
+  // ---------- Canvas Helpers ----------
+  function mgRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function mgArrow(ctx,x1,y1,x2,y2,color,lw){const hl=8,a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
+
+  // ---------- NEST Visualization ----------
+  function mgDrawNest(frame){const cv=document.getElementById('mgNestCanvas'),ct=document.getElementById('mg-tab-nest');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AH=mgHW.AH,AW=mgHW.AW;
+    const peSize=Math.min(60,Math.min((W-200)/(AW*1.4),(H-200)/(AH*1.4+3)));const peS=peSize*1.4,mL=120,mT=100;
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    if(frame)ctx.fillText(`NEST PE Array (${AH}\u00d7${AW}) - Cycle ${frame.cycle}`,W/2,20);else ctx.fillText(`NEST PE Array (${AH}\u00d7${AW})`,W/2,20);
+    if(frame){ctx.font='12px sans-serif';ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';ctx.fillText(frame.phase.substring(0,60),W/2,36);}
+    const nTY=mT,bY=nTY-50,ncX=mL+(AW-1)*peS/2+peSize/2,iBX=ncX-peS*AW/4,wBX=ncX+peS*AW/4;
+    ctx.fillStyle='#C8E6C9';ctx.strokeStyle='#2E7D32';ctx.lineWidth=2;mgRR(ctx,iBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('Streaming Buffer',iBX,bY-1);ctx.fillText('(Inputs)',iBX,bY+11);mgArrow(ctx,iBX,bY+16,iBX,nTY-4,'#2E7D32',2);
+    ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#F57C00';ctx.lineWidth=2;mgRR(ctx,wBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#F57C00';ctx.font='bold 10px sans-serif';ctx.fillText('Stationary Buffer',wBX,bY-1);ctx.fillText('(WVN)',wBX,bY+11);mgArrow(ctx,wBX,bY+16,wBX,nTY-4,'#F57C00',2);
+    for(let r=0;r<AH;r++){const y=mT+r*peS;let rL=`Row ${r}\nIdle`,rC=MG_PE_COLORS.idle;
+      if(frame){const pp=frame.pp[`${r},0`]||'idle';if(frame.aOR===r){rL=`Row ${r}\nOUT\u2192BIRRD`;rC=MG_PE_COLORS.outputting;}
+        else if(pp==='computing'||pp==='dp_done'){rL=`Row ${r}\n${frame.rI[r]||'MAC'}`;rC=MG_PE_COLORS.computing;}
+        else if((frame.aWR||[]).includes(r)&&frame.pLE[`${r},0`]>=0){rL=`Row ${r}\n\u2190W[${frame.pLE[`${r},0`]}]`;rC=MG_PE_COLORS.loading;}
+        else if(frame.pWI[`${r},0`]>=AH){rL=`Row ${r}\nWVN\u2713`;rC=MG_PE_COLORS.ready;}
+        else if(frame.pWI[`${r},0`]>0){rL=`Row ${r}\n[0:${frame.pWI[`${r},0`]-1}]`;rC=MG_PE_COLORS.loading;}}
+      ctx.fillStyle=rC;ctx.strokeStyle='#666';ctx.lineWidth=1;mgRR(ctx,10,y+peSize/2-18,90,36,5);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='center';rL.split('\n').forEach((l,li)=>ctx.fillText(l,55,y+peSize/2-4+li*14));
+      for(let c=0;c<AW;c++){const x=mL+c*peS,k=`${r},${c}`;let col=MG_PE_COLORS.idle;
+        if(frame){const pp=frame.pp[k]||'idle';if(pp==='outputting')col=MG_PE_COLORS.outputting;else if(pp==='computing'||pp==='dp_done')col=MG_PE_COLORS.computing;else if(pp==='weights_ready')col=MG_PE_COLORS.ready;else if(pp==='loading_weights')col=MG_PE_COLORS.loading;}
+        ctx.fillStyle=col;ctx.strokeStyle='#1565C0';ctx.lineWidth=1.5;mgRR(ctx,x,y,peSize,peSize,4);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`PE(${r},${c})`,x+peSize/2,y+peSize*.25);
+        let wt=`WVN(${r},${c})[-]`;if(frame)wt=frame.pWA[k]||wt;ctx.font='7px sans-serif';ctx.fillStyle='#444';ctx.fillText(wt,x+peSize/2,y+peSize*.48);
+        ctx.font='8px sans-serif';ctx.fillStyle='#666';ctx.fillText(`MAC:${frame?frame.pMC[k]||0:0}`,x+peSize/2,y+peSize*.72);
+        if(r<AH-1)mgArrow(ctx,x+peSize/2,y+peSize+2,x+peSize/2,y+peS-2,'#90A4AE',1);}}
+    const oY=mT+AH*peS+10;ctx.fillStyle='#7B1FA2';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('OUTPUT to BIRRD (round-robin row)',ncX,oY+20);
+    for(let c=0;c<AW;c++){const x=mL+c*peS+peSize/2;mgArrow(ctx,x,mT+(AH-1)*peS+peSize+4,x,oY,'#7B1FA2',2);}}
+
+  // ---------- BIRRD Visualization ----------
+  function mgDrawBirrd(){const cv=document.getElementById('mgBirrdCanvas'),ct=document.getElementById('mg-tab-birrd');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AW=mgHW.AW,LV=mgCL2(AW),TOT=AW===4?2*LV-1:2*LV,NS=AW/2;
+    const pS=Math.min(80,(W-200)/AW),sS=Math.min(90,(H-100)/(TOT+2)),eW=Math.min(50,pS*.8),eH=28;
+    const sX=(W-(AW-1)*pS)/2,sY=50;
+    function pX(p){return sX+p*pS;}function stY(s){return sY+(s+1)*sS;}
+    function lls(v,w){if(w<=1)return v;return((v<<1)|((v>>(w-1))&1))&((1<<w)-1);}
+    function lrs(v,w){if(w<=1)return v;return((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);}
+    function br(v,w){let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;}
+    function cls(s){const SK=AW===4?1:0;if(s===0)return'first';const lg=s+SK*(LV-1);if(lg<LV)return'first_half';if(lg===LV)return'middle';return'second_half';}
+    function gSI(st,sw){const SK=AW===4?1:0,role=cls(st);if(role==='first')return[2*sw,2*sw+1];
+      if(role==='first_half'){const s=st,ng=1<<(s-1),spg=NS>>(s-1),g=Math.floor(sw/spg),sig=sw%spg,go=g*(AW>>(s-1)),w=LV-s+1;return[lls(sig<<1,w)+go,lls((sig<<1)+1,w)+go];}
+      if(role==='middle')return[br(sw<<1,LV),br((sw<<1)+1,LV)];
+      const lg=st+SK*(LV-1),nge=(2*LV-1)-lg,ng2=nge>=0?(1<<nge):1,spg2=nge>=0?(NS>>nge):NS,g2=spg2>0?Math.floor(sw/spg2):0,sig2=spg2>0?(sw%spg2):sw,go2=nge>=0?(g2*(AW>>nge)):0,w2=nge>=0?(LV-nge):LV;
+      return[lrs(sig2<<1,w2)+go2,lrs((sig2<<1)+1,w2)+go2];}
+    function gIP(st){if(st>=TOT-1){const p=[];for(let i=0;i<AW;i++)p.push(i);return p;}const pm=new Array(AW).fill(0);for(let sw=0;sw<NS;sw++){const[lo,hi]=gSI(st+1,sw);pm[lo]=2*sw;pm[hi]=2*sw+1;}return pm;}
+    ctx.fillStyle='#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(`BIRRD Network (AW=${AW})`,W/2,18);
+    ctx.font='11px sans-serif';ctx.fillStyle='#666';ctx.fillText(`${TOT} stages | ${NS} EGGs/stage`,W/2,34);
+    for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`In${p}`,x,sY-4);ctx.beginPath();ctx.arc(x,sY+6,5,0,Math.PI*2);ctx.fillStyle='#C8E6C9';ctx.fill();ctx.strokeStyle='#2E7D32';ctx.lineWidth=1.5;ctx.stroke();}
+    const oY=stY(TOT)+20;for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#7B1FA2';ctx.font='bold 10px sans-serif';ctx.fillText(`Out${p}`,x,oY+18);ctx.beginPath();ctx.arc(x,oY+4,5,0,Math.PI*2);ctx.fillStyle='#E1BEE7';ctx.fill();ctx.strokeStyle='#7B1FA2';ctx.lineWidth=1.5;ctx.stroke();}
+    for(let s=0;s<TOT;s++){const sy=stY(s);ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='right';ctx.fillText(`S${s}`,sX-20,sy+4);
+      for(let sw=0;sw<NS;sw++){const oL=2*sw,oH=2*sw+1,xc=(pX(oL)+pX(oH))/2;
+        ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#FF8F00';ctx.lineWidth=1.5;mgRR(ctx,xc-eW/2,sy-eH/2,eW,eH,4);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`E${sw}`,xc,sy+4);
+        if(s===0){ctx.strokeStyle='#1565C0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sY+11);ctx.lineTo(pX(oL),sy-eH/2);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sY+11);ctx.lineTo(pX(oH),sy-eH/2);ctx.stroke();}
+        ctx.strokeStyle='#2E7D32';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sy+eH/2);ctx.lineTo(pX(oL),sy+eH/2+6);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sy+eH/2);ctx.lineTo(pX(oH),sy+eH/2+6);ctx.stroke();}
+      if(s<TOT-1){const pm=gIP(s),yS=sy+eH/2+6,yE=stY(s+1)-eH/2,yM=(yS+yE)/2;
+        for(let src=0;src<AW;src++){const dst=pm[src],xs=pX(src),xd=pX(dst);if(src===dst){ctx.strokeStyle='#1565C0';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xs,yS);ctx.lineTo(xd,yE);ctx.stroke();}
+          else{ctx.strokeStyle='#E65100';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xs,yS);ctx.lineTo(xs,yM+2);ctx.stroke();ctx.beginPath();ctx.moveTo(xs,yM+2);ctx.lineTo(xd,yM-2);ctx.stroke();ctx.beginPath();ctx.moveTo(xd,yM-2);ctx.lineTo(xd,yE);ctx.stroke();}}}
+      else{for(let p=0;p<AW;p++){ctx.strokeStyle='#7B1FA2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(p),sy+eH/2+6);ctx.lineTo(pX(p),oY-1);ctx.stroke();}}}}
+
+  // ---------- Buffer Visualization ----------
+  function mgDrawBuffer(){const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AH=mgHW.AH,AW=mgHW.AW,tS=mgHW.sram_mb*1024*1024;
+    const lays={streaming:{order:0,a0:1,a1:1,a2:1},stationary:{order:0,a0:1,a1:1,a2:1},output:{order:0,a0:1,a1:1,a2:1}};
+    mgInstructions.forEach(ins=>{if(ins.type==='SetIVNLayout')lays.streaming={order:ins.params.order,a0:Math.max(1,ins.params.M_L0),a1:Math.max(1,ins.params.M_L1),a2:Math.max(1,ins.params.J_L1)};
+      else if(ins.type==='SetWVNLayout')lays.stationary={order:ins.params.order,a0:Math.max(1,ins.params.N_L0),a1:Math.max(1,ins.params.N_L1),a2:Math.max(1,ins.params.K_L1)};
+      else if(ins.type==='SetOVNLayout')lays.output={order:ins.params.order,a0:Math.max(1,ins.params.P_L0),a1:Math.max(1,ins.params.P_L1),a2:Math.max(1,ins.params.Q_L1)};});
+    const bts=[{k:'streaming',t:'Input (IVN)',op:'I',fc:'#C8E6C9',ec:'#2E7D32',pf:'IVN',vb:AH,fr:mgHW.frac_stream},
+      {k:'stationary',t:'Weight (WVN)',op:'W',fc:'#FFF9C4',ec:'#F57C00',pf:'WVN',vb:AH,fr:mgHW.frac_stationary},
+      {k:'output',t:'Output (OVN)',op:'O',fc:'#E1BEE7',ec:'#7B1FA2',pf:'OVN',vb:AH*4,fr:mgHW.frac_output}];
+    const pW=Math.floor(W/3)-20,pSY=50;
+    bts.forEach((bt,bi)=>{const px=15+bi*(pW+15),lp=lays[bt.k],{a0,a1,a2,order}=lp,tV=a0*a1*a2,cap=Math.max(1,Math.floor(tS*bt.fr/Math.max(1,bt.vb)));
+      const nC=Math.max(1,Math.min(AW,tV)),nR=Math.min(16,Math.max(1,mgCD(tV,nC)));
+      const cW=Math.min(pW/nC-4,70),cH=Math.min((H-pSY-80)/nR-4,45);
+      ctx.fillStyle=bt.ec;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(bt.t,px+pW/2,pSY-30);
+      const ps=MG_ORDER_PERMS[order]?MG_ORDER_PERMS[order][bt.op]:'?';ctx.font='10px sans-serif';ctx.fillStyle='#666';ctx.fillText(`Order ${order}: ${ps}  (VNs=${tV}, cap=${cap})`,px+pW/2,pSY-16);
+      const dn=bt.op==='W'?{nL0:a0,nL1:a1,kL1:a2}:bt.op==='I'?{mL0:a0,mL1:a1,jL1:a2}:{pL0:a0,pL1:a1,qL1:a2};
+      const iN=bt.op==='W'?['kL1','nL0','nL1']:bt.op==='I'?['jL1','mL0','mL1']:['pL0','pL1','qL1'];
+      const a2l={};for(let d0=0;d0<dn[iN[0]];d0++)for(let d1=0;d1<dn[iN[1]];d1++)for(let d2=0;d2<dn[iN[2]];d2++){
+        const ix={};ix[iN[0]]=d0;ix[iN[1]]=d1;ix[iN[2]]=d2;const pm=MG_PERM_TABLE[order][bt.op];
+        const L=ix[pm[0]]*(dn[pm[1]]*dn[pm[2]])+ix[pm[1]]*dn[pm[2]]+ix[pm[2]];
+        if(bt.op==='W')a2l[L]=`${bt.pf}\nk=${ix.kL1},n=${ix.nL0*a1+ix.nL1}`;
+        else if(bt.op==='I')a2l[L]=`${bt.pf}\nm=${ix.mL0*a1+ix.mL1},j=${ix.jL1}`;
+        else a2l[L]=`${bt.pf}\np=${ix.pL0*a1+ix.pL1},q=${ix.qL1}`;}
+      ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';for(let c=0;c<nC;c++)ctx.fillText(c,px+c*(cW+3)+cW/2,pSY-2);
+      for(let r=0;r<nR;r++){ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(r,px-4,pSY+r*(cH+3)+cH/2+4);
+        for(let c=0;c<nC;c++){const L=r*nC+c,x=px+c*(cW+3),y=pSY+r*(cH+3),vld=L<tV,oc=L>=cap;
+          ctx.fillStyle=oc&&vld?'#FFCDD2':vld?bt.fc:'#F5F5F5';ctx.strokeStyle=vld?bt.ec:'#CCC';ctx.lineWidth=vld?1:.5;mgRR(ctx,x,y,cW,cH,3);ctx.fill();ctx.stroke();
+          if(vld){const lb=a2l[L]||`addr ${L}`;ctx.fillStyle='#333';ctx.font=`${nC>8?7:8}px sans-serif`;ctx.textAlign='center';lb.split('\n').forEach((l,li)=>ctx.fillText(l,x+cW/2,y+cH/2-(lb.split('\n').length-1)*5+li*11+3));}}}});}
+
+  // ---------- Animation Engine ----------
+  function mgGenerateAnimation(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}
+    const errs=mgValSeq();if(errs.length>0&&!confirm(`${errs.length} error(s). Generate anyway?`))return;
+    const AH=mgHW.AH,AW=mgHW.AW;let nWV=1,nIV=AH,nOR=AH;const esP=[];
+    mgInstructions.forEach(ins=>{if(ins.type==='SetWVNLayout')nWV=Math.max(1,ins.params.N_L1*ins.params.K_L1);
+      else if(ins.type==='SetIVNLayout')nIV=Math.max(AH,ins.params.M_L1*ins.params.J_L1);
+      else if(ins.type==='SetOVNLayout')nOR=Math.max(1,ins.params.P_L1);
+      else if(ins.type==='ExecuteStreaming')esP.push({T:ins.params.T,vn_size:ins.params.vn_size,s_m:ins.params.s_m,m_0:ins.params.m_0});});
+    const nMap=mgInstructions.filter(i=>i.type==='ExecuteMapping').length,iters=Math.max(1,nMap);let all=[];
+    for(let it=0;it<iters;it++){const ep=esP[it]||null;let iI=nIV,iV=AH,iS=1,iM=0;
+      if(ep){iI=Math.max(AH,ep.T);iV=ep.vn_size+1;iS=ep.s_m;iM=ep.m_0;}
+      const fs=mgGenFrames(AH,AW,iI,iV,iS,iM);if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}all=all.concat(fs);}
+    mgAnimFrames=all;mgCurrentFrame=0;mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
+
+  function mgGenFrames(AH,AW,nI,vS,s_m,m_0){vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);const fs=[];
+    const pWC={},pMC={},pPS={};const rDC={},rDO={};for(let r=0;r<AH;r++){rDC[r]=0;rDO[r]=0;for(let c=0;c<AW;c++){const k=`${r},${c}`;pWC[k]=0;pMC[k]=0;pPS[k]=0;}}
+    let nOR=0,pO=[];const rIQ={};for(let r=0;r<AH;r++)rIQ[r]=[];
+    const tWC=AH*AH,iSC=AH*(AH-1),tC=tWC+nI+AH+AH;
+    for(let cy=0;cy<tC;cy++){const lR=cy<tWC?Math.floor(cy/AH):-1,wE=cy<tWC?cy%AH:-1;const iWL=lR>=0&&lR<AH;const iIS=cy>=iSC&&cy<iSC+nI;const iII=iIS?cy-iSC:-1;
+      for(let r=0;r<AH;r++){const ii=cy-iSC-r;if(ii>=0&&ii<nI&&!rIQ[r].some(q=>q[0]===ii))rIQ[r].push([ii,cy]);}
+      const aIR=[],rII={};for(let r=0;r<AH;r++)if(rIQ[r].length>0){aIR.push(r);rII[r]=rIQ[r][0][0];}
+      const pp=[];if(iWL)pp.push(`W[${wE}]\u2192R${lR}`);if(iIS)pp.push(`IVN[${m_0+iII*s_m}]\u2192R0`);
+      const cR=[];for(const r of aIR)if(pWC[`${r},0`]>=AH&&rIQ[r].length>0)cR.push(r);
+      if(cR.length)pp.push(`MAC@R[${cR}]`);if(vS<AH&&(iIS||cR.length))pp.push(`vn=${vS}`);
+      const fr={cycle:cy,phase:pp.length?pp.join(' | '):'Idle',pp:{},pWI:{},pMC:{},pPS:{},pWA:{},pLE:{},rI:{},aOR:-1,aWR:iWL?[lR]:[],aIR:[...aIR]};
+      for(let r=0;r<AH;r++)for(let c=0;c<AW;c++){const k=`${r},${c}`;if(r===lR&&iWL)pWC[k]=wE+1;const wL=pWC[k];fr.pWI[k]=wL;
+        if(wL===0)fr.pWA[k]=`WVN(${r},${c})[-]`;else if(wL>=AH)fr.pWA[k]=`WVN(${r},${c})[0:${AH-1}]\u2713`;else fr.pWA[k]=`WVN(${r},${c})[0:${wL-1}]`;
+        fr.pLE[k]=(r===lR&&iWL)?wE:-1;
+        if(wL>=AH&&rIQ[r].length>0){pMC[k]++;fr.pMC[k]=pMC[k];fr.pp[k]=pMC[k]%AH===0?'dp_done':'computing';if(pMC[k]%AH===0&&c===0)rDC[r]++;}
+        else if(r===lR&&iWL)fr.pp[k]='loading_weights';else if(wL>=AH)fr.pp[k]='weights_ready';else if(wL>0)fr.pp[k]='loading_weights';else fr.pp[k]='idle';
+        if(!fr.pMC[k])fr.pMC[k]=pMC[k];}
+      for(const r of cR)if(pMC[`${r},0`]>0&&pMC[`${r},0`]%AH===0&&rIQ[r].length>0)rIQ[r].shift();
+      for(const r of aIR){const inp=rII[r],ivn=m_0+inp*s_m;fr.rI[r]=`IVN[${ivn}]`;}
+      for(let r=0;r<AH;r++)if(rDC[r]>rDO[r]&&!pO.includes(r))pO.push(r);
+      if(pO.length){let oR=null;for(let t=0;t<AH;t++){if(pO.includes(nOR)){oR=nOR;break;}nOR=(nOR+1)%AH;}
+        if(oR!==null){fr.aOR=oR;rDO[oR]++;pO=pO.filter(r=>r!==oR);nOR=(oR+1)%AH;for(let c=0;c<AW;c++)fr.pp[`${oR},${c}`]='outputting';}}
+      fs.push(fr);
+      const awD=cy>=tWC,aiD=cy>=iSC+nI+AH-1,aoD=Object.keys(rDC).every(r=>rDC[r]===rDO[r]);if(awD&&aiD&&aoD&&!pO.length)break;}return fs;}
+
+  // ---------- Animation Playback ----------
+  function mgStepAnim(d){if(!mgAnimFrames.length)return;mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));mgUpdateAnimDisplay();}
+  function mgTogglePlay(){mgPlaying=!mgPlaying;document.getElementById('mgPlayBtn').textContent=mgPlaying?'Pause':'Play';if(mgPlaying)mgRunAnim();else if(mgTimer){clearTimeout(mgTimer);mgTimer=null;}}
+  function mgRunAnim(){if(!mgPlaying||!mgAnimFrames.length)return;mgCurrentFrame=(mgCurrentFrame+1)%mgAnimFrames.length;mgUpdateAnimDisplay();
+    const sp=parseFloat(document.getElementById('mgSpeedSlider').value)||1;mgTimer=setTimeout(mgRunAnim,Math.floor(1000/sp));}
+  function mgUpdateAnimDisplay(){if(!mgAnimFrames.length){document.getElementById('mgAnimInfo').textContent='No animation';document.getElementById('mgFrameInfo').textContent='0/0';return;}
+    const fr=mgAnimFrames[mgCurrentFrame];document.getElementById('mgAnimInfo').textContent=`Cycle ${fr.cycle}: ${fr.phase.substring(0,50)}`;
+    document.getElementById('mgFrameInfo').textContent=`${mgCurrentFrame}/${mgAnimFrames.length-1}`;if(mgActiveTab==='nest')mgDrawNest(fr);}
+
+  // ---------- Resize ----------
+  let mgResizeT;window.addEventListener('resize',()=>{clearTimeout(mgResizeT);mgResizeT=setTimeout(mgDrawActive,100);});
+
+  // ---------- Init ----------
+  mgResetDefault();mgUpdateLegend();setTimeout(mgDrawActive,100);
+  </script>
+</body>
 </html>
