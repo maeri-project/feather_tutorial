@@ -1,0 +1,27 @@
+HloModule qkv_q_sliced_q128x64_k1536x64_v64x1536, entry_computation_layout={(f32[128,64]{1,0}, f32[1536,64]{1,0}, f32[64,1536]{1,0})->f32[128,64]{1,0}}
+
+%reduce_add (x: f32[], y: f32[]) -> f32[] {
+  %x = f32[] parameter(0)
+  %y = f32[] parameter(1)
+  ROOT %sum = f32[] add(%x, %y)
+}
+
+ENTRY main {
+  %q = f32[128,64] parameter(0)
+  %k = f32[1536,64] parameter(1)
+  %v = f32[64,1536] parameter(2)
+
+  %k_transpose = f32[64,1536] transpose(%k), dimensions={1,0}
+  %scores = f32[128,1536] dot(%q, %k_transpose), lhs_contracting_dims={1}, rhs_contracting_dims={0}
+
+  %scores_exp = f32[128,1536] exponential(%scores)
+
+  %zero = f32[] constant(0)
+  %sum = f32[128] reduce(%scores_exp, %zero), dimensions={1}, to_apply=%reduce_add
+
+  %sum_broadcast = f32[128,1536] broadcast(%sum), dimensions={0}
+  %probs = f32[128,1536] divide(%scores_exp, %sum_broadcast)
+
+  %v_transpose = f32[1536,64] transpose(%v), dimensions={1,0}
+  ROOT %output = f32[128,64] dot(%probs, %v_transpose), lhs_contracting_dims={1}, rhs_contracting_dims={0}
+}
