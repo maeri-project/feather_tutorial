@@ -1,0 +1,5 @@
+load-ivn:            (bitcvt (reshape_? ?a)) => (load-ivn ?a)
+load-wvn:            (transpose_? (bitcvt (reshape_? ?a))) => (load-wvn ?a)
+store-ovn:           (reshape_? (bitcvt ?a)) => (store-ovn ?a)
+execute:             (dot ?a ?b) => (execute ?a ?b)
+softmax:             (divide (exponential ?b) (broadcast_? (reduce_? (exponential ?a)))) => (softmax ?a)
