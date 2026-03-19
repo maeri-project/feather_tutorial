@@ -1,0 +1,16 @@
+name: raic
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - wget=1.21.4
+  - pylint=3.2.2
+  - autopep8=2.0.4
+  - requests=2.32.2
+  - flake8=7.0.0
+  - pip
+  - pip:
+      - PyYAML==6.0.3
+      - pandas==2.3.3
+      - numpy==2.2.6
+      - matplotlib==3.10.8
