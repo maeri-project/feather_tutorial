@@ -42,6 +42,7 @@
     }
     .mg-right {
       flex: 1; display: flex; flex-direction: column; overflow: hidden;
+      min-width: 0;
     }
     .mg-section {
       border: 1px solid var(--border-color);
@@ -56,7 +57,7 @@
     }
     .mg-section-body { padding: 10px; }
     .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-    .mg-row label { font-size: 12px; font-weight: 500; min-width: 60px; color: var(--text-muted); }
+    .mg-row label { font-size: 12px; font-weight: 500; min-width: 24px; color: var(--text-muted); }
     .mg-row input, .mg-row select {
       padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;
       font-size: 12px; background: var(--bg-body); color: var(--text-main);
@@ -92,11 +93,11 @@
       display: inline-block; padding: 1px 6px; border-radius: 3px;
       font-size: 10px; font-weight: 600;
     }
-    .mg-badge-ivn { background: #E8F5E9; color: #2E7D32; }
-    .mg-badge-wvn { background: #FFF9C4; color: #F57C00; }
-    .mg-badge-ovn { background: #E1BEE7; color: #7B1FA2; }
-    .mg-badge-em  { background: #FFCDD2; color: #C62828; }
-    .mg-badge-es  { background: #BBDEFB; color: #1565C0; }
+    .mg-badge-ivn { background: #E3F2FD; color: #1565C0; }
+    .mg-badge-wvn { background: #E8F5E9; color: #2E7D32; }
+    .mg-badge-ovn { background: #FFEBEE; color: #C62828; }
+    .mg-badge-em  { background: #FFF8E1; color: #F57C00; }
+    .mg-badge-es  { background: #FFF8E1; color: #F57C00; }
     .mg-details {
       background: var(--bg-body); border: 1px solid var(--border-color);
       border-radius: 4px; padding: 8px; font-size: 11px;
@@ -117,9 +118,9 @@
     }
     .mg-tab:hover { background: rgba(120,100,255,0.1); }
     .mg-tab.active { background: var(--bg-card); border-bottom-color: var(--primary-color); font-weight: 700; color: var(--text-main); }
-    .mg-tab-content { flex:1; display:none; overflow:hidden; position:relative; }
-    .mg-tab-content.active { display:flex; justify-content:center; align-items:center; }
-    .mg-tab-content canvas { display:block; }
+    .mg-tab-content { flex:1; display:none; overflow:auto; position:relative; }
+    .mg-tab-content.active { display:block; }
+    .mg-tab-content canvas { display:block; min-width: 700px; min-height: 600px; }
     .mg-legend {
       display:flex; gap:10px; flex-wrap:wrap; padding:6px 12px;
       background: var(--bg-sidebar); border-bottom:1px solid var(--border-color); font-size:11px;
@@ -469,7 +470,7 @@
     4:{W:["nL1","kL1","nL0"],I:["mL1","jL1","mL0"],O:["qL1","pL1","pL0"]},
     5:{W:["nL1","nL0","kL1"],I:["mL1","mL0","jL1"],O:["qL1","pL0","pL1"]},
   };
-  const MG_PE_COLORS = {idle:'#E8EAED',loading:'#FFF9C4',ready:'#C8E6C9',computing:'#FFE082',outputting:'#FFAB91',input:'#BBDEFB'};
+  const MG_PE_COLORS = {idle:'#E8EAED',loading:'#C8E6C9',ready:'#A5D6A7',computing:'#FFE082',outputting:'#FFCDD2',input:'#BBDEFB'};
   const MG_EGG_MODES = {0:{name:'Pass',bg:'#E8F5E9',edge:'#2E7D32'},3:{name:'Swap',bg:'#FFF3E0',edge:'#E65100'},1:{name:'Add-L',bg:'#E3F2FD',edge:'#1565C0'},2:{name:'Add-R',bg:'#F3E5F5',edge:'#7B1FA2'}};
 
   let mgHW = {AH:4,AW:4,sram_mb:4,frac_stream:0.4,frac_stationary:0.4,frac_output:0.2};
@@ -593,9 +594,9 @@
   function mgSwitchTab(name){mgActiveTab=name;document.querySelectorAll('.mg-tab').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));
     document.querySelectorAll('.mg-tab-content').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));mgUpdateLegend();mgDrawActive();}
   function mgUpdateLegend(){const l=document.getElementById('mgLegend');
-    if(mgActiveTab==='nest')l.innerHTML=[['Idle','#E8EAED'],['Loading W','#FFF9C4'],['W Ready','#C8E6C9'],['Computing','#FFE082'],['Outputting','#FFAB91']].map(([n,c])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c}"></div>${n}</div>`).join('');
+    if(mgActiveTab==='nest')l.innerHTML=[['Idle','#E8EAED'],['Loading W (WVN)','#C8E6C9'],['W Ready','#A5D6A7'],['Computing','#FFE082'],['Outputting (OVN)','#FFCDD2']].map(([n,c])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c}"></div>${n}</div>`).join('');
     else if(mgActiveTab==='birrd')l.innerHTML=Object.entries(MG_EGG_MODES).map(([_,v])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${v.bg};border-color:${v.edge}"></div>${v.name}</div>`).join('');
-    else l.innerHTML=[['Streaming','#C8E6C9','#2E7D32'],['Stationary','#FFF9C4','#F57C00'],['Output','#E1BEE7','#7B1FA2']].map(([n,c,e])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c};border-color:${e}"></div>${n}</div>`).join('');}
+    else l.innerHTML=[['Streaming (IVN)','#BBDEFB','#1565C0'],['Stationary (WVN)','#C8E6C9','#2E7D32'],['Output (OVN)','#FFCDD2','#C62828']].map(([n,c,e])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c};border-color:${e}"></div>${n}</div>`).join('');}
   function mgDrawActive(){if(mgActiveTab==='nest')mgDrawNest();else if(mgActiveTab==='birrd')mgDrawBirrd();else mgDrawBuffer();}
 
   // ---------- Canvas Helpers ----------
@@ -604,39 +605,62 @@
     ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
 
   // ---------- NEST Visualization ----------
-  function mgDrawNest(frame){const cv=document.getElementById('mgNestCanvas'),ct=document.getElementById('mg-tab-nest');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AH=mgHW.AH,AW=mgHW.AW;
-    const peSize=Math.min(60,Math.min((W-200)/(AW*1.4),(H-200)/(AH*1.4+3)));const peS=peSize*1.4,mL=120,mT=100;
+  function mgDrawNest(frame){const cv=document.getElementById('mgNestCanvas'),ct=document.getElementById('mg-tab-nest');
+    const AH=mgHW.AH,AW=mgHW.AW;
+    /* Guarantee a minimum PE size so text stays readable at any array size */
+    const minPE=56;  /* minimum px per PE cell */
+    const peSize=Math.max(minPE, Math.min(70, (ct.clientWidth-200)/(AW*1.4)));
+    const peS=peSize*1.4;
+    const desiredW=Math.max(ct.clientWidth, mLForAW()+AW*peS+40);
+    const desiredH=Math.max(ct.clientHeight, 160+AH*peS+80);
+    cv.width=desiredW;cv.height=desiredH;
+    function mLForAW(){return AW>8?60:120;} /* narrower row-label margin for large arrays */
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+    const mL=mLForAW(),mT=140;
     ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
     if(frame)ctx.fillText(`NEST PE Array (${AH}\u00d7${AW}) - Cycle ${frame.cycle}`,W/2,20);else ctx.fillText(`NEST PE Array (${AH}\u00d7${AW})`,W/2,20);
     if(frame){ctx.font='12px sans-serif';ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';ctx.fillText(frame.phase.substring(0,60),W/2,36);}
     const nTY=mT,bY=nTY-50,ncX=mL+(AW-1)*peS/2+peSize/2,iBX=ncX-peS*AW/4,wBX=ncX+peS*AW/4;
-    ctx.fillStyle='#C8E6C9';ctx.strokeStyle='#2E7D32';ctx.lineWidth=2;mgRR(ctx,iBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('Streaming Buffer',iBX,bY-1);ctx.fillText('(Inputs)',iBX,bY+11);mgArrow(ctx,iBX,bY+16,iBX,nTY-4,'#2E7D32',2);
-    ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#F57C00';ctx.lineWidth=2;mgRR(ctx,wBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#F57C00';ctx.font='bold 10px sans-serif';ctx.fillText('Stationary Buffer',wBX,bY-1);ctx.fillText('(WVN)',wBX,bY+11);mgArrow(ctx,wBX,bY+16,wBX,nTY-4,'#F57C00',2);
+    ctx.fillStyle='#BBDEFB';ctx.strokeStyle='#1565C0';ctx.lineWidth=2;mgRR(ctx,iBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#1565C0';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('Streaming Buffer',iBX,bY-1);ctx.fillText('(Inputs)',iBX,bY+11);mgArrow(ctx,iBX,bY+16,iBX,nTY-4,'#1565C0',2);
+    ctx.fillStyle='#C8E6C9';ctx.strokeStyle='#2E7D32';ctx.lineWidth=2;mgRR(ctx,wBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.fillText('Stationary Buffer',wBX,bY-1);ctx.fillText('(WVN)',wBX,bY+11);mgArrow(ctx,wBX,bY+16,wBX,nTY-4,'#2E7D32',2);
+    /* Adaptive font sizes based on PE cell size */
+    const fPE=Math.max(7,Math.min(9,Math.round(peSize*0.14)));   /* PE(r,c) label */
+    const fWVN=Math.max(6,Math.min(7,Math.round(peSize*0.11)));  /* WVN annotation */
+    const fMAC=Math.max(6,Math.min(8,Math.round(peSize*0.12)));  /* MAC count */
+    const fRow=Math.max(7,Math.min(10,Math.round(peSize*0.15))); /* Row label */
+    const rowBadgeW=Math.min(90, mL-10);  /* row badge width fits in left margin */
+    const rowBadgeH=Math.min(36, peSize*0.7);
     for(let r=0;r<AH;r++){const y=mT+r*peS;let rL=`Row ${r}\nIdle`,rC=MG_PE_COLORS.idle;
       if(frame){const pp=frame.pp[`${r},0`]||'idle';if(frame.aOR===r){rL=`Row ${r}\nOUT\u2192BIRRD`;rC=MG_PE_COLORS.outputting;}
         else if(pp==='computing'||pp==='dp_done'){rL=`Row ${r}\n${frame.rI[r]||'MAC'}`;rC=MG_PE_COLORS.computing;}
         else if((frame.aWR||[]).includes(r)&&frame.pLE[`${r},0`]>=0){rL=`Row ${r}\n\u2190W[${frame.pLE[`${r},0`]}]`;rC=MG_PE_COLORS.loading;}
         else if(frame.pWI[`${r},0`]>=AH){rL=`Row ${r}\nWVN\u2713`;rC=MG_PE_COLORS.ready;}
         else if(frame.pWI[`${r},0`]>0){rL=`Row ${r}\n[0:${frame.pWI[`${r},0`]-1}]`;rC=MG_PE_COLORS.loading;}}
-      ctx.fillStyle=rC;ctx.strokeStyle='#666';ctx.lineWidth=1;mgRR(ctx,10,y+peSize/2-18,90,36,5);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='center';rL.split('\n').forEach((l,li)=>ctx.fillText(l,55,y+peSize/2-4+li*14));
+      ctx.fillStyle=rC;ctx.strokeStyle='#666';ctx.lineWidth=1;mgRR(ctx,4,y+peSize/2-rowBadgeH/2,rowBadgeW,rowBadgeH,5);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#333';ctx.font=`bold ${fRow}px sans-serif`;ctx.textAlign='center';
+      const rlLines=rL.split('\n');rlLines.forEach((l,li)=>ctx.fillText(l,4+rowBadgeW/2,y+peSize/2-(rlLines.length-1)*fRow*0.6+li*fRow*1.3));
       for(let c=0;c<AW;c++){const x=mL+c*peS,k=`${r},${c}`;let col=MG_PE_COLORS.idle;
         if(frame){const pp=frame.pp[k]||'idle';if(pp==='outputting')col=MG_PE_COLORS.outputting;else if(pp==='computing'||pp==='dp_done')col=MG_PE_COLORS.computing;else if(pp==='weights_ready')col=MG_PE_COLORS.ready;else if(pp==='loading_weights')col=MG_PE_COLORS.loading;}
         ctx.fillStyle=col;ctx.strokeStyle='#1565C0';ctx.lineWidth=1.5;mgRR(ctx,x,y,peSize,peSize,4);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`PE(${r},${c})`,x+peSize/2,y+peSize*.25);
-        let wt=`WVN(${r},${c})[-]`;if(frame)wt=frame.pWA[k]||wt;ctx.font='7px sans-serif';ctx.fillStyle='#444';ctx.fillText(wt,x+peSize/2,y+peSize*.48);
-        ctx.font='8px sans-serif';ctx.fillStyle='#666';ctx.fillText(`MAC:${frame?frame.pMC[k]||0:0}`,x+peSize/2,y+peSize*.72);
+        ctx.fillStyle='#333';ctx.font=`bold ${fPE}px sans-serif`;ctx.textAlign='center';ctx.fillText(`PE(${r},${c})`,x+peSize/2,y+peSize*.25);
+        let wt=`WVN(${r},${c})[-]`;if(frame)wt=frame.pWA[k]||wt;ctx.font=`${fWVN}px sans-serif`;ctx.fillStyle='#444';ctx.fillText(wt,x+peSize/2,y+peSize*.48);
+        ctx.font=`${fMAC}px sans-serif`;ctx.fillStyle='#666';ctx.fillText(`MAC:${frame?frame.pMC[k]||0:0}`,x+peSize/2,y+peSize*.72);
         if(r<AH-1)mgArrow(ctx,x+peSize/2,y+peSize+2,x+peSize/2,y+peS-2,'#90A4AE',1);}}
-    const oY=mT+AH*peS+10;ctx.fillStyle='#7B1FA2';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('OUTPUT to BIRRD (round-robin row)',ncX,oY+20);
-    for(let c=0;c<AW;c++){const x=mL+c*peS+peSize/2;mgArrow(ctx,x,mT+(AH-1)*peS+peSize+4,x,oY,'#7B1FA2',2);}}
+    const oY=mT+AH*peS+10;ctx.fillStyle='#C62828';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('OUTPUT to BIRRD (round-robin row)',ncX,oY+20);
+    for(let c=0;c<AW;c++){const x=mL+c*peS+peSize/2;mgArrow(ctx,x,mT+(AH-1)*peS+peSize+4,x,oY,'#C62828',2);}}
 
   // ---------- BIRRD Visualization ----------
-  function mgDrawBirrd(){const cv=document.getElementById('mgBirrdCanvas'),ct=document.getElementById('mg-tab-birrd');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AW=mgHW.AW,LV=mgCL2(AW),TOT=AW===4?2*LV-1:2*LV,NS=AW/2;
-    const pS=Math.min(80,(W-200)/AW),sS=Math.min(90,(H-100)/(TOT+2)),eW=Math.min(50,pS*.8),eH=28;
+  function mgDrawBirrd(){const cv=document.getElementById('mgBirrdCanvas'),ct=document.getElementById('mg-tab-birrd');
+    const AW=mgHW.AW,LV=mgCL2(AW),TOT=AW===4?2*LV-1:2*LV,NS=AW/2;
+    const pS=Math.min(100,Math.max(60,(ct.clientWidth-200)/AW));
+    const sS=Math.max(80, 90);
+    const eW=Math.min(50,pS*.8),eH=28;
+    const desiredW=Math.max(ct.clientWidth, (AW-1)*pS+200);
+    const desiredH=Math.max(ct.clientHeight, (TOT+3)*sS+80);
+    cv.width=desiredW; cv.height=desiredH;
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
     const sX=(W-(AW-1)*pS)/2,sY=50;
     function pX(p){return sX+p*pS;}function stY(s){return sY+(s+1)*sS;}
     function lls(v,w){if(w<=1)return v;return((v<<1)|((v>>(w-1))&1))&((1<<w)-1);}
@@ -648,38 +672,104 @@
       if(role==='middle')return[br(sw<<1,LV),br((sw<<1)+1,LV)];
       const lg=st+SK*(LV-1),nge=(2*LV-1)-lg,ng2=nge>=0?(1<<nge):1,spg2=nge>=0?(NS>>nge):NS,g2=spg2>0?Math.floor(sw/spg2):0,sig2=spg2>0?(sw%spg2):sw,go2=nge>=0?(g2*(AW>>nge)):0,w2=nge>=0?(LV-nge):LV;
       return[lrs(sig2<<1,w2)+go2,lrs((sig2<<1)+1,w2)+go2];}
-    function gIP(st){if(st>=TOT-1){const p=[];for(let i=0;i<AW;i++)p.push(i);return p;}const pm=new Array(AW).fill(0);for(let sw=0;sw<NS;sw++){const[lo,hi]=gSI(st+1,sw);pm[lo]=2*sw;pm[hi]=2*sw+1;}return pm;}
+    /* Build input-port to x-position map for each stage.
+       Each EGG sw at stage s has output ports at indices 2*sw and 2*sw+1.
+       Their x-positions are pX(2*sw) and pX(2*sw+1). */
+    /* Build input-port-index to x-position map for each stage.
+       Each EGG sw at stage s reads from input ports gSI(s, sw) = [lo, hi].
+       Input port lo is on the left side of the EGG, hi on the right.
+       The x-position of input port lo = left side of EGG = pX(2*sw),
+       and input port hi = right side = pX(2*sw+1). */
+    function inputPortX(stage, portIdx) {
+      /* Find which EGG at this stage reads this port, and whether it's the lo or hi input */
+      for (let sw = 0; sw < NS; sw++) {
+        const [lo, hi] = gSI(stage, sw);
+        if (lo === portIdx) return pX(2 * sw);     /* left input of EGG */
+        if (hi === portIdx) return pX(2 * sw + 1); /* right input of EGG */
+      }
+      return pX(portIdx); /* fallback */
+    }
     ctx.fillStyle='#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(`BIRRD Network (AW=${AW})`,W/2,18);
     ctx.font='11px sans-serif';ctx.fillStyle='#666';ctx.fillText(`${TOT} stages | ${NS} EGGs/stage`,W/2,34);
     for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`In${p}`,x,sY-4);ctx.beginPath();ctx.arc(x,sY+6,5,0,Math.PI*2);ctx.fillStyle='#C8E6C9';ctx.fill();ctx.strokeStyle='#2E7D32';ctx.lineWidth=1.5;ctx.stroke();}
-    const oY=stY(TOT)+20;for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#7B1FA2';ctx.font='bold 10px sans-serif';ctx.fillText(`Out${p}`,x,oY+18);ctx.beginPath();ctx.arc(x,oY+4,5,0,Math.PI*2);ctx.fillStyle='#E1BEE7';ctx.fill();ctx.strokeStyle='#7B1FA2';ctx.lineWidth=1.5;ctx.stroke();}
+    const oY=stY(TOT)+20;for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#C62828';ctx.font='bold 10px sans-serif';ctx.fillText(`Out${p}`,x,oY+18);ctx.beginPath();ctx.arc(x,oY+4,5,0,Math.PI*2);ctx.fillStyle='#FFCDD2';ctx.fill();ctx.strokeStyle='#C62828';ctx.lineWidth=1.5;ctx.stroke();}
     for(let s=0;s<TOT;s++){const sy=stY(s);ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='right';ctx.fillText(`S${s}`,sX-20,sy+4);
       for(let sw=0;sw<NS;sw++){const oL=2*sw,oH=2*sw+1,xc=(pX(oL)+pX(oH))/2;
         ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#FF8F00';ctx.lineWidth=1.5;mgRR(ctx,xc-eW/2,sy-eH/2,eW,eH,4);ctx.fill();ctx.stroke();
         ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`E${sw}`,xc,sy+4);
-        if(s===0){ctx.strokeStyle='#1565C0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sY+11);ctx.lineTo(pX(oL),sy-eH/2);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sY+11);ctx.lineTo(pX(oH),sy-eH/2);ctx.stroke();}
+        /* Draw input lines into this EGG from above */
+        if(s===0){
+          /* First stage: inputs come from top input ports */
+          const [li,hi]=gSI(s,sw);
+          ctx.strokeStyle='#1565C0';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(pX(li),sY+11);ctx.lineTo(pX(oL),sy-eH/2);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(pX(hi),sY+11);ctx.lineTo(pX(oH),sy-eH/2);ctx.stroke();
+        }
+        /* Draw output stubs from EGG downward */
         ctx.strokeStyle='#2E7D32';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sy+eH/2);ctx.lineTo(pX(oL),sy+eH/2+6);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sy+eH/2);ctx.lineTo(pX(oH),sy+eH/2+6);ctx.stroke();}
-      if(s<TOT-1){const pm=gIP(s),yS=sy+eH/2+6,yE=stY(s+1)-eH/2,yM=(yS+yE)/2;
-        for(let src=0;src<AW;src++){const dst=pm[src],xs=pX(src),xd=pX(dst);if(src===dst){ctx.strokeStyle='#1565C0';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xs,yS);ctx.lineTo(xd,yE);ctx.stroke();}
-          else{ctx.strokeStyle='#E65100';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xs,yS);ctx.lineTo(xs,yM+2);ctx.stroke();ctx.beginPath();ctx.moveTo(xs,yM+2);ctx.lineTo(xd,yM-2);ctx.stroke();ctx.beginPath();ctx.moveTo(xd,yM-2);ctx.lineTo(xd,yE);ctx.stroke();}}}
-      else{for(let p=0;p<AW;p++){ctx.strokeStyle='#7B1FA2';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(p),sy+eH/2+6);ctx.lineTo(pX(p),oY-1);ctx.stroke();}}}}
+      /* Interstage connections: from output ports of stage s to input ports of stage s+1 */
+      if(s<TOT-1){
+        const yS=sy+eH/2+6, yE=stY(s+1)-eH/2, yM=(yS+yE)/2;
+        /* For each output port of this stage, find where it connects as input to next stage */
+        for(let outPort=0;outPort<AW;outPort++){
+          const xSrc=pX(outPort); /* output port x-position */
+          /* Find which EGG in stage s+1 reads this output port, and get its input x-position */
+          const xDst=inputPortX(s+1, outPort);
+          if(Math.abs(xSrc-xDst)<1){
+            ctx.strokeStyle='#1565C0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xDst,yE);ctx.stroke();
+          } else {
+            ctx.strokeStyle='#E65100';ctx.lineWidth=1;
+            ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xSrc,yM+2);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(xSrc,yM+2);ctx.lineTo(xDst,yM-2);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(xDst,yM-2);ctx.lineTo(xDst,yE);ctx.stroke();
+          }
+        }
+      } else {
+        /* Last stage to outputs */
+        for(let p=0;p<AW;p++){ctx.strokeStyle='#C62828';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(p),sy+eH/2+6);ctx.lineTo(pX(p),oY-1);ctx.stroke();}
+      }
+    }}
 
   // ---------- Buffer Visualization ----------
-  function mgDrawBuffer(){const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');cv.width=ct.clientWidth;cv.height=ct.clientHeight;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);const AH=mgHW.AH,AW=mgHW.AW,tS=mgHW.sram_mb*1024*1024;
+  function mgDrawBuffer(){const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');
+    const AH=mgHW.AH,AW=mgHW.AW,tS=mgHW.sram_mb*1024*1024;
     const lays={streaming:{order:0,a0:1,a1:1,a2:1},stationary:{order:0,a0:1,a1:1,a2:1},output:{order:0,a0:1,a1:1,a2:1}};
     mgInstructions.forEach(ins=>{if(ins.type==='SetIVNLayout')lays.streaming={order:ins.params.order,a0:Math.max(1,ins.params.M_L0),a1:Math.max(1,ins.params.M_L1),a2:Math.max(1,ins.params.J_L1)};
       else if(ins.type==='SetWVNLayout')lays.stationary={order:ins.params.order,a0:Math.max(1,ins.params.N_L0),a1:Math.max(1,ins.params.N_L1),a2:Math.max(1,ins.params.K_L1)};
       else if(ins.type==='SetOVNLayout')lays.output={order:ins.params.order,a0:Math.max(1,ins.params.P_L0),a1:Math.max(1,ins.params.P_L1),a2:Math.max(1,ins.params.Q_L1)};});
-    const bts=[{k:'streaming',t:'Input (IVN)',op:'I',fc:'#C8E6C9',ec:'#2E7D32',pf:'IVN',vb:AH,fr:mgHW.frac_stream},
-      {k:'stationary',t:'Weight (WVN)',op:'W',fc:'#FFF9C4',ec:'#F57C00',pf:'WVN',vb:AH,fr:mgHW.frac_stationary},
-      {k:'output',t:'Output (OVN)',op:'O',fc:'#E1BEE7',ec:'#7B1FA2',pf:'OVN',vb:AH*4,fr:mgHW.frac_output}];
-    const pW=Math.floor(W/3)-20,pSY=50;
-    bts.forEach((bt,bi)=>{const px=15+bi*(pW+15),lp=lays[bt.k],{a0,a1,a2,order}=lp,tV=a0*a1*a2,cap=Math.max(1,Math.floor(tS*bt.fr/Math.max(1,bt.vb)));
+    const bts=[{k:'streaming',t:'Input (IVN)',op:'I',fc:'#BBDEFB',ec:'#1565C0',pf:'IVN',vb:AH,fr:mgHW.frac_stream},
+      {k:'stationary',t:'Weight (WVN)',op:'W',fc:'#C8E6C9',ec:'#2E7D32',pf:'WVN',vb:AH,fr:mgHW.frac_stationary},
+      {k:'output',t:'Output (OVN)',op:'O',fc:'#FFCDD2',ec:'#C62828',pf:'OVN',vb:AH*4,fr:mgHW.frac_output}];
+    /* Compute max columns needed across all 3 buffers to determine minimum cell size */
+    let maxCols=AW;
+    bts.forEach(bt=>{const lp=lays[bt.k];const tv=lp.a0*lp.a1*lp.a2;maxCols=Math.max(maxCols,Math.min(AW,tv));});
+    /* Guarantee minimum cell width of 50px so text is readable even at 16x16 */
+    const minCellW=50;
+    const panelGap=15;
+    const minPanelW=maxCols*(minCellW+4)+20;
+    const desiredW=Math.max(ct.clientWidth, 3*(minPanelW+panelGap)+30);
+    /* Compute max rows to size height */
+    let maxRows=1;
+    bts.forEach(bt=>{const lp=lays[bt.k];const tv=lp.a0*lp.a1*lp.a2;const nc=Math.max(1,Math.min(AW,tv));maxRows=Math.max(maxRows,Math.min(16,mgCD(tv,nc)));});
+    const minCellH=40;
+    const pSY=65;
+    const desiredH=Math.max(ct.clientHeight, pSY+maxRows*(minCellH+4)+80);
+    cv.width=desiredW;cv.height=desiredH;
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+    const pW=Math.floor(W/3)-20;
+    bts.forEach((bt,bi)=>{const px=15+bi*(pW+panelGap),lp=lays[bt.k],{a0,a1,a2,order}=lp,tV=a0*a1*a2,cap=Math.max(1,Math.floor(tS*bt.fr/Math.max(1,bt.vb)));
       const nC=Math.max(1,Math.min(AW,tV)),nR=Math.min(16,Math.max(1,mgCD(tV,nC)));
-      const cW=Math.min(pW/nC-4,70),cH=Math.min((H-pSY-80)/nR-4,45);
-      ctx.fillStyle=bt.ec;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(bt.t,px+pW/2,pSY-30);
-      const ps=MG_ORDER_PERMS[order]?MG_ORDER_PERMS[order][bt.op]:'?';ctx.font='10px sans-serif';ctx.fillStyle='#666';ctx.fillText(`Order ${order}: ${ps}  (VNs=${tV}, cap=${cap})`,px+pW/2,pSY-16);
+      const cW=Math.max(minCellW, Math.min(pW/nC-4,70));
+      const cH=Math.max(minCellH, Math.min((H-pSY-80)/nR-4,50));
+      /* Title: buffer name */
+      ctx.fillStyle=bt.ec;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(bt.t,px+pW/2,pSY-46);
+      /* Line 2: Order permutation */
+      const ps=MG_ORDER_PERMS[order]?MG_ORDER_PERMS[order][bt.op]:'?';
+      ctx.font='10px sans-serif';ctx.fillStyle='#666';
+      ctx.fillText(`Order ${order}: ${ps}`,px+pW/2,pSY-32);
+      /* Line 3: VNs and capacity */
+      ctx.fillText(`VNs=${tV}, cap=${cap}`,px+pW/2,pSY-18);
       const dn=bt.op==='W'?{nL0:a0,nL1:a1,kL1:a2}:bt.op==='I'?{mL0:a0,mL1:a1,jL1:a2}:{pL0:a0,pL1:a1,qL1:a2};
       const iN=bt.op==='W'?['kL1','nL0','nL1']:bt.op==='I'?['jL1','mL0','mL1']:['pL0','pL1','qL1'];
       const a2l={};for(let d0=0;d0<dn[iN[0]];d0++)for(let d1=0;d1<dn[iN[1]];d1++)for(let d2=0;d2<dn[iN[2]];d2++){
@@ -692,7 +782,11 @@
       for(let r=0;r<nR;r++){ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(r,px-4,pSY+r*(cH+3)+cH/2+4);
         for(let c=0;c<nC;c++){const L=r*nC+c,x=px+c*(cW+3),y=pSY+r*(cH+3),vld=L<tV,oc=L>=cap;
           ctx.fillStyle=oc&&vld?'#FFCDD2':vld?bt.fc:'#F5F5F5';ctx.strokeStyle=vld?bt.ec:'#CCC';ctx.lineWidth=vld?1:.5;mgRR(ctx,x,y,cW,cH,3);ctx.fill();ctx.stroke();
-          if(vld){const lb=a2l[L]||`addr ${L}`;ctx.fillStyle='#333';ctx.font=`${nC>8?7:8}px sans-serif`;ctx.textAlign='center';lb.split('\n').forEach((l,li)=>ctx.fillText(l,x+cW/2,y+cH/2-(lb.split('\n').length-1)*5+li*11+3));}}}});}
+          if(vld){const lb=a2l[L]||`addr ${L}`;ctx.fillStyle='#333';
+            const fCell=Math.max(7,Math.min(10,Math.round(cW*0.16)));
+            const fLH=fCell+3; /* line height */
+            ctx.font=`${fCell}px sans-serif`;ctx.textAlign='center';
+            const lns=lb.split('\n');lns.forEach((l,li)=>ctx.fillText(l,x+cW/2,y+cH/2-(lns.length-1)*fLH/2+li*fLH+2));}}}});}
 
   // ---------- Animation Engine ----------
   function mgGenerateAnimation(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}
@@ -702,17 +796,56 @@
       else if(ins.type==='SetIVNLayout')nIV=Math.max(AH,ins.params.M_L1*ins.params.J_L1);
       else if(ins.type==='SetOVNLayout')nOR=Math.max(1,ins.params.P_L1);
       else if(ins.type==='ExecuteStreaming')esP.push({T:ins.params.T,vn_size:ins.params.vn_size,s_m:ins.params.s_m,m_0:ins.params.m_0});});
-    const nMap=mgInstructions.filter(i=>i.type==='ExecuteMapping').length,iters=Math.max(1,nMap);let all=[];
+    const nMap=mgInstructions.filter(i=>i.type==='ExecuteMapping').length,iters=Math.max(1,nMap);
+    let all=[];
+    let prevEmStart=0, prevWvnPreloaded=0;
     for(let it=0;it<iters;it++){const ep=esP[it]||null;let iI=nIV,iV=AH,iS=1,iM=0;
       if(ep){iI=Math.max(AH,ep.T);iV=ep.vn_size+1;iS=ep.s_m;iM=ep.m_0;}
-      const fs=mgGenFrames(AH,AW,iI,iV,iS,iM);if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}all=all.concat(fs);}
+      /* Inter-EM pipelining: compute how many WVN rows were pre-loaded during previous EM */
+      let wvnPreloaded=0;
+      if(it>0&&all.length>0){
+        const prevRemaining=AH-prevWvnPreloaded;
+        const prevInputStart=Math.max(0,(prevRemaining-1)*AH);
+        const prevStreamDur=all[all.length-1].cycle-(prevEmStart+prevInputStart)+1;
+        wvnPreloaded=Math.min(AH,Math.max(0,Math.floor(prevStreamDur/AH)));
+      }
+      const fs=mgGenFrames(AH,AW,iI,iV,iS,iM,wvnPreloaded);
+      if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}
+      /* Annotate previous EM frames with WVN prefetch info */
+      if(it>0&&wvnPreloaded>0&&all.length){
+        const prevRemaining=AH-prevWvnPreloaded;
+        const prevISC=prevEmStart+Math.max(0,(prevRemaining-1)*AH);
+        for(const f of all){if(f.cycle>=prevISC){
+          const cip=f.cycle-prevISC;const pr=Math.floor(cip/AH);
+          if(pr<wvnPreloaded){const pe=cip%AH;f.phase+=` | WVN(next)\u2192R${pr}[${pe}]`;}}}
+      }
+      prevEmStart=fs.length?fs[0].cycle:0;
+      prevWvnPreloaded=wvnPreloaded;
+      all=all.concat(fs);}
     mgAnimFrames=all;mgCurrentFrame=0;mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
 
-  function mgGenFrames(AH,AW,nI,vS,s_m,m_0){vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);const fs=[];
-    const pWC={},pMC={},pPS={};const rDC={},rDO={};for(let r=0;r<AH;r++){rDC[r]=0;rDO[r]=0;for(let c=0;c<AW;c++){const k=`${r},${c}`;pWC[k]=0;pMC[k]=0;pPS[k]=0;}}
+  function mgGenFrames(AH,AW,nI,vS,s_m,m_0,wvnPre){
+    vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);
+    wvnPre=wvnPre||0;wvnPre=Math.max(0,Math.min(wvnPre,AH));
+    const fs=[];
+    const pWC={},pMC={},pPS={};const rDC={},rDO={};
+    for(let r=0;r<AH;r++){rDC[r]=0;rDO[r]=0;for(let c=0;c<AW;c++){const k=`${r},${c}`;pWC[k]=0;pMC[k]=0;pPS[k]=0;}}
+    /* Pre-initialize weights for pre-loaded rows */
+    for(let r=0;r<wvnPre;r++)for(let c=0;c<AW;c++)pWC[`${r},${c}`]=AH;
     let nOR=0,pO=[];const rIQ={};for(let r=0;r<AH;r++)rIQ[r]=[];
-    const tWC=AH*AH,iSC=AH*(AH-1),tC=tWC+nI+AH+AH;
-    for(let cy=0;cy<tC;cy++){const lR=cy<tWC?Math.floor(cy/AH):-1,wE=cy<tWC?cy%AH:-1;const iWL=lR>=0&&lR<AH;const iIS=cy>=iSC&&cy<iSC+nI;const iII=iIS?cy-iSC:-1;
+    /* Only remaining (non-preloaded) rows need weight loading */
+    const remRows=AH-wvnPre;
+    const tWC=remRows*AH;
+    /* Input start: when last row begins loading (adjusted for preloaded rows) */
+    const iSC=remRows<=0?0:(remRows-1)*AH;
+    const tC=tWC+nI+AH+AH;
+    for(let cy=0;cy<tC;cy++){
+      /* Which row is loading weights? Only remaining rows (indices wvnPre..AH-1) */
+      const remIdx=cy<tWC?Math.floor(cy/AH):-1;
+      const lR=remIdx>=0?(wvnPre+remIdx):-1;
+      const wE=cy<tWC?cy%AH:-1;
+      const iWL=lR>=0&&lR<AH;
+      const iIS=cy>=iSC&&cy<iSC+nI;const iII=iIS?cy-iSC:-1;
       for(let r=0;r<AH;r++){const ii=cy-iSC-r;if(ii>=0&&ii<nI&&!rIQ[r].some(q=>q[0]===ii))rIQ[r].push([ii,cy]);}
       const aIR=[],rII={};for(let r=0;r<AH;r++)if(rIQ[r].length>0){aIR.push(r);rII[r]=rIQ[r][0][0];}
       const pp=[];if(iWL)pp.push(`W[${wE}]\u2192R${lR}`);if(iIS)pp.push(`IVN[${m_0+iII*s_m}]\u2192R0`);
