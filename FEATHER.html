@@ -200,12 +200,7 @@
         <div class="nav-section">
           <h3 class="nav-title">docs</h3>
           <ul class="nav-links">
-            <li><a href="beginner.html">beginner</a></li>
-            <li><a href="setup.html">setup</a></li>
             <li><a href="FEATHER.html" class="active">FEATHER</a></li>
-            <li><a href="ACT.html">ACT</a></li>
-            <li><a href="Allo.html">Allo</a></li>
-            <li><a href="hands_on.html">hands-on</a></li>
           </ul>
         </div>
       </nav>
@@ -258,11 +253,234 @@
             </div>
           </section>
 
-          <!-- MINISA ISA -->
+          <!-- MINISA ISA 2.0 Specification -->
           <section id="isa">
-            <h2>MINISA (ISA)</h2>
+            <h2>MINISA ISA 2.0 Specification</h2>
+
             <div class="text-block">
-              <p>Introduction to FEATHER's ISA (MINISA)...</p>
+              <p>MINISA ISA 2.0 defines <strong>8 variable-width instructions</strong> for the FEATHER+ reconfigurable accelerator. Each instruction begins with a 3-bit opcode. Layout and execute instructions scale as O(log&nbsp;AH + log&nbsp;AW) with array size, while DMA instructions are fixed at 33 bits. This compact encoding achieves 24x&ndash;39,681x instruction reduction over direct per-cycle micro-configuration across 9 hardware configurations.</p>
+
+              <p><strong>Design Principles:</strong></p>
+              <ul>
+                <li><strong>Parametric encoding</strong>: Six parameters &theta; = (r<sub>0</sub>, c<sub>0</sub>, G<sub>r</sub>, G<sub>c</sub>, s<sub>r</sub>, s<sub>c</sub>) generate the entire AH&times;AW PE-to-WVN mapping algebraically.</li>
+                <li><strong>Buffer-aware sizing</strong>: Field widths are derived from on-chip buffer depths, not fixed constants.</li>
+                <li><strong>Per-VN variable size</strong>: The <code>vn_size</code> field in ExecuteStreaming supports K dimensions not divisible by AH.</li>
+                <li><strong>Dual dataflow</strong>: A single-bit <code>dataflow</code> field selects WO-S or IO-S. Under IO-S the compiler transposes (M,K,N) to (N,K,M).</li>
+              </ul>
+            </div>
+
+            <h3 id="isa-summary">Instruction Set Summary</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:8px;text-align:left;">Opcode</th><th style="padding:8px;text-align:left;">Instruction</th><th style="padding:8px;text-align:left;">Purpose</th><th style="padding:8px;text-align:left;">Width</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:6px;font-family:monospace;">000</td><td>SetWVNLayout</td><td>Configure stationary buffer (weight) layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">001</td><td>SetIVNLayout</td><td>Configure streaming buffer (input) layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">010</td><td>SetOVNLayout</td><td>Configure output buffer layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">011</td><td>ExecuteStreaming</td><td>Configure operand streaming parameters</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">100</td><td>Store</td><td>DMA store to off-chip memory</td><td>Fixed 33b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">101</td><td>Load</td><td>DMA load from off-chip memory</td><td>Fixed 33b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">110</td><td>Activation</td><td>Activation function (reserved)</td><td>Fixed 11b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">111</td><td>ExecuteMapping</td><td>Configure PE-to-WVN mapping</td><td>Variable</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-buffers">Buffer Architecture</h3>
+            <div class="text-block">
+              <p>MINISA operates on three on-chip SRAM buffers, each banked by AW (one bank per PE column):</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:8px;text-align:left;">Buffer</th><th style="padding:8px;text-align:left;">Controlled By</th><th style="padding:8px;text-align:left;">Stores</th><th style="padding:8px;text-align:left;">Default Alloc</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:6px;"><strong>Streaming</strong> (str)</td><td>SetIVNLayout</td><td>Input activations (IVNs)</td><td>40%</td></tr>
+                <tr><td style="padding:6px;"><strong>Stationary</strong> (sta)</td><td>SetWVNLayout</td><td>Weights (WVNs)</td><td>40%</td></tr>
+                <tr><td style="padding:6px;"><strong>Output</strong> (ob)</td><td>SetOVNLayout</td><td>Partial sums / outputs (OVNs)</td><td>20%</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="text-block">
+              <p>Per-bank scalar depth: D<sub>str</sub> = stream_bytes / (AW &times; in_bytes), etc. VN row count per bank = D / AH. Total VN capacity = vn_rows &times; AW.</p>
+            </div>
+
+            <h3 id="isa-formats">Instruction Formats</h3>
+
+            <div class="text-block">
+              <p><strong>SetWVNLayout</strong> (opcode <code>000</code>) &mdash; Configures stationary buffer layout for weight VNs. Defines the 3-level address mapping WVN(k, n) &rarr; bank address.</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>000</code></td></tr>
+                <tr><td style="padding:4px;">order</td><td>3</td><td>Permutation order (0&ndash;5)</td></tr>
+                <tr><td style="padding:4px;">N_L0</td><td>b<sub>aw</sub></td><td>Inner N-dimension factor (number of banks)</td></tr>
+                <tr><td style="padding:4px;">N_L1</td><td>b<sub>sta_rows</sub></td><td>Middle N-dimension factor</td></tr>
+                <tr><td style="padding:4px;">K_L1</td><td>b<sub>sta_rows</sub></td><td>Outer K-dimension factor</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <div class="text-block">
+              <p><strong>SetIVNLayout</strong> (opcode <code>001</code>) &mdash; Configures streaming buffer layout for input VNs. Fields: opcode(3), order(3), M_L0(b<sub>aw</sub>), M_L1(b<sub>str_rows</sub>), J_L1(b<sub>str_rows</sub>).</p>
+              <p><strong>SetOVNLayout</strong> (opcode <code>010</code>) &mdash; Configures output buffer layout for output VNs. Fields: opcode(3), order(3), P_L0(b<sub>aw</sub>), P_L1(b<sub>str_rows</sub>), Q_L1(b<sub>str_rows</sub>).</p>
+            </div>
+
+            <div class="text-block">
+              <p><strong>ExecuteMapping</strong> (opcode <code>111</code>) &mdash; Configures the PE-to-WVN mapping. The mapping equations:</p>
+              <p style="font-family:monospace;padding-left:20px;">r(a<sub>h</sub>, a<sub>w</sub>) = r<sub>0</sub> + floor(a<sub>w</sub> / G<sub>r</sub>)<br>c(a<sub>h</sub>, a<sub>w</sub>) = c<sub>0</sub> + s<sub>r</sub> &middot; a<sub>h</sub> + s<sub>c</sub> &middot; (a<sub>w</sub> mod G<sub>c</sub>)</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>111</code></td></tr>
+                <tr><td style="padding:4px;">G_r</td><td>b<sub>aw</sub></td><td>Row-sharing group size</td></tr>
+                <tr><td style="padding:4px;">G_c</td><td>b<sub>aw</sub></td><td>Replication period</td></tr>
+                <tr><td style="padding:4px;">r_0</td><td>b<sub>sta_total</sub></td><td>Base WVN row index</td></tr>
+                <tr><td style="padding:4px;">c_0</td><td>b<sub>sta_total</sub></td><td>Base WVN column index</td></tr>
+                <tr><td style="padding:4px;">s_r</td><td>b<sub>sta_total</sub></td><td>Temporal stride per PE row</td></tr>
+                <tr><td style="padding:4px;">s_c</td><td>b<sub>sta_rows</sub></td><td>Spatial stride within one period</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <div class="text-block">
+              <p><strong>ExecuteStreaming</strong> (opcode <code>011</code>) &mdash; Configures operand streaming parameters. Paired with ExecuteMapping.</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>011</code></td></tr>
+                <tr><td style="padding:4px;">dataflow</td><td>1</td><td>0 = IO-S, 1 = WO-S</td></tr>
+                <tr><td style="padding:4px;">m_0</td><td>b<sub>str_rows</sub></td><td>Base streaming row index</td></tr>
+                <tr><td style="padding:4px;">s_m</td><td>b<sub>str_rows</sub></td><td>Streaming row stride</td></tr>
+                <tr><td style="padding:4px;">T</td><td>b<sub>str_rows</sub></td><td>Number of streaming steps per column</td></tr>
+                <tr><td style="padding:4px;">vn_size</td><td>b<sub>vn_size</sub></td><td>Active VN height &minus; 1</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="text-block">
+              <p><strong>Load</strong> (opcode <code>101</code>) / <strong>Store</strong> (opcode <code>100</code>) &mdash; DMA load/store between off-chip HBM and on-chip buffer. Fixed 33 bits: opcode(3) + target(1) + hbm_addr(29).</p>
+              <p><strong>Activation</strong> (opcode <code>110</code>) &mdash; Reserved. Fixed 11 bits: opcode(3) + tbd(8).</p>
+            </div>
+
+            <h3 id="isa-sram">On-Chip SRAM Capacity</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:6px;text-align:left;">AH</th><th style="padding:6px;">Total SRAM</th><th style="padding:6px;">Streaming (40%)</th><th style="padding:6px;">Stationary (40%)</th><th style="padding:6px;">Output (20%)</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">4</td><td>4 MB</td><td>1.6 MB</td><td>1.6 MB</td><td>0.8 MB</td></tr>
+                <tr><td style="padding:4px;">8</td><td>16 MB</td><td>6.4 MB</td><td>6.4 MB</td><td>3.2 MB</td></tr>
+                <tr><td style="padding:4px;">16</td><td>64 MB</td><td>25.6 MB</td><td>25.6 MB</td><td>12.8 MB</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-widths">Instruction Width Examples (bits)</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:5px;text-align:left;">Instruction</th><th style="padding:5px;">4&times;4</th><th style="padding:5px;">4&times;16</th><th style="padding:5px;">4&times;64</th><th style="padding:5px;">8&times;8</th><th style="padding:5px;">8&times;32</th><th style="padding:5px;">8&times;128</th><th style="padding:5px;">16&times;16</th><th style="padding:5px;">16&times;64</th><th style="padding:5px;">16&times;256</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">SetWVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">SetIVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">SetOVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">ExecuteMapping</td><td>81</td><td>83</td><td>85</td><td>86</td><td>88</td><td>90</td><td>91</td><td>93</td><td>95</td></tr>
+                <tr><td style="padding:4px;">ExecuteStreaming</td><td>57</td><td>51</td><td>45</td><td>58</td><td>52</td><td>46</td><td>59</td><td>53</td><td>47</td></tr>
+                <tr><td style="padding:4px;">Load / Store</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td></tr>
+                <tr><td style="padding:4px;">Activation</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-pipeline">6-Stage Compilation Pipeline</h3>
+            <div class="text-block">
+              <p>The MINISA compiler translates a GEMM workload C[M,N] = A[M,K] &times; B[K,N] into MINISA instructions through six stages:</p>
+              <ul>
+                <li><strong>Pre-stage &mdash; Dataflow Selection:</strong> Choose WO-S (weights stationary, search over M,K,N) or IO-S (inputs stationary, transposes to N,K,M). Auto mode runs both and picks lower latency.</li>
+                <li><strong>Stage 1 &mdash; Tile:</strong> Enumerate legal tiling choices (M<sub>t</sub>, K<sub>t</sub>, N<sub>t</sub>) that fit on-chip buffers. Power-of-2 values, up to 512 candidates sorted by tile volume.</li>
+                <li><strong>Stage 2 &mdash; Lower:</strong> Deterministic lowering into VN structure. Computes K<sub>g</sub> = ceil(K<sub>t</sub>/AH) K-groups, per-group vn_sizes, and n_col_types = ceil(N<sub>t</sub>/AH).</li>
+                <li><strong>Stage 3 &mdash; Group:</strong> Form VN groups VG(m<sub>t</sub>, k<sub>g</sub>, n<sub>t</sub>). Knob: WVN column stride &isin; {block, strided}.</li>
+                <li><strong>Stage 4 &mdash; Combine:</strong> Combine VN groups sharing the same WVN set. Knob: duplication factor d &isin; [1, d<sub>max</sub>]. Controls trade-off between M-parallelism and K-packing.</li>
+                <li><strong>Stage 5 &mdash; Map:</strong> Derive (ExecuteMapping, ExecuteStreaming) parameter pairs. Knob: IVN distribution &isin; {interleaved, consecutive}.</li>
+                <li><strong>Stage 6 &mdash; Layout:</strong> Search for bank-conflict-free buffer address permutation orders. Exhaustive (216 combos) or sequential mode. Falls back to Stage 3 with alternative design choices on failure.</li>
+              </ul>
+            </div>
+
+            <h3 id="isa-execution">Execution Model</h3>
+            <div class="text-block">
+              <p><strong>Per EM/ES pair timing</strong> (with vn_size):</p>
+              <ol>
+                <li>WVN load to PE registers: vn_size<sup>2</sup> cycles</li>
+                <li>IVN streaming: T &times; vn_size cycles</li>
+                <li>Pipeline fill: vn_size cycles</li>
+                <li>BIRRD drain: 2&lceil;log<sub>2</sub>(AW)&rceil; cycles</li>
+              </ol>
+              <p><strong>Inter-EM Pipelining:</strong> WVN load for the next EM overlaps with the current EM's IVN streaming. The effective period: em_period = max(nest_time, vn_size<sup>2</sup> &minus; vn_size). For K<sub>g</sub> consecutive EMs: C = vn_size<sub>0</sub><sup>2</sup> + &Sigma; em_period<sub>i</sub> + nest_time<sub>last</sub> + birrd_drain.</p>
+            </div>
+
+            <h3 id="isa-sequence">Typical Instruction Sequence</h3>
+            <pre><code>SetOVNLayout  order, P_L0, P_L1, Q_L1     ; configure output buffer
+
+for each K-step:
+    SetIVNLayout  order, M_L0, M_L1, J_L1  ; configure streaming buffer
+    Load          target=1, hbm_addr        ; DMA load inputs
+    SetWVNLayout  order, N_L0, N_L1, K_L1  ; configure stationary buffer
+    Load          target=0, hbm_addr        ; DMA load weights
+
+    for each EM in tile:
+        ExecuteMapping   G_r, G_c, r_0, c_0, s_r, s_c
+        ExecuteStreaming  dataflow, m_0, s_m, T, vn_size
+
+Store  target=0, hbm_addr                   ; DMA store output</code></pre>
+
+            <h3 id="isa-eval">Evaluation Results (450 workload-config pairs)</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:6px;text-align:left;">Config</th><th style="padding:6px;">Avg Compression</th><th style="padding:6px;">Inst Reduction</th><th style="padding:6px;">Avg Utilization</th><th style="padding:6px;">Avg Latency</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">4&times;4</td><td>7,684x</td><td>24x</td><td>92.1%</td><td>40,045,201</td></tr>
+                <tr><td style="padding:4px;">4&times;16</td><td>7,608x</td><td>54x</td><td>89.2%</td><td>10,117,115</td></tr>
+                <tr><td style="padding:4px;">4&times;64</td><td>11,782x</td><td>184x</td><td>91.6%</td><td>2,510,426</td></tr>
+                <tr><td style="padding:4px;">8&times;8</td><td>12,407x</td><td>196x</td><td>80.1%</td><td>10,470,460</td></tr>
+                <tr><td style="padding:4px;">8&times;32</td><td>14,216x</td><td>600x</td><td>82.0%</td><td>2,617,074</td></tr>
+                <tr><td style="padding:4px;">8&times;128</td><td>30,250x</td><td>2,465x</td><td>82.4%</td><td>710,018</td></tr>
+                <tr><td style="padding:4px;">16&times;16</td><td>21,363x</td><td>2,176x</td><td>69.3%</td><td>2,833,058</td></tr>
+                <tr><td style="padding:4px;">16&times;64</td><td>34,634x</td><td>10,275x</td><td>69.3%</td><td>841,181</td></tr>
+                <tr><td style="padding:4px;">16&times;256</td><td>32,443x</td><td>39,681x</td><td>69.0%</td><td>215,097</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-search-opt">Search Optimizations</h3>
+            <div class="text-block">
+              <p>The MINISA compilation search uses 11 optimizations to scale to large workloads (up to M=65536) across all 9 array configurations:</p>
+              <ul>
+                <li><strong>Analytical Fast-Path:</strong> Derives EM parameters directly from tile dimensions in O(n_EMs) time and O(1) memory, replacing O(M<sub>t</sub>&times;K<sub>g</sub>&times;n_col_types) Python object materialization. Reduces ~13 GB to negligible.</li>
+                <li><strong>WVN Bank Conflict Deduplication:</strong> When G<sub>r</sub> &ge; AW, changing r<sub>0</sub> only shifts all addresses by a constant offset. Groups EMs by (G<sub>r</sub>,G<sub>c</sub>,s<sub>r</sub>,s<sub>c</sub>,c<sub>0</sub>) and checks one representative per group. 1024 EMs &rarr; 1 check.</li>
+                <li><strong>IVN Single-Address Skip:</strong> When actual_k<sub>g</sub> &times; effective_reps &le; 1, each PE column group reads at most one IVN address per step &mdash; no conflict possible regardless of layout.</li>
+                <li><strong>OB Conflict Deduplication:</strong> OB conflict depends only on (effective_reps, n_col_types), not K-group index. Tracks checked tuples, skipping duplicates.</li>
+                <li><strong>Factored Layout &times; Conflict Search:</strong> Pre-filters valid order<sub>o</sub> values (6 &rarr; 2&ndash;4), then valid (order<sub>w</sub>, order<sub>i</sub>) pairs (36 &rarr; 4&ndash;8), then cross-products survivors. 216 full checks &rarr; ~42 total.</li>
+                <li><strong>EM Parameter Signature Deduplication:</strong> Different dup_factor values often produce identical EM parameter sets. Hashes signatures into a seen set. AW=256: 256 evaluations &rarr; 8&ndash;12.</li>
+                <li><strong>Tile Enumeration Bounds:</strong> Power-of-2 tile sizes with buffer capacity filtering, capped at 512. 4096&sup3; &rarr; ~200 candidates.</li>
+                <li><strong>Design Choice Fallback:</strong> When layout search fails, retries Stages 3&ndash;6 with (block/strided) &times; (interleaved/consecutive) combinations. Critical for rectangular configs (AW >> AH).</li>
+                <li><strong>Early Termination:</strong> Stops after first valid tile (sorted largest-first by volume). 100&ndash;500 tiles &rarr; 1&ndash;5.</li>
+                <li><strong>Dual-Dataflow with Transposition:</strong> Runs both WO-S and IO-S (transposed M,K,N &rarr; N,K,M), picks lower latency.</li>
+                <li><strong>Batch Info Pre-computation:</strong> Computes per-batch metadata once, reused across WVN/IVN/OB conflict checks.</li>
+              </ul>
+              <p>Together, these optimizations reduced 53 previously-failing benchmark points (K=2048&ndash;4096, OOM/timeout) to complete successfully while keeping all 450/450 points passing both ISA-level and Config-level verification.</p>
             </div>
           </section>
 
@@ -420,7 +638,12 @@
           <ul>
             <li><a href="#intro">Introduction</a></li>
             <li><a href="#microarchitecture">Microarchitecture</a></li>
-            <li><a href="#isa">MINISA (ISA)</a></li>
+            <li><a href="#isa">MINISA ISA 2.0</a></li>
+            <li style="padding-left:12px;"><a href="#isa-summary">Instruction Set</a></li>
+            <li style="padding-left:12px;"><a href="#isa-formats">Instruction Formats</a></li>
+            <li style="padding-left:12px;"><a href="#isa-pipeline">Compilation Pipeline</a></li>
+            <li style="padding-left:12px;"><a href="#isa-execution">Execution Model</a></li>
+            <li style="padding-left:12px;"><a href="#isa-search-opt">Search Optimizations</a></li>
             <li><a href="#mapper">Mapper</a></li>
             <li><a href="#layoutloop">LayoutLoop</a></li>
             <li><a href="#rtl-simulation">RTL Simulation</a></li>
