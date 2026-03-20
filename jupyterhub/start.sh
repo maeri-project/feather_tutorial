@@ -68,6 +68,13 @@ DOCKER_ARGS=(
     -v "${SCRIPT_DIR}/certs:/etc/letsencrypt"
 )
 
+# Mount prebuilt LLVM if available (avoids 30+ min build inside container)
+LLVM_BUILD_DIR="/work/shared/common/llvm-project-main"
+if [ -d "$LLVM_BUILD_DIR" ]; then
+    echo "Mounting prebuilt LLVM from $LLVM_BUILD_DIR"
+    DOCKER_ARGS+=(-v "${LLVM_BUILD_DIR}:${LLVM_BUILD_DIR}:ro")
+fi
+
 # Mount Vitis HLS if available
 if [ -d "$VITIS_HLS_DIR" ]; then
     echo "Mounting Vitis HLS from $VITIS_HLS_DIR"
