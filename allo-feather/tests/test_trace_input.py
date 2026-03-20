@@ -924,11 +924,12 @@ def run_deploy(trace_info, seed=42):
     print(f"  Project: {project_dir}")
 
     n_inner = trace_info.get('n_inner', 1)
+    k_passes = trace_info.get('k_passes', 1)
 
     # Step 1: Generate HW project
     print(f"\n--- Step 1: Generate HW Project ---")
     top = get_feather_full_matrix_top(
-        M_padded, K, N, AW, AH, int8, len(instructions), n_inner,
+        M_padded, K, N, AW, AH, int8, len(instructions), n_inner, k_passes,
     )
     s = df.customize(top)
     schedule_feather_hls(s, K, N, AH, AW)
@@ -1005,15 +1006,18 @@ def _write_deploy_input_data(trace_info, project_dir, seed=42):
 
     np.random.seed(seed)
     A_orig = np.random.randint(-4, 4, size=(M, K)).astype(np.int8)
-    B = np.random.randint(-4, 4, size=(K, N)).astype(np.int8)
-    C_ref = A_orig.astype(np.int32) @ B.astype(np.int32)
+    B_orig = np.random.randint(-4, 4, size=(K, N)).astype(np.int8)
+    C_ref = A_orig.astype(np.int32) @ B_orig.astype(np.int32)
+
+    # Kernel uses int32 for A and B (FeatherModule does int8->int32 conversion)
+    B = B_orig.astype(np.int32)
 
     # Pad A
     if M_padded != M:
-        A = np.zeros((M_padded, K), dtype=np.int8)
-        A[:M, :] = A_orig
+        A = np.zeros((M_padded, K), dtype=np.int32)
+        A[:M, :] = A_orig.astype(np.int32)
     else:
-        A = A_orig
+        A = A_orig.astype(np.int32)
 
     # Compute BIRRD tables (same logic as FeatherModule.__call__)
     ovn_order = int(instructions[2, 1])

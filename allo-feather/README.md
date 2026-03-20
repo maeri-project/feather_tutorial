@@ -1,151 +1,277 @@
-# FEATHER+ MINISA Allo Implementation
+# MINISA: Minimal ISA for FEATHER+ Accelerator
 
-This directory contains the [Allo](https://github.com/cornell-zhang/allo) dataflow implementation of the FEATHER+ accelerator, programmed via the MINISA (Minimal ISA) interface. MINISA provides a Virtual Neuron (VN)-level programming model that abstracts away low-level PE array details while enabling efficient dataflow configuration.
+MINISA (Minimal ISA) is a Virtual Neuron (VN)-level programming interface for the FEATHER+ accelerator. It provides a high-level abstraction that configures the FEATHER+ hardware for efficient dataflow computation while hiding low-level PE array details.
 
-## Setup
-
-Requires the Allo conda environment with LLVM/MLIR. Inside the JupyterHub container:
-
-```bash
-# Allo environment is pre-configured in the "Python (Allo)" Jupyter kernel
-# For command-line use:
-export LLVM_BUILD_DIR=/work/shared/common/llvm-project-main/build
-export PATH="$LLVM_BUILD_DIR/bin:/opt/conda-envs/allo/bin:$PATH"
-```
-
-For HLS targets (csim/csynth/cosim), also source Vitis HLS:
-
-```bash
-source /opt/xilinx/Xilinx_Vivado_Vitis_2022.1/Vitis_HLS/2022.1/settings64.sh
-```
-
-## Architecture
-
-The implementation uses a 7-kernel pipelined Allo dataflow architecture:
+## Architecture Overview
 
 ```
-a_loader ──→ pe_array[AH+1, AW] ──→ BIRRD[P0, P1] ──→ output_accum
-w_loader ──↗                          ↑
-                                   inst_rw
+Programmer → Virtual Neurons (VNs) → Physical PE Array [AH × AW]
 ```
 
-1. **a_loader**: Reads input activations from DRAM, column-streams to AW column heads
-2. **w_loader**: Reads weights from DRAM, decodes instructions, streams to w_broadcast
-3. **w_broadcast[AW]**: Distributes weights to per-row PE FIFOs
-4. **pe_array[AH+1, AW]**: Compute PEs (rows 0..AH-1) with column-streaming + gather row (AH)
-5. **inst_rw**: Distributes BIRRD switch instructions
-6. **BIRRD[P0, P1]**: Butterfly reduction/reorder network (per-tile configuration)
-7. **output_accum**: Column remap + tile accumulation into output matrix
+All computation is performed by Allo dataflow kernels. Python handles ISA definitions, configuration generation (lowering), and control flow (tile iteration).
+
+## Virtual Neurons
+
+A **Virtual Neuron (VN)** is an abstraction layer between the programmer and the physical PE (Processing Element) array.
+
+### Why Virtual Neurons?
+
+1. **Hides hardware complexity**: The physical PE array has fixed dimensions (AH × AW), but workloads have varying sizes. VNs abstract this mismatch.
+
+2. **Logical grouping**: A VN represents a logical unit of computation (like computing one output neuron in a neural network), which may map to multiple PEs or share PEs with other VNs.
+
+3. **Flexible mapping**: The same VN can be mapped differently depending on the dataflow strategy:
+   - **Output stationary**: Each VN holds partial sums, accumulating over time
+   - **Weight stationary**: Each VN holds weights, streaming inputs through
+   - **Input stationary**: Each VN holds inputs, streaming weights through
+
+### The Three VN Types
+
+| VN Type | Abbreviation | Role |
+|---------|--------------|------|
+| Input Virtual Neuron | IVN | Manages input activation distribution to PEs |
+| Weight Virtual Neuron | WVN | Manages weight distribution/stationary storage |
+| Output Virtual Neuron | OVN | Manages output collection and reduction via BIRRD |
+
+For a matrix multiply `C = A × B`:
+- **IVNs** handle how rows of A are streamed into the array
+- **WVNs** handle how columns of B are tiled and held stationary
+- **OVNs** handle how partial products are reduced and C is assembled
+
+---
 
 ## MINISA Instruction Set
 
-MINISA has 4 instruction types:
+MINISA has exactly **4 instruction types**:
 
-| Instruction | Purpose |
-|-------------|---------|
-| `SetIVNLayout` | Configure input VN buffer layout (how input activations map to PE array) |
-| `SetWVNLayout` | Configure weight VN buffer layout (how weights are tiled and held stationary) |
-| `SetOVNLayout` | Configure output VN buffer layout (BIRRD reduction/reordering) |
-| `SetMapping` | Specify VN-to-PE mapping and trigger tile execution |
+### 1. SetIVNLayout - Input Virtual Neuron Buffer Configuration
 
-The `SetMapping` instruction supports all dataflow strategies via the `Gr` parameter:
+Configures how **input activations** are laid out in the streaming buffer.
 
-| Dataflow | Gr | Description |
-|----------|----|-------------|
-| Output stationary | AW | All PE columns share one WVN group |
-| Weight stationary | 1 | Each PE column has its own WVN |
-| Mixed/adaptive | 1 < Gr < AW | Adapts per tile for irregular dimensions |
+| Field | Type | Description |
+|-------|------|-------------|
+| `order` | int (0-5) | 3-bit encoding for dimension ordering (6 permutations of 3 logical dimensions) |
+| `ML0` | int | Inner M factor - must equal AH (array height) |
+| `ML1` | int | Outer M factor - M/AH tiles in M dimension |
+| `JL0` | int | Inner J factor - must equal AH |
+| `JL1` | int | Outer J factor - J/AH tiles in reduction dimension |
 
-## Running Tests
+**Purpose:** Maps input tiles from `[Mt, Kt]` → `[AH, AW]` format for the PE array.
 
-```bash
-# ISA unit tests — PE mapping, tile coverage, functional GEMM (fast, no HLS)
-python tests/test_figure7_mapping.py
+**Constraints:**
+- `ML0` must equal `AH`
+- `JL0` must equal `AH`
+- `order` must be in range 0-5
 
-# Trace-based test runner — supports multiple modes:
-#   functional (default), csim, csyn, cosim, deploy
+---
 
-# Figure 7: C[16,8] = A[16,12] x B[12,8] on 4x4 array (mixed Gr)
-python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json
-python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csim
-python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csyn
-python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls cosim
+### 2. SetWVNLayout - Weight Virtual Neuron Buffer Configuration
 
-# Full workload: C[24,512] = A[24,48] x B[48,512] on 16x16 array
-python tests/test_trace_input.py instr_trace/trace_m24k48n512_16x16.json
+Configures how **weights** are laid out in the stationary buffer.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `order` | int (0-5) | 3-bit encoding for dimension ordering |
+| `KL0` | int | Inner K factor - must equal AH |
+| `KL1` | int | Outer K factor - K/AH tiles in K dimension |
+| `NL0` | int | Inner N factor - flexible, 1 ≤ NL0 ≤ AW |
+| `NL1` | int | Outer N factor - N/NL0 tiles in N dimension |
+
+**Purpose:** Maps weight tiles from `[Kt, Nt]` → `[AH, AW, AH]` (3D format for PE array).
+
+**Constraints:**
+- `KL0` must equal `AH`
+- `NL0` must be in range [1, AW]
+- `order` must be in range 0-5
+
+---
+
+### 3. SetOVNLayout - Output Virtual Neuron Buffer Configuration
+
+Configures how **outputs** are laid out and how reduction/reordering is performed in the BIRRD network.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `order` | int (0-5) | 3-bit encoding for dimension ordering |
+| `PL0` | int | Inner P factor - must equal AH |
+| `PL1` | int | Outer P factor - P/AH tiles in output rows |
+| `QL0` | int | Inner Q factor - must equal AH |
+| `QL1` | int | Outer Q factor - Q/AH tiles in output cols |
+
+**Purpose:** Generates BIRRD instruction array `[P0, P1]` for butterfly network reduction/reordering.
+
+**Constraints:**
+- `PL0` must equal `AH`
+- `QL0` must equal `AH`
+- `order` must be in range 0-5
+
+---
+
+### 4. SetMapping - Tile Execution Trigger
+
+Specifies **VN-to-PE array mapping** and triggers execution of one tile.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `r0` | int | Base WVN (Weight VN) row index |
+| `c0` | int | Base WVN column index |
+| `Gr` | int | Replication group size for rows (1 to AW) |
+| `Gc` | int | Replication group size for columns (1 to AW) |
+| `sr` | int | Temporal stride (across rows) |
+| `sc` | int | Spatial stride (across columns) |
+| `m_start` | int | Input M dimension tile start |
+| `m_end` | int | Input M dimension tile end |
+| `n_start` | int | Weight N dimension tile start |
+| `n_end` | int | Weight N dimension tile end |
+| `k_start` | int | Reduction K dimension tile start |
+| `k_end` | int | Reduction K dimension tile end |
+
+**PE Mapping Formula:**
 ```
+r(ah, aw) = r0 + floor(aw / Gr)
+c(ah, aw) = c0 + sr * ah + sc * (aw mod Gc)
+```
+
+**Common Dataflow Mappings:**
+
+| Dataflow | Gr | Gc | sr | sc | Description |
+|----------|----|----|----|----|-------------|
+| Output stationary | AW | 1 | 0 | 0 | Outputs stay in PEs |
+| Weight stationary | 1 | AW | 0 | 1 | Weights stay in PEs |
+| Input stationary | 1 | 1 | 1 | 0 | Inputs stay in PEs |
+
+---
+
+## BIRRD Instruction Set
+
+The BIRRD (Butterfly Interconnect for Reduction and ReorDering) network uses 4 operations:
+
+| Code | Mnemonic | Operation | Effect |
+|------|----------|-----------|--------|
+| 0 | PS | Pass | `out_left = in_left`, `out_right = in_right` |
+| 1 | AR | Add-Right | `out_left = in_left`, `out_right = in_left + in_right` |
+| 2 | AL | Add-Left | `out_left = in_left + in_right`, `out_right = in_right` |
+| 3 | SW | Swap | `out_left = in_right`, `out_right = in_left` |
+
+**BIRRD Instruction Array Format:**
+- Shape: `[P0, P1]` where P0 = stages, P1 = switches per stage
+- Data type: int8
+
+---
+
+## MINISAProgram Container
+
+Wraps a complete program:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Program identifier |
+| `AH` | Hardware array height (typically 8 or 16) |
+| `AW` | Hardware array width (4, 8, or 16) |
+| `ivn_layout` | SetIVNLayout instance |
+| `wvn_layout` | SetWVNLayout instance |
+| `ovn_layout` | SetOVNLayout instance |
+| `mappings` | List[SetMapping] - sequence of tile executions |
+
+---
+
+## Tiling and Partial Sum Accumulation
+
+### Execution Flow
+
+For GEMM: `C[M,N] = A[M,K] × B[K,N]`
+
+Tiles iterate in order: N tiles → M tiles → K tiles (innermost)
+
+For each `SetMapping`:
+
+```python
+# 1. Extract tile from full tensors (no compute)
+iActs_tile = inputs[m_start:m_end, k_start:k_end]    # [AH, AW]
+weights_tile = weights[k_start:k_end, n_start:n_end] # [AH, AW, AH]
+
+# 2. Allo computes ONE tile's partial product
+tile_output = allo_module(iActs_tile, weights_tile, birrd_inst)  # [AH, AW]
+
+# 3. Accumulate in host memory
+output[m_slice, n_slice] += tile_output
+```
+
+### Where Partial Sums Live
+
+| Location | In This Simulator | In Real Hardware |
+|----------|-------------------|------------------|
+| Tile computation | Allo kernel | PE array |
+| Partial sum storage | Host memory (numpy) | On-chip accumulation buffer |
+| Accumulation | Python `+=` operator | Hardware accumulator |
+
+### Example: 16×16 × 16×16 GEMM with AH=8, AW=8
+
+```
+Tile sizes: Mt=4, Nt=8, Kt=16
+Tiles: 4 M-tiles × 2 N-tiles × 1 K-tile = 8 tiles
+
+Each SetMapping produces one [8,8] tile output
+```
+
+If K=32 (2 K-tiles), reduction across K happens via host accumulation:
+
+```
+For output[0:8, 0:8]:
+  Tile 1: partial_sum  = A[0:8, 0:16]  × B[0:16, 0:8]
+  Tile 2: partial_sum += A[0:8, 16:32] × B[16:32, 0:8]  ← accumulated in host
+```
+
+### Spatial vs Temporal Reduction
+
+- **BIRRD network**: Handles spatial reduction *within* a tile (reducing across AW columns)
+- **Host accumulation**: Handles temporal reduction *across* K-tiles
+
+In actual FEATHER+ hardware, on-chip buffers would hold partial sums between K-tile iterations, avoiding round-trips to external memory.
+
+---
 
 ## File Organization
 
 ```
-allo-feather/
-├── feather_minisa.py              # Allo dataflow implementation (7-kernel architecture)
+examples/feather-isa/
+├── feather_minisa.py          # Allo dataflow implementation
 ├── minisa/
-│   ├── __init__.py                # Module exports
-│   ├── isa.py                     # ISA definitions (4 instruction types + encoding)
-│   ├── lowering.py                # MINISA → Allo config (BIRRD arrays, column maps)
-│   └── trace_parser.py            # RTL trace JSON parser (load_trace entry point)
-├── instr_trace/                   # RTL instruction trace files
-│   ├── figure7_16x12x8_4x4.json  # 4x4 array, mixed Gr (adaptive mapping)
-│   └── trace_m24k48n512_16x16.json # 16x16 array, full workload
+│   ├── __init__.py            # Module exports
+│   ├── isa.py                 # ISA definitions (4 instruction types)
+│   ├── lowering.py            # MINISA → Allo config conversion
+│   └── interpreter.py         # Execution engine
 ├── tests/
-│   ├── test_figure7_mapping.py    # ISA unit tests (PE mapping, tile coverage)
-│   └── test_trace_input.py        # Unified test runner (functional/csim/csyn/cosim/deploy)
-├── hls_project/                   # Vitis HLS project files (Makefiles, host/kernel code)
-├── tutorial/
-│   ├── allo-feather.ipynb         # Tutorial notebook
-│   └── _support.py                # Tutorial support utilities
-├── design/                        # Design documents
-├── reports/                       # Verification and analysis reports
-├── tickets/                       # Development tickets
-├── feather.pdf                    # FEATHER paper
-└── MINISA.pdf                     # MINISA paper
+│   ├── test_feather_baseline.py
+│   ├── test_minisa_gemm_allo.py
+│   └── test_minisa_layout_switching_allo.py
+├── design/                    # Design documents
+└── reports/                   # Verification reports
 ```
 
-## Key Design Details
+---
 
-- **Unified kernel**: A single kernel handles all Gr values via power-of-2 bit operations (`ic_j & (Gr-1)` instead of modulo), compiling to AND gates and shift muxes with zero pipeline penalty.
-- **Per-tile BIRRD**: BIRRD configuration changes per tile. `Gr=AW` uses all-PS pass-through; `Gr<AW` uses algorithmically generated multi-way reduction.
-- **Temporal N-iteration**: When `n_inner > 1`, each ISA tile contains multiple sub-operations sharing the same K-range and BIRRD config but different (m, n) offsets, matching RTL's VN temporal iteration.
-- **Column streaming**: Row 0 reads from column inputs; rows 1+ read from inter-PE streams. Weight broadcast forwards all AH values per PE, selecting its own index.
-- **Trace-driven**: Programs are defined via RTL instruction trace JSON files, parsed by `minisa/trace_parser.py`. Supports both uniform-Gr and mixed-Gr (adaptive) mappings.
+## Usage Example
 
-## In-Container Test Results
+```python
+from minisa import MINISAProgram, MINISAInterpreter, create_gemm_program
 
-Tested inside the JupyterHub Docker container (`raic-jupyterhub`) with the following environment setup:
+# Create a GEMM program
+program = create_gemm_program(M=16, N=16, K=32, AH=8, AW=8)
 
-```bash
-# 1. Run allo setup (one-time, after container rebuild)
-docker exec -it raic-jupyterhub bash /srv/jupyterhub/setup_allo.sh
+# Create interpreter
+interpreter = MINISAInterpreter(AW=8, AH=8)
 
-# 2. Inside the container, set environment
-export LLVM_BUILD_DIR=/work/shared/common/llvm-project-main/build
-export PATH="$LLVM_BUILD_DIR/bin:/opt/conda-envs/allo/bin:/usr/local/bin:/usr/bin:/bin"
-
-# 3. For HLS tests, also source Vitis HLS
-source /opt/xilinx/Xilinx_Vivado_Vitis_2022.1/Vitis_HLS/2022.1/settings64.sh
-
-# 4. Run from the allo-feather directory
-cd /opt/feather_tutorial/allo-feather
+# Execute
+output = interpreter.execute_program(program, inputs, weights)
 ```
 
-### Figure 7 test case: C[16,8] = A[16,12] x B[12,8] on 4x4 array
+## Build Targets
 
-| Test | Command | Result |
-|------|---------|--------|
-| Functional | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json` | PASS |
-| HLS C-sim | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csim` | PASS |
-| HLS C-synth | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csyn` | PASS |
-
-### C-Synthesis Report (4x4 array, Vitis HLS 2022.1)
-
-| Metric | Value |
-|--------|-------|
-| Best-case latency | 235 cycles |
-| Worst-case latency | 237 cycles |
-| Estimated Fmax | 411.37 MHz |
-| DSP | 184 |
-| FF | 85,011 |
-| LUT | 107,738 |
-| BRAM_18K | 0 |
-| URAM | 0 |
+| Target | Mode | Description |
+|--------|------|-------------|
+| `simulator` | - | LLVM OMP-based (fastest, for development) |
+| `vitis_hls` | `csim` | C simulation |
+| `vitis_hls` | `csyn` | Synthesis only |
+| `vitis_hls` | `sw_emu` | Software emulation |
+| `vitis_hls` | `hw_emu` | Hardware emulation |
