@@ -25,18 +25,23 @@ import os
 import shutil
 
 
-def copy_notebook(spawner):
+def copy_shared_files(spawner):
     user_home = os.path.expanduser(f"/home/{spawner.user.name}")
     shared_dir = "/srv/jupyterhub/shared"
 
-    # Copy all notebooks from shared directory
+    # Copy everything from shared directory to user home
     if os.path.isdir(shared_dir):
-        for filename in os.listdir(shared_dir):
-            if filename.endswith('.ipynb'):
-                src = os.path.join(shared_dir, filename)
-                dst = os.path.join(user_home, filename)
-                shutil.copy(src, dst)
-                print(f"Copied {filename} to {user_home}")
+        for item in os.listdir(shared_dir):
+            src = os.path.join(shared_dir, item)
+            dst = os.path.join(user_home, item)
+            if os.path.isdir(src):
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                print(f"Copied directory {item} to {user_home}")
+            else:
+                shutil.copy2(src, dst)
+                print(f"Copied {item} to {user_home}")
 
 
-c.Spawner.pre_spawn_hook = copy_notebook
+c.Spawner.pre_spawn_hook = copy_shared_files
