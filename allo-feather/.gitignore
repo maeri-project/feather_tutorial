@@ -1,0 +1,9 @@
+# HLS project directories (large build artifacts)
+*.prj/
+
+# Python
+__pycache__/
+*.pyc
+
+# Vitis HLS logs
+vitis_hls.log
