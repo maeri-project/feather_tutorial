@@ -8,9 +8,8 @@ c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/zhang-capra-xcel.ece.cornell.edu/
 c.JupyterHub.ssl_key = '/etc/letsencrypt/live/zhang-capra-xcel.ece.cornell.edu/privkey.pem'
 
 # --- Authentication ---
-# Use DummyAuthenticator for quick setup (any password works).
-# Switch to PAM or SimpleAuthenticator for real passwords.
-c.JupyterHub.authenticator_class = 'jupyterhub.auth.DummyAuthenticator'
+# PAM authenticator checks passwords against Linux system users
+c.JupyterHub.authenticator_class = 'jupyterhub.auth.PAMAuthenticator'
 c.Authenticator.admin_users = {'jianming', 'devansh', 'niansong'}
 c.Authenticator.allow_all = True
 c.Authenticator.allow_existing_users = True
