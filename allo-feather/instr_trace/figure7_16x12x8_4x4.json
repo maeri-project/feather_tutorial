@@ -1,0 +1,57 @@
+{
+  "description": "MINISA Paper Figure 7: C[16,8] = A[16,12] x B[12,8] on 4x4 NEST with adaptive Gr",
+  "FEATHER_spec": {
+    "AH": 4,
+    "AW": 4
+  },
+  "layer": [
+    {
+      "L1": {
+        "WVN": {
+          "order": 0,
+          "N_L1": 2,
+          "N_L0": 4,
+          "K_L1": 3
+        },
+        "IVN": {
+          "order": 0,
+          "M_L1": 4,
+          "M_L0": 4,
+          "J_L1": 3
+        },
+        "OVN": {
+          "order": 0,
+          "P_L1": 4,
+          "P_L0": 4,
+          "Q_L1": 2
+        },
+        "ExecuteMapping": [
+          {
+            "G_r": 2,
+            "G_c": 2,
+            "r_0": 0,
+            "c_0": 0,
+            "s_r": 1,
+            "s_c": 4
+          },
+          {
+            "G_r": 4,
+            "G_c": 2,
+            "r_0": 2,
+            "c_0": 0,
+            "s_r": 1,
+            "s_c": 4
+          }
+        ],
+        "search_result": {
+          "Mt": 16,
+          "Kt": 12,
+          "Nt": 8,
+          "n_EMs": 2,
+          "n_spatial_tiles": 1,
+          "utilization": 83.33
+        }
+      }
+    }
+  ]
+}

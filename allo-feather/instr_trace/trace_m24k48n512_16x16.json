@@ -1,0 +1,72 @@
+{
+    "FEATHER_spec": {
+      "AH": 16,
+      "AW": 16,
+      "D_StaB": 8192,
+      "D_StrB": 8192,
+      "D_OB": 8192
+    },
+    "layer": [
+      {
+        "L1": {
+          "WVN": {
+            "order": 0,
+            "N_L1": 16,
+            "N_L0": 16,
+            "K_L1": 3
+          },
+          "IVN": {
+            "order": 0,
+            "M_L1": 2,
+            "M_L0": 16,
+            "J_L1": 3
+          },
+          "OVN": {
+            "order": 0,
+            "P_L1": 2,
+            "P_L0": 16,
+            "Q_L1": 16
+          },
+          "ExecuteMapping": [
+            {
+              "G_r": 16,
+              "G_c": 16,
+              "r_0": 0,
+              "c_0": 0,
+              "s_r": 1,
+              "s_c": 16
+            },
+            {
+              "G_r": 16,
+              "G_c": 16,
+              "r_0": 1,
+              "c_0": 0,
+              "s_r": 1,
+              "s_c": 16
+            },
+            {
+              "G_r": 16,
+              "G_c": 16,
+              "r_0": 2,
+              "c_0": 0,
+              "s_r": 1,
+              "s_c": 16
+            }
+          ],
+          "latency": 3025,
+          "search_result": {
+            "Mt": 24,
+            "Kt": 48,
+            "Nt": 256,
+            "order_w": 0,
+            "order_i": 0,
+            "order_o": 0,
+            "n_EMs": 3,
+            "n_spatial_tiles": 2,
+            "utilization": 77.42,
+            "inst_bytes": 114
+          }
+        }
+      }
+    ]
+  }
