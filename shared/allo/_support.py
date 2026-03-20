@@ -16,10 +16,19 @@ import numpy as np
 
 # ─── Path setup ───────────────────────────────────────────────────
 _TUTORIAL_DIR = os.path.dirname(os.path.abspath(__file__))
-_FEATHER_DIR = os.path.dirname(_TUTORIAL_DIR)
-_ALLO_DIR = os.path.dirname(os.path.dirname(_FEATHER_DIR))
 
-for _p in [_ALLO_DIR, _FEATHER_DIR]:
+# Find the FEATHER dev copy: either relative (in dev tree) or in /opt (container)
+_FEATHER_DIR_CANDIDATES = [
+    os.path.dirname(_TUTORIAL_DIR),                     # dev tree: tutorial/ is inside feather-isa/
+    "/opt/feather_tutorial/allo-feather",                # JupyterHub container
+]
+_FEATHER_DIR = next(
+    (p for p in _FEATHER_DIR_CANDIDATES
+     if os.path.isfile(os.path.join(p, "feather_minisa.py"))),
+    _FEATHER_DIR_CANDIDATES[0],
+)
+
+for _p in [_FEATHER_DIR]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
