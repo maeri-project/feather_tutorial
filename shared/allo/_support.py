@@ -164,100 +164,16 @@ def run_feather_csynth(trace_info, schedule_fn=None, project_dir=None):
 
     hls_mod = s.build(target="vitis_hls", mode="csyn", project=project_dir)
 
-    # Optimize auto-generated load_buf functions (transparent to user)
-    _patch_load_bufs(project_dir)
+    # Optimize auto-generated load/store functions (transparent to user)
+    # Import the full optimization pass from the dev test runner
+    sys.path.insert(0, os.path.join(_FEATHER_DIR, "tests"))
+    from test_trace_input import _patch_load_bufs_for_throughput
+    _patch_load_bufs_for_throughput(project_dir)
 
     print("Running Vitis HLS csynth (this takes ~2 minutes)...")
     hls_mod()
 
     print_synthesis_report(project_dir)
-
-
-def _patch_load_bufs(project_dir):
-    """Optimize load_buf DRAM loaders: widen m_axi + wide pointer rewrite."""
-    kernel_path = os.path.join(project_dir, "kernel.cpp")
-    if not os.path.isfile(kernel_path):
-        return
-    with open(kernel_path, "r") as f:
-        code = f.read()
-
-    # Widen all m_axi ports for burst reads
-    code = re.sub(
-        r'(#pragma HLS interface m_axi port=\w+ offset=slave bundle=\w+)'
-        r'(?!\s+max_widen_bitwidth)',
-        r'\1 max_widen_bitwidth=512',
-        code,
-    )
-
-    # Rewrite instruction load_bufs to use wide pointers
-    for buf_id in (1, 4):
-        fn = f'load_buf{buf_id}'
-        sig = re.search(
-            rf'void {fn}\(\s*\n'
-            rf'\s*int32_t\s+(\w+)\[(\d+)\],\s*\n'
-            rf'\s*int32_t\s+(\w+)\[(\d+)\]\[(\d+)\]\s*\n'
-            rf'\) \{{',
-            code,
-        )
-        if not sig:
-            continue
-        in_var, out_var = sig.group(1), sig.group(3)
-        rows, cols = int(sig.group(4)), int(sig.group(5))
-        wide_bits = cols * 32
-
-        brace_depth, func_end = 0, sig.start()
-        for idx in range(sig.start(), len(code)):
-            if code[idx] == '{':
-                brace_depth += 1
-            elif code[idx] == '}':
-                brace_depth -= 1
-                if brace_depth == 0:
-                    func_end = idx + 1
-                    break
-
-        new_func = (
-            f'void {fn}(\n'
-            f'  ap_uint<{wide_bits}> {in_var}[{rows}],\n'
-            f'  int32_t {out_var}[{rows}][{cols}]\n'
-            f') {{\t//\n'
-            f'  #pragma HLS array_partition variable={out_var} complete dim=2\n'
-            f'  l_S_{fn}_{fn}_l_0: for (int {fn}_l_0 = 0;'
-            f' {fn}_l_0 < {rows}; {fn}_l_0++) {{\t//\n'
-            f'  #pragma HLS pipeline II=1 rewind\n'
-            f'    ap_uint<{wide_bits}> row = {in_var}[{fn}_l_0];\t//\n'
-        )
-        for j in range(cols):
-            lo, hi = j * 32, j * 32 + 31
-            new_func += (
-                f'    {out_var}[{fn}_l_0][{j}] ='
-                f' (int32_t)row.range({hi}, {lo});\t//\n'
-            )
-        new_func += '  }\n}\n'
-        code = code[:sig.start()] + new_func + code[func_end:]
-
-    # Update top-level parameter types for widened ports
-    for buf_id, gmem_id in ((1, 1), (4, 4)):
-        fn = f'load_buf{buf_id}'
-        sig = re.search(rf'void {fn}\(\s*\n\s*ap_uint<(\d+)>', code)
-        if not sig:
-            continue
-        wide_bits = sig.group(1)
-        pm = re.search(
-            rf'#pragma HLS interface m_axi port=(\w+) offset=slave'
-            rf' bundle=gmem{gmem_id}',
-            code,
-        )
-        if not pm:
-            continue
-        port_var = pm.group(1)
-        code = code.replace(
-            f'  int32_t *{port_var}',
-            f'  ap_uint<{wide_bits}> *{port_var}',
-            1,
-        )
-
-    with open(kernel_path, "w") as f:
-        f.write(code)
 
 
 def print_synthesis_report(project_dir):
