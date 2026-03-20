@@ -103,11 +103,12 @@ COPY create_users.sh /srv/jupyterhub/create_users.sh
 COPY credentials.csv /srv/jupyterhub/credentials.csv
 COPY clean_user_home.sh /srv/jupyterhub/clean_user_home.sh
 COPY shared/ /srv/jupyterhub/shared/
+COPY entrypoint.sh /srv/jupyterhub/entrypoint.sh
 
-RUN chmod +x /srv/jupyterhub/create_users.sh /srv/jupyterhub/clean_user_home.sh
+RUN chmod +x /srv/jupyterhub/create_users.sh /srv/jupyterhub/clean_user_home.sh /srv/jupyterhub/entrypoint.sh
 
 WORKDIR /srv/jupyterhub
 
 EXPOSE 443
 
-CMD ["jupyterhub"]
+ENTRYPOINT ["/srv/jupyterhub/entrypoint.sh"]

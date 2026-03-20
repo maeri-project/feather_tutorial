@@ -33,12 +33,20 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     docker rm "$CONTAINER_NAME" 2>/dev/null || true
 fi
 
-# Clone feather_tutorial if not already present
+# Clone or update feather_tutorial
 if [ ! -d "$SCRIPT_DIR/feather_tutorial" ]; then
     echo "Cloning feather_tutorial..."
     git clone https://github.com/maeri-project/feather_tutorial.git "$SCRIPT_DIR/feather_tutorial"
     cd "$SCRIPT_DIR/feather_tutorial"
     git checkout tutorials
+    git submodule update --init --recursive
+    cd "$SCRIPT_DIR"
+else
+    echo "Pulling latest feather_tutorial..."
+    cd "$SCRIPT_DIR/feather_tutorial"
+    git fetch origin tutorials
+    git checkout tutorials
+    git pull origin tutorials
     git submodule update --init --recursive
     cd "$SCRIPT_DIR"
 fi
@@ -55,7 +63,8 @@ DOCKER_ARGS=(
     --name "$CONTAINER_NAME"
     -p 443:443
     -v "${DATA_DIR}:/srv/jupyterhub/data"
-    -v "${SCRIPT_DIR}/shared:/srv/jupyterhub/shared"
+    -v "${SCRIPT_DIR}/feather_tutorial/shared:/srv/jupyterhub/shared"
+    -v "${SCRIPT_DIR}/feather_tutorial:/opt/feather_tutorial"
     -v "${SCRIPT_DIR}/certs:/etc/letsencrypt"
 )
 
