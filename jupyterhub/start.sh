@@ -65,7 +65,7 @@ DOCKER_ARGS=(
     -v "${DATA_DIR}:/srv/jupyterhub/data"
     -v "${SCRIPT_DIR}/feather_tutorial/shared:/srv/jupyterhub/shared"
     -v "${SCRIPT_DIR}/feather_tutorial:/opt/feather_tutorial"
-    -v "${SCRIPT_DIR}/certs:/etc/letsencrypt"
+    -v "/work/zhang-capra/users/nz264/jupyterhub/raic-jupyterhub/certs:/etc/letsencrypt"
 )
 
 # Mount Vitis HLS if available
