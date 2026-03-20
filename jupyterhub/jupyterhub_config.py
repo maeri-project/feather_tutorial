@@ -39,16 +39,13 @@ def copy_shared_files(spawner):
                     shutil.rmtree(dst)
                 shutil.copytree(src, dst,
                                 copy_function=shutil.copy)
-                # Ensure directories are writable
-                for root, dirs, files in os.walk(dst):
-                    os.chmod(root, 0o755)
-                    for f in files:
-                        os.chmod(os.path.join(root, f), 0o644)
                 print(f"Copied directory {item} to {user_home}")
             else:
                 shutil.copy(src, dst)
-                os.chmod(dst, 0o644)
                 print(f"Copied {item} to {user_home}")
+        # Make everything writable (users need to create build dirs, checkpoints, etc.)
+        import subprocess
+        subprocess.run(["chmod", "-R", "777", user_home], capture_output=True)
 
 
 c.Spawner.pre_spawn_hook = copy_shared_files
