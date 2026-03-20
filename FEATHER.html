@@ -281,9 +281,9 @@
                   <div class="mg-section-title">Workload (GEMM)</div>
                   <div class="mg-section-body">
                     <div class="mg-row">
-                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536">
-                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536">
-                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536">
+                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
+                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
+                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
                     </div>
                   </div>
                 </div>
@@ -707,6 +707,27 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgCL2(x){return x<=1?0:Math.ceil(Math.log2(x));}
   function mgGetWL(d){return parseInt(document.getElementById('mgWl'+d).value)||16;}
 
+  // ---------- Derive M,K,N from Set*VNLayout ----------
+  function mgDeriveWorkload(){
+    let M=null,K=null,N=null;
+    const AH=mgHW.AH;
+    mgInstructions.forEach(ins=>{
+      if(ins.type==='SetIVNLayout'){
+        M=Math.max(1,(ins.params.M_L0||1)*(ins.params.M_L1||1));
+        K=Math.max(1,(ins.params.J_L1||1)*AH);
+      }else if(ins.type==='SetWVNLayout'){
+        N=Math.max(1,(ins.params.N_L0||1)*(ins.params.N_L1||1));
+        if(K===null)K=Math.max(1,(ins.params.K_L1||1)*AH);
+      }else if(ins.type==='SetOVNLayout'){
+        if(M===null)M=Math.max(1,(ins.params.P_L0||1)*(ins.params.P_L1||1));
+        if(N===null)N=Math.max(1,(ins.params.Q_L1||1)*AH);
+      }
+    });
+    if(M!==null)document.getElementById('mgWlM').value=M;
+    if(K!==null)document.getElementById('mgWlK').value=K;
+    if(N!==null)document.getElementById('mgWlN').value=N;
+  }
+
   // ---------- Short/Full Desc ----------
   function mgShortDesc(ins){const p=ins.params;switch(ins.type){
     case 'SetIVNLayout':return`IVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].I})`;
@@ -748,7 +769,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgRenderList(){const l=document.getElementById('mgIsaList');l.innerHTML='';
     mgInstructions.forEach((ins,i)=>{const d=document.createElement('div');d.className=`mg-isa-item${i===mgSelectedIdx?' selected':''}`;
       d.innerHTML=`<span class="mg-idx">${i+1}.</span><span class="mg-badge ${mgBadgeCls(ins.type)}">${ins.type.replace('Set','').replace('Layout','').replace('Execute','')}</span><span>${mgShortDesc(ins)}</span>`;
-      d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDrawActive();}
+      d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDeriveWorkload();mgDrawActive();}
   function mgShowDetails(idx){const b=document.getElementById('mgDetailsBox');if(idx<0||idx>=mgInstructions.length){b.textContent='Select an instruction.';return;}
     const ins=mgInstructions[idx];let t=`Instruction ${idx+1}: ${ins.type}\n\nParameters:\n`;
     for(const[k,v]of Object.entries(ins.params))t+=`  ${k}: ${v}\n`;
@@ -807,11 +828,11 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='minisa_trace.json';a.click();mgToast('Saved','success');}
   function mgLoadTrace(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);mgInstructions=(d.instructions||[]).map(i=>({type:i.type,params:i.params}));
     if(d.hardware){mgHW.AH=d.hardware.AH||4;mgHW.AW=d.hardware.AW||4;mgHW.sram_mb=d.hardware.sram_mb||4;document.getElementById('mgNestSize').value=mgHW.AH;document.getElementById('mgSramMB').value=mgHW.sram_mb;}
-    if(d.workload){document.getElementById('mgWlM').value=d.workload.M||16;document.getElementById('mgWlK').value=d.workload.K||16;document.getElementById('mgWlN').value=d.workload.N||16;}
+    /* M,K,N are now derived from Set*VNLayout instructions via mgDeriveWorkload() called by mgRenderList() */
     mgSelectedIdx=-1;mgRenderList();mgToast(`Loaded ${mgInstructions.length} instrs`,'success');}catch(err){mgToast('Load failed: '+err.message,'error');}};r.readAsText(f);ev.target.value='';}
 
   // ---------- HW Changes ----------
-  function mgOnNestSizeChange(){const s=parseInt(document.getElementById('mgNestSize').value);mgHW.AH=s;mgHW.AW=s;mgDrawActive();}
+  function mgOnNestSizeChange(){const s=parseInt(document.getElementById('mgNestSize').value);mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
   function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;if(mgActiveTab==='buffer')mgDrawBuffer();}
 
   // ---------- Tabs ----------
