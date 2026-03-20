@@ -19,9 +19,9 @@ tail -n +2 "$CSV_FILE" | while IFS=',' read -r username password role; do
     # Copy shared files to user home
     user_home="/home/$username"
     if [ -d "$SHARED_DIR" ] && [ -d "$user_home" ]; then
-        cp -r "$SHARED_DIR"/* "$user_home/" 2>/dev/null || true
+        # Copy with --no-preserve=mode so files get user's default permissions (writable)
+        cp -r --no-preserve=mode "$SHARED_DIR"/* "$user_home/" 2>/dev/null || true
         chown -R "$username:$username" "$user_home/" 2>/dev/null || true
-        chmod -R u+w "$user_home/" 2>/dev/null || true
     fi
 
     echo "Created $username ($role) with password $password"
