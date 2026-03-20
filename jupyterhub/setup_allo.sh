@@ -13,22 +13,22 @@ export PATH="$CONDA_ENV/bin:$PATH"
 
 echo "=== Installing Allo ==="
 
-# Clone Allo (--recursive to get LLVM submodule)
-if [ ! -d /opt/allo ]; then
-    git clone --recursive https://github.com/cornell-zhang/allo.git /opt/allo
-fi
-
-cd /opt/allo
-
 # --- LLVM/MLIR Setup ---
 PREBUILT_LLVM="/work/shared/common/llvm-project-main"
-if [ -d "$PREBUILT_LLVM/build/bin/mlir-opt" ]; then
-    # Use prebuilt LLVM from Cornell server (mounted read-only)
+if [ -d "$PREBUILT_LLVM/build/bin" ]; then
     echo "Using prebuilt LLVM from $PREBUILT_LLVM"
     export LLVM_BUILD_DIR="$PREBUILT_LLVM/build"
     export PATH="$LLVM_BUILD_DIR/bin:$PATH"
+    # No need for --recursive clone since we use prebuilt LLVM
+    if [ ! -d /opt/allo ]; then
+        git clone https://github.com/cornell-zhang/allo.git /opt/allo
+    fi
 else
-    # Build LLVM from source (follows official install-from-source instructions)
+    # No prebuilt LLVM available, clone with submodules and build from source
+    if [ ! -d /opt/allo ]; then
+        git clone --recursive https://github.com/cornell-zhang/allo.git /opt/allo
+    fi
+    cd /opt/allo
     if [ ! -f /opt/allo/externals/llvm-project/build/bin/mlir-opt ]; then
         echo "Building LLVM/MLIR from source... (this may take 30+ minutes)"
         cd /opt/allo/externals/llvm-project
@@ -43,11 +43,12 @@ else
             -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
             -DPython3_EXECUTABLE=$(which python3)
         ninja
-        cd /opt/allo
     fi
     export LLVM_BUILD_DIR=/opt/allo/externals/llvm-project/build
     export PATH="$LLVM_BUILD_DIR/bin:$PATH"
 fi
+
+cd /opt/allo
 
 echo "LLVM_BUILD_DIR=$LLVM_BUILD_DIR"
 
