@@ -1,0 +1,8 @@
+downloads
+feather_tutorial/
+data/
+certs/
+jupyterhub_cookie_secret
+jupyterhub-proxy.pid
+jupyterhub.sqlite
+passwords.txt
