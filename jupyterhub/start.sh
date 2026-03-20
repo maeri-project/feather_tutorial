@@ -113,6 +113,11 @@ fi
 echo "Creating users..."
 docker exec "$CONTAINER_NAME" bash /srv/jupyterhub/create_users.sh
 
+# Set up Allo environment
+echo ""
+echo "Setting up Allo (this may take a few minutes)..."
+docker exec "$CONTAINER_NAME" bash /srv/jupyterhub/setup_allo.sh
+
 echo ""
 echo "=========================================="
 echo " JupyterHub is running!"
