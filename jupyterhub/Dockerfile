@@ -82,12 +82,12 @@ COPY feather_tutorial/ /opt/feather_tutorial/
 RUN pip install PyYAML==6.0.3 pandas numpy matplotlib
 
 # Build the feather compiler
-RUN cd /opt/feather_tutorial/act-backend \
+RUN cd /opt/feather_tutorial/act-feather/act-backend \
     && cargo build --release
 
 # Add act-feather to PATH and set mapper env var
-ENV PATH="/opt/feather_tutorial/act-backend/target/release:$PATH"
-ENV FEATHER_MAPPER_SCRIPT="/opt/feather_tutorial/feather/compiler/ACT/launch_cost_model.py"
+ENV PATH="/opt/feather_tutorial/act-feather/act-backend/target/release:$PATH"
+ENV FEATHER_MAPPER_SCRIPT="/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py"
 
 # Test: verify the compiler binary exists
 RUN act-feather --help || true
