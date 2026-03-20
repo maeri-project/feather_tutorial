@@ -83,6 +83,25 @@ echo ""
 echo "=== Container started! ==="
 echo ""
 
+# Wait for the entrypoint to finish and JupyterHub to start
+echo "Waiting for JupyterHub to be ready (entrypoint runs git pull + cargo build)..."
+echo "This may take a few minutes on first start..."
+TIMEOUT=300
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if docker exec "$CONTAINER_NAME" pgrep -f "jupyterhub" > /dev/null 2>&1; then
+        echo "JupyterHub process detected!"
+        break
+    fi
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+    echo "  Still waiting... (${ELAPSED}s)"
+done
+
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "Warning: Timed out waiting for JupyterHub. Check logs with: docker logs $CONTAINER_NAME"
+fi
+
 # Create users inside the container
 echo "Creating users..."
 docker exec "$CONTAINER_NAME" bash /srv/jupyterhub/create_users.sh
