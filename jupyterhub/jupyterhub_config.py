@@ -28,7 +28,7 @@ def copy_shared_files(spawner):
     user_home = os.path.expanduser(f"/home/{spawner.user.name}")
     shared_dir = "/srv/jupyterhub/shared"
 
-    # Copy everything from shared directory to user home
+    # Copy everything from shared directory to user home (writable)
     if os.path.isdir(shared_dir):
         for item in os.listdir(shared_dir):
             src = os.path.join(shared_dir, item)
@@ -41,6 +41,10 @@ def copy_shared_files(spawner):
             else:
                 shutil.copy2(src, dst)
                 print(f"Copied {item} to {user_home}")
+        # Make files writable so users can edit tutorial notebooks
+        import subprocess
+        subprocess.run(["chmod", "-R", "u+w", user_home],
+                       capture_output=True)
 
 
 c.Spawner.pre_spawn_hook = copy_shared_files

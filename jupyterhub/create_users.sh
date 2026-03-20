@@ -21,6 +21,7 @@ tail -n +2 "$CSV_FILE" | while IFS=',' read -r username password role; do
     if [ -d "$SHARED_DIR" ] && [ -d "$user_home" ]; then
         cp -r "$SHARED_DIR"/* "$user_home/" 2>/dev/null || true
         chown -R "$username:$username" "$user_home/" 2>/dev/null || true
+        chmod -R u+w "$user_home/" 2>/dev/null || true
     fi
 
     echo "Created $username ($role) with password $password"
