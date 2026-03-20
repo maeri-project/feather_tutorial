@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libabsl-dev \
     graphviz \
     libzstd-dev \
+    libtinfo5 \
     tree \
     vim \
     && rm -rf /var/lib/apt/lists/*
