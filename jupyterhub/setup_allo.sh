@@ -9,7 +9,7 @@
 set -e
 
 CONDA_ENV=/opt/conda-envs/allo
-export PATH="$CONDA_ENV/bin:$PATH"
+export PATH="$CONDA_ENV/bin:/usr/local/bin:/usr/bin:/bin"
 
 echo "=== Installing Allo ==="
 
@@ -52,8 +52,25 @@ cd /opt/allo
 
 echo "LLVM_BUILD_DIR=$LLVM_BUILD_DIR"
 
+# Install nanobind (needed for MLIR Python bindings build)
+$CONDA_ENV/bin/pip install nanobind
+
+# Pre-build MLIR Python bindings with cmake+ninja
+# This avoids issues with pip's build isolation polluting PATH
+echo "Building Allo MLIR bindings..."
+rm -rf mlir/build
+mkdir -p mlir/build && cd mlir/build
+NANOBIND_DIR=$($CONDA_ENV/bin/python3 -c "import nanobind; print(nanobind.cmake_dir())")
+cmake -G Ninja /opt/allo/mlir \
+    -DMLIR_DIR=$LLVM_BUILD_DIR/lib/cmake/mlir \
+    -DPython3_EXECUTABLE=$CONDA_ENV/bin/python3 \
+    -Dnanobind_DIR=$NANOBIND_DIR \
+    -DMLIR_BINDINGS_PYTHON_NB_DOMAIN=allo
+ninja
+cd /opt/allo
+
 # Install Allo into the conda env
-$CONDA_ENV/bin/python3 -m pip install -v -e .
+$CONDA_ENV/bin/python3 -m pip install -e .
 
 # Install PAST bindings
 $CONDA_ENV/bin/pip install https://github.com/cornell-zhang/past-python-bindings/releases/download/65f989b/past-0.7.2-cp312-cp312-linux_x86_64.whl
@@ -76,4 +93,4 @@ print('Updated kernel.json with LLVM_BUILD_DIR=' + '$LLVM_BUILD_DIR')
 chmod -R a+rX /opt/allo
 
 echo "=== Allo installation complete ==="
-echo "Test with: $CONDA_ENV/bin/python -c 'import allo; print(allo.__version__)'"
+echo "Test with: $CONDA_ENV/bin/python -c 'import allo as allo; import allo.ir as air'"
