@@ -109,3 +109,43 @@ allo-feather/
 - **Temporal N-iteration**: When `n_inner > 1`, each ISA tile contains multiple sub-operations sharing the same K-range and BIRRD config but different (m, n) offsets, matching RTL's VN temporal iteration.
 - **Column streaming**: Row 0 reads from column inputs; rows 1+ read from inter-PE streams. Weight broadcast forwards all AH values per PE, selecting its own index.
 - **Trace-driven**: Programs are defined via RTL instruction trace JSON files, parsed by `minisa/trace_parser.py`. Supports both uniform-Gr and mixed-Gr (adaptive) mappings.
+
+## In-Container Test Results
+
+Tested inside the JupyterHub Docker container (`raic-jupyterhub`) with the following environment setup:
+
+```bash
+# 1. Run allo setup (one-time, after container rebuild)
+docker exec -it raic-jupyterhub bash /srv/jupyterhub/setup_allo.sh
+
+# 2. Inside the container, set environment
+export LLVM_BUILD_DIR=/work/shared/common/llvm-project-main/build
+export PATH="$LLVM_BUILD_DIR/bin:/opt/conda-envs/allo/bin:/usr/local/bin:/usr/bin:/bin"
+
+# 3. For HLS tests, also source Vitis HLS
+source /opt/xilinx/Xilinx_Vivado_Vitis_2022.1/Vitis_HLS/2022.1/settings64.sh
+
+# 4. Run from the allo-feather directory
+cd /opt/feather_tutorial/allo-feather
+```
+
+### Figure 7 test case: C[16,8] = A[16,12] x B[12,8] on 4x4 array
+
+| Test | Command | Result |
+|------|---------|--------|
+| Functional | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json` | PASS |
+| HLS C-sim | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csim` | PASS |
+| HLS C-synth | `python tests/test_trace_input.py instr_trace/figure7_16x12x8_4x4.json --hls csyn` | PASS |
+
+### C-Synthesis Report (4x4 array, Vitis HLS 2022.1)
+
+| Metric | Value |
+|--------|-------|
+| Best-case latency | 235 cycles |
+| Worst-case latency | 237 cycles |
+| Estimated Fmax | 411.37 MHz |
+| DSP | 184 |
+| FF | 85,011 |
+| LUT | 107,738 |
+| BRAM_18K | 0 |
+| URAM | 0 |
