@@ -9,7 +9,7 @@ echo "=== JupyterHub Entrypoint ==="
 # --- Step 1: Pull latest feather_tutorial ---
 if [ -d /opt/feather_tutorial/.git ]; then
     echo "Pulling latest feather_tutorial (tutorials branch)..."
-    git config --global --add safe.directory /opt/feather_tutorial
+    git config --global --add safe.directory '*'
     cd /opt/feather_tutorial
     git fetch origin tutorials
     git checkout tutorials
