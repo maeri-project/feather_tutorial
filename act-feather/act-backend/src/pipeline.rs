@@ -12,6 +12,22 @@ use egg::{Runner, StopReason};
 pub use act_feather::{ir, isel};
 pub use act_feather::{N, PROCESSED, SLEEP_TIME, SLOW_LIMIT_CUTOFF, SLOW_LIMIT_START, TIME_LIMIT};
 
+fn parse_i32_arg(args: &[String], flag: &str) -> Option<i32> {
+    let idx = args.iter().position(|x| x == flag)? + 1;
+    if idx >= args.len() {
+        return None;
+    }
+    args[idx].parse::<i32>().ok()
+}
+
+fn default_layout_config(program_name: &str) -> (i32, i32, i32) {
+    if program_name.contains("mini") {
+        (4, 4, 4)
+    } else {
+        (16, 16, 16)
+    }
+}
+
 fn dump_pii_and_run_minisa(
     pii: &ir::pii::PiiGraph,
     pii_id: usize,
@@ -27,11 +43,14 @@ fn dump_pii_and_run_minisa(
         act_feather::minisa::explore::explore_from_graph(pii, &pii_dir, &format!("pii_{}", pii_id))?;
 
     println!(
-        "Explored PII #{}: {} candidate(s), min latency {}, max latency {}",
+        "Explored PII #{}: {} candidate(s), min latency {}, max latency {}, ACT-eqsat {} ms, FEATHER-mapper {} ms, total {} ms",
         pii_id,
         explore_out.assembly_txts.len(),
         explore_out.min_total_latency,
-        explore_out.max_total_latency
+        explore_out.max_total_latency,
+        explore_out.non_mapper_time_ms,
+        explore_out.mapper_time_ms,
+        explore_out.total_time_ms,
     );
 
     Ok(())
@@ -58,11 +77,29 @@ fn print_help(program_name: String) {
     println!("               (required, must have .hlo extension)");
     println!("  --log        Specify the log directory");
     println!("               (optional, defaults to /tmp/log if not provided)");
+    println!("  --vn-size    Override VN size for layout exploration");
+    println!("               (optional, defaults by binary: 16 for act-feather, 4 for act-feather-mini)");
+    println!("  --ah         Override FEATHER AH in generated mapper input");
+    println!("               (optional, defaults by binary: 16 for act-feather, 4 for act-feather-mini)");
+    println!("  --aw         Override FEATHER AW in generated mapper input");
+    println!("               (optional, defaults by binary: 16 for act-feather, 4 for act-feather-mini)");
     println!();
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    let (mut vn_size, mut ah, mut aw) = default_layout_config(&args[0]);
+    if let Some(v) = parse_i32_arg(&args, "--vn-size") {
+        vn_size = v;
+    }
+    if let Some(v) = parse_i32_arg(&args, "--ah") {
+        ah = v;
+    }
+    if let Some(v) = parse_i32_arg(&args, "--aw") {
+        aw = v;
+    }
+    act_feather::minisa::spec::set_layout_config(vn_size, ah, aw);
 
     if args.contains(&"--help".to_string()) || !args.contains(&"--input".to_string()) {
         print_help(args[0].clone());
@@ -94,6 +131,7 @@ fn main() {
     }
 
     println!("Input file: {}", hlo_path.display());
+    println!("MINISA config: VN_SIZE={}, AH={}, AW={}", vn_size, ah, aw);
 
     // Process log directory
     let log_dir_arg: String = if args.contains(&"--log".to_string()) {

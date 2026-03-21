@@ -55,7 +55,7 @@ pub fn layout_from_ivn_meta(meta: &str, dims: Dims) -> Option<LayoutTuple> {
         dim0_l0: *m.get("M_L0")?,
         dim1_l1: *m.get("J_L1")?,
     };
-    if out.dim0_l1 * out.dim0_l0 != dims.dim0 || out.dim1_l1 != dims.dim1 / spec::VN_SIZE {
+    if out.dim0_l1 * out.dim0_l0 != dims.dim0 || out.dim1_l1 != dims.dim1 / spec::vn_size() {
         return None;
     }
     Some(out)
@@ -69,7 +69,7 @@ pub fn layout_from_ovn_meta(meta: &str, dims: Dims) -> Option<LayoutTuple> {
         dim0_l0: *m.get("P_L0")?,
         dim1_l1: *m.get("Q_L1")?,
     };
-    if out.dim0_l1 * out.dim0_l0 != dims.dim0 || out.dim1_l1 != dims.dim1 / spec::VN_SIZE {
+    if out.dim0_l1 * out.dim0_l0 != dims.dim0 || out.dim1_l1 != dims.dim1 / spec::vn_size() {
         return None;
     }
     Some(out)
@@ -84,7 +84,7 @@ pub fn layout_from_wvn_meta(meta: &str, dims: Dims) -> Option<LayoutTuple> {
         dim1_l1: *m.get("K_L1")?,
     };
     // For WVN: dim0 is K, dim1 is N in tensor shape [K, N].
-    if out.dim0_l1 * out.dim0_l0 != dims.dim1 || out.dim1_l1 != dims.dim0 / spec::VN_SIZE {
+    if out.dim0_l1 * out.dim0_l0 != dims.dim1 || out.dim1_l1 != dims.dim0 / spec::vn_size() {
         return None;
     }
     Some(out)
@@ -106,8 +106,9 @@ pub fn divisors(n: i32) -> Vec<i32> {
     while i * i <= n {
         if n % i == 0 {
             d.push(i);
-            if i != n / i {
-                d.push(n / i);
+            let pair = n / i;
+            if pair != i {
+                d.push(pair);
             }
         }
         i += 1;

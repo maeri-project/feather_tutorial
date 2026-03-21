@@ -7,6 +7,10 @@ edition = "2021"
 name = "act-feather"
 path = "src/pipeline.rs"
 
+[[bin]]
+name = "act-feather-mini"
+path = "src/pipeline_mini.rs"
+
 [dependencies]
 egg = "0.10.0"
 itertools = "0.14.0"

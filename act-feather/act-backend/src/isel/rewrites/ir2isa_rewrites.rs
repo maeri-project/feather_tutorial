@@ -49,7 +49,7 @@ pub fn metadata_load_ivn(
     let metadata = format!(
         "order=5, M_L1:{}, M_L0:1, J_L1:{}",
         m,
-        j / spec::VN_SIZE
+        j / spec::vn_size()
     );
     vec![None, Some(metadata)]
 }
@@ -101,7 +101,7 @@ pub fn metadata_load_wvn(
     let metadata = format!(
         "order=5, N_L1:{}, N_L0:1, K_L1:{}",
         n,
-        k / spec::VN_SIZE
+        k / spec::vn_size()
     );
     vec![None, Some(metadata)]
 }
@@ -147,7 +147,7 @@ pub fn metadata_store_ovn(
     let metadata = format!(
         "order=0, P_L1:{}, P_L0:1, Q_L1:{}",
         p,
-        q / spec::VN_SIZE
+        q / spec::vn_size()
     );
     vec![None, Some(metadata)]
 }
