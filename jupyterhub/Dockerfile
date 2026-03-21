@@ -36,8 +36,8 @@ RUN pip install jupyterlab notebook
 
 # Install ipykernel in conda base env and register ACT kernel
 # (user PATH may not include /opt/conda/bin, so needs absolute path)
-RUN pip install ipykernel \
-    && python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)"
+RUN /opt/conda/bin/pip install ipykernel \
+    && /opt/conda/bin/python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)"
 
 # Install conda (miniforge)
 RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
