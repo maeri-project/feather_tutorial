@@ -3,7 +3,8 @@
 # Usage: ./start.sh
 #
 # Options:
-#   --rebuild    Force rebuild the Docker image
+#   --rebuild    Force rebuild the Docker image and restart container
+#   --refresh    Update shared files to all users (no container restart)
 
 set -e
 
@@ -15,12 +16,64 @@ VITIS_HLS_DIR="/opt/xilinx/Xilinx_Vivado_Vitis_2022.1"
 
 # Parse arguments
 REBUILD=false
+REFRESH=false
 for arg in "$@"; do
     case $arg in
         --rebuild) REBUILD=true ;;
+        --refresh) REFRESH=true ;;
     esac
 done
 
+# ──────────────────────────────────────────────────────────────
+# --refresh: Pull latest repo and redistribute shared files
+# to all user home directories without restarting the container.
+# ──────────────────────────────────────────────────────────────
+if $REFRESH; then
+    echo "=== Refreshing shared files ==="
+
+    # Pull latest repo on host
+    if [ -d "$SCRIPT_DIR/feather_tutorial" ]; then
+        echo "Pulling latest feather_tutorial..."
+        cd "$SCRIPT_DIR/feather_tutorial"
+        git fetch origin tutorials
+        git checkout tutorials
+        git pull origin tutorials
+        git submodule update --init --recursive
+        cd "$SCRIPT_DIR"
+    fi
+
+    # Check container is running
+    if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        echo "Error: Container $CONTAINER_NAME is not running. Use ./start.sh (without --refresh) first."
+        exit 1
+    fi
+
+    # Copy shared files to all user home directories
+    echo "Copying shared files to all users..."
+    docker exec "$CONTAINER_NAME" bash -c '
+        SHARED_DIR="/srv/jupyterhub/shared"
+        if [ -d "$SHARED_DIR" ]; then
+            for user_home in /home/*/; do
+                if [ -d "$user_home" ]; then
+                    username=$(basename "$user_home")
+                    cp -r --no-preserve=mode "$SHARED_DIR"/* "$user_home/" 2>/dev/null || true
+                    chown -R "$username:$username" "$user_home/" 2>/dev/null || true
+                    chmod -R 777 "$user_home/" 2>/dev/null || true
+                    echo "  Updated $username"
+                fi
+            done
+        fi
+    '
+
+    echo ""
+    echo "=== Refresh complete! ==="
+    echo "Users may need to reopen notebooks to see changes."
+    exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────
+# Full start (default or --rebuild): build image, start container
+# ──────────────────────────────────────────────────────────────
 echo "=== RAIC JupyterHub Launcher ==="
 
 # Create persistent data directory
@@ -123,11 +176,11 @@ echo "=========================================="
 echo " JupyterHub is running!"
 echo " URL: https://zhang-capra-xcel.ece.cornell.edu"
 echo ""
-echo " To set up Allo:"
-echo "   docker exec -it $CONTAINER_NAME bash /srv/jupyterhub/setup_allo.sh"
+echo " To refresh shared files (no restart):"
+echo "   ./start.sh --refresh"
 echo ""
-echo " To set up SSL:"
-echo "   docker exec -it $CONTAINER_NAME bash /srv/jupyterhub/setup_ssl.sh"
+echo " To rebuild from scratch:"
+echo "   ./start.sh --rebuild"
 echo ""
 echo " To enter the container:"
 echo "   docker exec -it $CONTAINER_NAME bash"
