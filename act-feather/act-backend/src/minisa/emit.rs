@@ -59,9 +59,10 @@ fn parse_execute_layers(mapped: &Value) -> io::Result<Vec<ExecuteLayerInfo>> {
         if obj.is_empty() {
             continue;
         }
-        let (_name, entries) = obj.iter().next().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "empty layer object")
-        })?;
+        let (_name, entries) = obj
+            .iter()
+            .next()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "empty layer object"))?;
         let entries = entries.as_array().ok_or_else(|| {
             io::Error::new(io::ErrorKind::InvalidData, "layer entries is not an array")
         })?;
@@ -145,16 +146,15 @@ pub fn emit_variant_text(graph: &PiiGraph, mapped_json: &Path, out_txt: &Path) -
     let total_latency: u64 = execute_layers.iter().map(|l| l.latency).sum();
 
     for (node_idx, node) in graph.nodes.iter().enumerate() {
-
         match &node.op {
             TensorOp::LoadIVN(meta, _) => {
                 let addr = addr_for_load_input(graph, node_idx);
-                writeln!(f, "SetIVN({})", setivn_from_load_metadata(meta))?;
+                writeln!(f, "SetIVNLayout({})", setivn_from_load_metadata(meta))?;
                 writeln!(f, "LoadIVN(addr = {})", addr)?;
             }
             TensorOp::LoadWVN(meta, _) => {
                 let addr = addr_for_load_input(graph, node_idx);
-                writeln!(f, "SetWVN({})", setwvn_from_load_metadata(meta))?;
+                writeln!(f, "SetWVNLayout({})", setwvn_from_load_metadata(meta))?;
                 writeln!(f, "LoadWVN(addr = {})", addr)?;
             }
             TensorOp::Execute(_) => {
@@ -167,7 +167,7 @@ pub fn emit_variant_text(graph: &PiiGraph, mapped_json: &Path, out_txt: &Path) -
 
                 writeln!(
                     f,
-                    "SetOVN({})",
+                    "SetOVNLayout({})",
                     format_fields(&info.ovn, &["order", "P_L1", "P_L0", "Q_L1"])
                 )?;
 
@@ -175,7 +175,7 @@ pub fn emit_variant_text(graph: &PiiGraph, mapped_json: &Path, out_txt: &Path) -
                     for t in tiles {
                         writeln!(
                             f,
-                            "ExecuteTile({})",
+                            "ExecuteMapping({})",
                             format_fields(t, &["G_c", "G_r", "r_0", "c_0", "s_r", "s_c"])
                         )?;
                     }
@@ -189,7 +189,10 @@ pub fn emit_variant_text(graph: &PiiGraph, mapped_json: &Path, out_txt: &Path) -
                 writeln!(
                     f,
                     "SoftMax({})",
-                    format_fields(&layout, &["order", "P_L1", "P_L0", "Q_L1", "M_L1", "M_L0", "J_L1"])
+                    format_fields(
+                        &layout,
+                        &["order", "P_L1", "P_L0", "Q_L1", "M_L1", "M_L0", "J_L1"]
+                    )
                 )?;
             }
             TensorOp::StoreOVN(_, _) => {

@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use std::collections::HashMap;
 
@@ -49,6 +50,9 @@ pub struct ExploreOutput {
     pub best_variant_idx: usize,
     pub min_total_latency: u64,
     pub max_total_latency: u64,
+    pub mapper_time_ms: u128,
+    pub non_mapper_time_ms: u128,
+    pub total_time_ms: u128,
 }
 
 pub fn explore_from_graph(
@@ -56,6 +60,9 @@ pub fn explore_from_graph(
     output_dir: &Path,
     json_name: &str,
 ) -> io::Result<ExploreOutput> {
+    let explore_start = Instant::now();
+    let mut mapper_time = Duration::ZERO;
+
     fs::create_dir_all(output_dir)?;
 
     let layout_variants_dir = output_dir.join("layout_variants");
@@ -315,14 +322,19 @@ pub fn explore_from_graph(
     for root in &free_components {
         let dims = comp_dims[root];
         let mut domain = vec![];
-        let d1 = dims.dim1 / spec::VN_SIZE;
-        for order in [0, 5] {
-            for d0_l1 in divisors(dims.dim0) {
-                let d0_l0 = dims.dim0 / d0_l1;
+        let d1 = dims.dim1 / spec::vn_size();
+        // Hardware constraint: L0 is chosen from factors of M, bounded by VN_SIZE.
+        let allowed_l0: Vec<i32> = divisors(dims.dim0)
+            .into_iter()
+            .filter(|d| *d <= spec::vn_size())
+            .collect();
+        for order in 0..=5 {
+            for d0_l0 in &allowed_l0 {
+                let d0_l1 = dims.dim0 / d0_l0;
                 domain.push(LayoutTuple {
                     order,
                     dim0_l1: d0_l1,
-                    dim0_l0: d0_l0,
+                    dim0_l0: *d0_l0,
                     dim1_l1: d1,
                 });
             }
@@ -399,7 +411,9 @@ pub fn explore_from_graph(
         } else {
             layout_mapper_variants_dir.join(format!("mapped_{}_v{}.json", stem, vidx))
         };
+        let mapper_start = Instant::now();
         let mapper_out = mapper::run_mapper(&generated_json, &mapped_json)?;
+        mapper_time += mapper_start.elapsed();
         report::append_variant_stats_csv(&variant_csv, vidx, &mapper_out.layers)?;
 
         let out_txt = minisa_traces_dir.join(format!("final_assembly_v{}.txt", vidx));
@@ -433,6 +447,9 @@ pub fn explore_from_graph(
         min_total_latency = 0;
     }
 
+    let total_time = explore_start.elapsed();
+    let non_mapper_time = total_time.saturating_sub(mapper_time);
+
     Ok(ExploreOutput {
         generated_jsons,
         mapped_jsons,
@@ -442,5 +459,8 @@ pub fn explore_from_graph(
         best_variant_idx,
         min_total_latency,
         max_total_latency,
+        mapper_time_ms: mapper_time.as_millis(),
+        non_mapper_time_ms: non_mapper_time.as_millis(),
+        total_time_ms: total_time.as_millis(),
     })
 }
