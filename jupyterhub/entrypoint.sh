@@ -25,9 +25,11 @@ echo "Building act-feather..."
 cd /opt/feather_tutorial/act-feather/act-backend
 cargo build --release
 echo "act-feather installed at /opt/feather_tutorial/act-feather/act-backend/target/release/"
+echo "act-feather-mini installed at /opt/feather_tutorial/act-feather/act-backend/target/release/"
 
 # Verify
 act-feather --help > /dev/null 2>&1 && echo "act-feather is available on PATH" || echo "Warning: act-feather not found on PATH"
+act-feather-mini --help > /dev/null 2>&1 && echo "act-feather-mini is available on PATH" || echo "Warning: act-feather-mini not found on PATH"
 
 # --- Step 3: Copy shared/ to all user home directories ---
 SHARED_DIR="/srv/jupyterhub/shared"
