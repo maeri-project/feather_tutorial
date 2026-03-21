@@ -81,7 +81,7 @@ RUN mkdir -p $NLOHMANN_JSON_DIR \
 COPY feather_tutorial/ /opt/feather_tutorial/
 
 # Install Python dependencies for feather mapper
-RUN pip install PyYAML==6.0.3 pandas numpy matplotlib
+RUN pip install PyYAML==6.0.3 pandas numpy matplotlib jax jaxlib
 
 # Build the feather compiler
 RUN cd /opt/feather_tutorial/act-feather/act-backend \
