@@ -34,10 +34,10 @@ RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.2
 # Install JupyterLab and notebook
 RUN pip install jupyterlab notebook
 
-# Install ipykernel in conda base env and register with absolute path
-# (user PATH may not include /opt/conda/bin, so bare "python" won't find jax)
+# Install ipykernel in conda base env and register ACT kernel
+# (user PATH may not include /opt/conda/bin, so needs absolute path)
 RUN pip install ipykernel \
-    && python -m ipykernel install --prefix=/usr/local --name python3 --display-name "Python 3 (ipykernel)"
+    && python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)"
 
 # Install conda (miniforge)
 RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
