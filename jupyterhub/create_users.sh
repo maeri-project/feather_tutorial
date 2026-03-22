@@ -25,5 +25,12 @@ tail -n +2 "$CSV_FILE" | while IFS=',' read -r username password role; do
         chmod -R 777 "$user_home/" 2>/dev/null || true
     fi
 
+    # Add env vars to user's .bashrc (for JupyterHub terminal sessions)
+    if ! grep -q "FEATHER_MAPPER_SCRIPT" "$user_home/.bashrc" 2>/dev/null; then
+        echo 'export FEATHER_MAPPER_SCRIPT="/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py"' >> "$user_home/.bashrc"
+        echo 'export PATH="/opt/feather_tutorial/act-feather/act-backend/target/release:/opt/conda/bin:$PATH"' >> "$user_home/.bashrc"
+        chown "$username:$username" "$user_home/.bashrc"
+    fi
+
     echo "Created $username ($role) with password $password"
 done
