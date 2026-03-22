@@ -34,21 +34,6 @@ RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.2
 # Install JupyterLab and notebook
 RUN pip install jupyterlab notebook
 
-# Install ipykernel in conda base env and register ACT kernel
-# (user PATH may not include /opt/conda/bin, so needs absolute path)
-# Set FEATHER_MAPPER_SCRIPT and PATH in kernel env for ACT tutorial
-RUN /opt/conda/bin/pip install ipykernel \
-    && /opt/conda/bin/python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)" \
-    && python3 -c "\
-import json; \
-kj = '/usr/local/share/jupyter/kernels/python_act/kernel.json'; \
-k = json.load(open(kj)); \
-k['env'] = { \
-  'FEATHER_MAPPER_SCRIPT': '/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py', \
-  'PATH': '/opt/feather_tutorial/act-feather/act-backend/target/release:/opt/conda/bin:/usr/local/bin:/usr/bin:/bin' \
-}; \
-json.dump(k, open(kj, 'w'), indent=1)"
-
 # Install conda (miniforge)
 RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
     && bash /tmp/miniforge.sh -b -p /opt/conda \
@@ -63,6 +48,20 @@ RUN conda create -p /opt/conda-envs/allo python=3.12 -y \
 # Install ipykernel in the allo env and register it
 RUN /opt/conda-envs/allo/bin/pip install ipykernel \
     && /opt/conda-envs/allo/bin/python -m ipykernel install --prefix=/usr/local --name "python_allo" --display-name "Python (Allo)"
+
+# Install ipykernel in conda base env and register ACT kernel
+# Set FEATHER_MAPPER_SCRIPT and act-feather PATH in kernel env
+RUN /opt/conda/bin/pip install ipykernel \
+    && /opt/conda/bin/python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)" \
+    && python3 -c "\
+import json; \
+kj = '/usr/local/share/jupyter/kernels/python_act/kernel.json'; \
+k = json.load(open(kj)); \
+k['env'] = { \
+  'FEATHER_MAPPER_SCRIPT': '/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py', \
+  'PATH': '/opt/feather_tutorial/act-feather/act-backend/target/release:/opt/conda/bin:/usr/local/bin:/usr/bin:/bin' \
+}; \
+json.dump(k, open(kj, 'w'), indent=1)"
 
 # Fix GLIBCXX issue
 RUN conda install -p /opt/conda-envs/allo -c conda-forge libstdcxx-ng -y
