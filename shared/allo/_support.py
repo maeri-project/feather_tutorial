@@ -171,8 +171,15 @@ def run_feather_csynth(trace_info, schedule_fn=None, project_dir=None):
     _patch_load_bufs_for_throughput(project_dir)
 
     print("Running Vitis HLS csynth (this takes ~2 minutes)...")
-    hls_mod()
 
+    # Suppress verbose HLS output, only show final report
+    import io, contextlib
+    hls_output = io.StringIO()
+    with contextlib.redirect_stdout(hls_output), \
+         contextlib.redirect_stderr(hls_output):
+        hls_mod()
+
+    print("Synthesis complete!")
     print_synthesis_report(project_dir)
 
 
@@ -199,21 +206,40 @@ def print_synthesis_report(project_dir):
     summary = perf["SummaryOfOverallLatency"]
     res = report["profile"]["AreaEstimates"]["Resources"]
 
-    print(f"\n  === Synthesis Results ===")
-    print(f"  Best-case latency:  {summary['Best-caseLatency']} cycles")
-    print(f"  Worst-case latency: {summary['Worst-caseLatency']} cycles")
-    print(f"\n  === Resource Utilization ===")
-    print(f"  BRAM_18K: {res['BRAM_18K']}")
-    print(f"  DSP:      {res['DSP']}")
-    print(f"  FF:       {res['FF']}")
-    print(f"  LUT:      {res['LUT']}")
-    print(f"  URAM:     {res['URAM']}")
+    print()
+    print("  ┌─────────────────────────────────────────┐")
+    print("  │          Synthesis Results               │")
+    print("  ├─────────────────────────────────────────┤")
+    print(f"  │  Best-case latency:  {summary['Best-caseLatency']:>8s} cycles   │")
+    print(f"  │  Worst-case latency: {summary['Worst-caseLatency']:>8s} cycles   │")
 
-    # Per-kernel breakdown
-    instances = perf.get("SummaryOfLoopLatency", {})
-    if not instances:
-        return
-    detail = perf.get("SummaryOfOverallLatency", {})
+    # Dataflow initiation interval
+    df_ii = summary.get('Interval-min', summary.get('Best-caseRealTimeLatency'))
+    if df_ii and df_ii != summary['Best-caseLatency']:
+        print(f"  │  Dataflow II:        {df_ii:>8s} cycles   │")
+
+    # Try to get estimated Fmax from the text report
+    rpt_path = os.path.join(
+        project_dir, "out.prj", "solution1", "syn", "report",
+        "full_matrix_top_csynth.rpt",
+    )
+    if os.path.isfile(rpt_path):
+        with open(rpt_path) as f:
+            rpt_text = f.read()
+        import re as _re
+        fmax_match = _re.search(r'Estimated Fmax:\s+([\d.]+)\s+MHz', rpt_text)
+        if fmax_match:
+            print(f"  │  Estimated Fmax:     {fmax_match.group(1):>5s} MHz      │")
+
+    print("  ├─────────────────────────────────────────┤")
+    print("  │          Resource Utilization            │")
+    print("  ├─────────────────────────────────────────┤")
+    print(f"  │  DSP:      {res['DSP']:>8s}                    │")
+    print(f"  │  LUT:      {res['LUT']:>8s}                    │")
+    print(f"  │  FF:       {res['FF']:>8s}                    │")
+    print(f"  │  BRAM_18K: {res['BRAM_18K']:>8s}                    │")
+    print(f"  │  URAM:     {res['URAM']:>8s}                    │")
+    print("  └─────────────────────────────────────────┘")
 
 
 def _print_report_from_text(project_dir):
