@@ -107,10 +107,16 @@ def run_feather_simulation(trace_info, seed=42):
     A, B, C_ref = generate_test_data(trace_info, seed)
 
     print("Building FEATHER+ simulator (compiling dataflow to LLVM)...")
-    top = get_feather_full_matrix_top(
+    # Reload allo.dataflow to clear any state from prior df.build() calls
+    # (e.g., from tutorial exercises running in the same Jupyter kernel)
+    import importlib
+    importlib.reload(allo.dataflow)
+    import allo.dataflow as df_fresh
+    from feather_minisa import get_feather_full_matrix_top as _get_top
+    top = _get_top(
         M_padded, K, N, AW, AH, int8, len(instructions), n_inner, k_passes,
     )
-    allo_mod = df.build(top, target="simulator")
+    allo_mod = df_fresh.build(top, target="simulator")
     mod = FeatherModule(allo_mod, AW, n_inner)
 
     C = np.zeros((M_padded, N), dtype=np.int32)
@@ -152,10 +158,15 @@ def run_feather_csynth(trace_info, schedule_fn=None, project_dir=None):
     n_inner = trace_info.get("n_inner", 1)
 
     print("Building HLS project...")
-    top = get_feather_full_matrix_top(
+    # Reload allo.dataflow to clear any state from prior df.build() calls
+    import importlib
+    importlib.reload(allo.dataflow)
+    import allo.dataflow as df_fresh
+    from feather_minisa import get_feather_full_matrix_top as _get_top
+    top = _get_top(
         M_padded, K, N, AW, AH, int8, len(instructions), n_inner, k_passes,
     )
-    s = df.customize(top)
+    s = df_fresh.customize(top)
 
     if schedule_fn is not None:
         schedule_fn(s, K, N, AH, AW)
