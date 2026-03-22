@@ -13,7 +13,7 @@ SHARED_DIR="/srv/jupyterhub/shared"
 
 # Skip header line, read each row
 tail -n +2 "$CSV_FILE" | while IFS=',' read -r username password role; do
-    useradd -m "$username" 2>/dev/null || true
+    useradd -m -s /bin/bash "$username" 2>/dev/null || true
     echo "$username:$password" | chpasswd
 
     # Copy shared files to user home
