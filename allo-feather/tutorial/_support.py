@@ -1,9 +1,9 @@
 # Copyright Allo authors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""FEATHER+ Tutorial Support Module.
+"""FEATHER Tutorial Support Module.
 
-Infrastructure code for the Allo-FEATHER+ hands-on tutorial.
+Infrastructure code for the Allo-FEATHER hands-on tutorial.
 Handles trace parsing, ISA lowering, data generation, simulation,
 and HLS synthesis — so the notebook stays focused on Allo concepts.
 """
@@ -93,7 +93,7 @@ def generate_test_data(trace_info, seed=42):
 
 # ─── Simulation ──────────────────────────────────────────────────
 def run_feather_simulation(trace_info, seed=42):
-    """Build and run the full FEATHER+ dataflow simulation.
+    """Build and run the full FEATHER dataflow simulation.
 
     Returns (C_result, passed).
     """
@@ -106,7 +106,7 @@ def run_feather_simulation(trace_info, seed=42):
 
     A, B, C_ref = generate_test_data(trace_info, seed)
 
-    print("Building FEATHER+ simulator (compiling dataflow to LLVM)...")
+    print("Building FEATHER simulator (compiling dataflow to LLVM)...")
     # Reload allo.dataflow to clear any state from prior df.build() calls
     # (e.g., from tutorial exercises running in the same Jupyter kernel)
     import importlib
