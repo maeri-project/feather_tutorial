@@ -36,8 +36,18 @@ RUN pip install jupyterlab notebook
 
 # Install ipykernel in conda base env and register ACT kernel
 # (user PATH may not include /opt/conda/bin, so needs absolute path)
+# Set FEATHER_MAPPER_SCRIPT and PATH in kernel env for ACT tutorial
 RUN /opt/conda/bin/pip install ipykernel \
-    && /opt/conda/bin/python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)"
+    && /opt/conda/bin/python -m ipykernel install --prefix=/usr/local --name python_act --display-name "Python (ACT)" \
+    && python3 -c "\
+import json; \
+kj = '/usr/local/share/jupyter/kernels/python_act/kernel.json'; \
+k = json.load(open(kj)); \
+k['env'] = { \
+  'FEATHER_MAPPER_SCRIPT': '/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py', \
+  'PATH': '/opt/feather_tutorial/act-feather/act-backend/target/release:/opt/conda/bin:/usr/local/bin:/usr/bin:/bin' \
+}; \
+json.dump(k, open(kj, 'w'), indent=1)"
 
 # Install conda (miniforge)
 RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
