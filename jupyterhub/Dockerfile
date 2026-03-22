@@ -25,6 +25,10 @@ RUN apt-get update && apt-get install -y \
 # Enable bash-completion for all users
 RUN echo '\n# Enable bash completion\nif [ -f /etc/bash_completion ]; then\n    . /etc/bash_completion\nfi' >> /etc/bash.bashrc
 
+# Make env vars available in user login shells (JupyterHub terminals)
+RUN echo 'export FEATHER_MAPPER_SCRIPT="/opt/feather_tutorial/act-feather/feather/compiler/ACT/launch_cost_model.py"' >> /etc/bash.bashrc \
+    && echo 'export PATH="/opt/feather_tutorial/act-feather/act-backend/target/release:/opt/conda/bin:$PATH"' >> /etc/bash.bashrc
+
 # Install CMake
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-x86_64.sh \
     && chmod +x cmake-3.21.0-linux-x86_64.sh \
