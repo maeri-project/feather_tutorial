@@ -58,20 +58,36 @@ def load_tutorial_trace():
 
 
 def print_trace_summary(trace_info):
-    """Pretty-print the trace configuration."""
+    """Pretty-print the trace in a format similar to ACT compiler output."""
     M, K, N = trace_info["M"], trace_info["K"], trace_info["N"]
     AH, AW = trace_info["AH"], trace_info["AW"]
-    Gr = trace_info["Gr"]
-    k_passes = trace_info["k_passes"]
+    program = trace_info["program"]
     n_tiles = trace_info["n_tiles"]
-    n_m = trace_info["n_m_batches"]
-    n_n = trace_info["n_spatial_tiles"]
-    Kt = (AW // Gr) * AH
-    print(f"  GEMM: C[{M},{N}] = A[{M},{K}] x B[{K},{N}]")
-    print(f"  PE Array: {AH}x{AW} ({AH * AW} PEs)")
-    print(f"  Replication group: Gr={Gr}")
-    print(f"  K-tile: {Kt} elements, k_passes={k_passes}")
-    print(f"  Total tiles: {n_tiles} = {n_n}N x {n_m}M x {k_passes}K")
+    util = trace_info.get("utilization", 0)
+
+    print(f"FEATHER Trace: C[{M},{N}] = A[{M},{K}] x B[{K},{N}]")
+    print(f"  Array: {AH}x{AW} ({AH*AW} PEs), utilization: {util:.1f}%")
+    print()
+
+    # Show ISA instructions (matching ACT trace format)
+    ivn = program.ivn_layout
+    print(f"  SetIVNLayout(order={ivn.order}, ML1={ivn.ML1}, ML0={ivn.ML0}, JL1={ivn.JL1})")
+    wvn = program.wvn_layout
+    print(f"  SetWVNLayout(order={wvn.order}, NL1={wvn.NL1}, NL0={wvn.NL0}, KL1={wvn.KL1})")
+    ovn = program.ovn_layout
+    print(f"  SetOVNLayout(order={ovn.order}, PL1={ovn.PL1}, PL0={ovn.PL0}, QL1={ovn.QL1})")
+
+    # Show first few ExecuteMapping instructions
+    mappings = program.mappings
+    max_show = min(4, len(mappings))
+    for i in range(max_show):
+        m = mappings[i]
+        print(f"  ExecuteMapping(Gr={m.Gr}, Gc={m.Gc}, r0={m.r0}, c0={m.c0}, "
+              f"sr={m.sr}, sc={m.sc}, "
+              f"m=[{m.m_start}:{m.m_end}], n=[{m.n_start}:{m.n_end}], "
+              f"k=[{m.k_start}:{m.k_end}])")
+    if len(mappings) > max_show:
+        print(f"  ... ({len(mappings) - max_show} more tiles, {n_tiles} total)")
 
 
 # ─── Test Data ────────────────────────────────────────────────────
