@@ -62,7 +62,6 @@ def print_trace_summary(trace_info):
     M, K, N = trace_info["M"], trace_info["K"], trace_info["N"]
     AH, AW = trace_info["AH"], trace_info["AW"]
     program = trace_info["program"]
-    n_tiles = trace_info["n_tiles"]
     util = trace_info.get("utilization", 0)
 
     print(f"FEATHER Trace: C[{M},{N}] = A[{M},{K}] x B[{K},{N}]")
@@ -77,17 +76,19 @@ def print_trace_summary(trace_info):
     ovn = program.ovn_layout
     print(f"  SetOVNLayout(order={ovn.order}, PL1={ovn.PL1}, PL0={ovn.PL0}, QL1={ovn.QL1})")
 
-    # Show first few ExecuteMapping instructions
-    mappings = program.mappings
-    max_show = min(4, len(mappings))
-    for i in range(max_show):
-        m = mappings[i]
-        print(f"  ExecuteMapping(Gr={m.Gr}, Gc={m.Gc}, r0={m.r0}, c0={m.c0}, "
-              f"sr={m.sr}, sc={m.sc}, "
-              f"m=[{m.m_start}:{m.m_end}], n=[{m.n_start}:{m.n_end}], "
-              f"k=[{m.k_start}:{m.k_end}])")
-    if len(mappings) > max_show:
-        print(f"  ... ({len(mappings) - max_show} more tiles, {n_tiles} total)")
+    # Show original ExecuteMapping instructions from the raw trace
+    import json
+    try:
+        with open(_TRACE_PATH) as f:
+            raw = json.load(f)
+        raw_ems = raw["layer"][0]["L1"]["ExecuteMapping"]
+        for i, em in enumerate(raw_ems):
+            print(f"  ExecuteMapping(Gr={em['G_r']}, Gc={em['G_c']}, "
+                  f"sr={em['s_r']}, sc={em['s_c']})")
+        print(f"\n  {len(raw_ems)} ExecuteMapping instructions "
+              f"(expanded to {len(program.mappings)} tiles for simulation)")
+    except Exception:
+        print(f"  {len(program.mappings)} tiles")
 
 
 # ─── Test Data ────────────────────────────────────────────────────
