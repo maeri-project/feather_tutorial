@@ -475,6 +475,23 @@ code {
   text-decoration: underline;
 }
 
+.timeline-item .content .video-link {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.timeline-item .content .video-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.timeline-item .content .video-link a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
 .timeline-item .content p {
   margin-bottom: 12px;
   font-size: 1rem;
