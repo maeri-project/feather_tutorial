@@ -6,3 +6,4 @@ jupyterhub_cookie_secret
 jupyterhub-proxy.pid
 jupyterhub.sqlite
 passwords.txt
+credentials.csv
