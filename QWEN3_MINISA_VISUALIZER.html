@@ -6,7 +6,7 @@
   <title>Qwen3 MINISA Explorer · FEATHER Tutorial</title>
   <meta name="description" content="Program FEATHER and explore Qwen3 operator mappings, NEST computation, BIRRD routing, and animated array dataflow.">
   <meta name="generator" content="feather-tutorial-qwen-packager-v1">
-  <meta name="qwen-source-sha256" content="466e0c05a9653c95e3accaa7d0d5c4797eebb2362d6c0f861a8282e9eed23a24">
+  <meta name="qwen-source-sha256" content="64a3d97fd9fb2eb1f043d62fe64597647d07e9e7c78ae7c43f061345a88cdbc1">
   <link rel="stylesheet" href="styles.css">
   <style>
 .qwen-app { color-scheme: light; --ink: #172d3e; --muted: #596d7b; --line: #d9e3e8; --teal: #107f7a; --teal-light: #d9f1ec; --amber: #a96712; --amber-light: #fceacd; --blue: #4266b0; --paper: #f3f6f7; }
@@ -97,6 +97,15 @@
 .qwen-app .accelerator-control button { padding: 6px 10px; font-size: 12px; }
 .qwen-app .program-workbench { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 26px; }
 .qwen-app .motion-workbench { margin: 18px 0 24px; padding: 17px; background: #f6f3fc; border: 1px solid #dfd6ef; border-radius: 9px; }
+.qwen-app .dataflow-mode-control { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.qwen-app .dataflow-mode-control label { font-weight: 700; }
+.qwen-app .dataflow-mode-control select { max-width: 100%; }
+.qwen-app .array-results { display: grid; grid-template-columns: minmax(180px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.qwen-app .array-results canvas { display: block; width: 100%; height: auto; border: 1px solid #dfd6ef; border-radius: 5px; background: #fff; }
+.qwen-app .array-results pre { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 0; }
+@media (max-width: 650px)  {
+.qwen-app .array-results { grid-template-columns: minmax(0, 1fr); }
+.qwen-app .array-results canvas { max-width: 300px; } }
 .qwen-app .motion-workbench h3 { margin: 0 0 6px; }
 .qwen-app .motion-workbench .small { margin-bottom: 7px; max-width: 830px; }
 .qwen-app .motion-controls { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
@@ -377,13 +386,21 @@
     <section id="panel-dataflow" class="card panel" role="tabpanel" aria-labelledby="tab-dataflow">
       <div class="section-heading"><div><h2>NEST and BIRRD, connected end to end</h2><p class="muted">Four M replicas × two N subgroups × two K groups · all 16 columns active · orders W/I/O = 2/2/0</p></div><button id="open-program" class="primary" type="button">Program with MINISA</button></div>
       <div class="accelerator-control"><span id="accelerator-status">Mapping explorer · no ISA program loaded</span><button id="accelerator-step" type="button" disabled>Step ISA</button><button id="accelerator-run" type="button" disabled>Run ISA</button><button id="accelerator-reset" type="button" disabled>Reset ISA</button></div>
-      <div class="motion-workbench">
+      <div class="dataflow-mode-control"><label for="dataflow-mode">Dataflow animation</label><select id="dataflow-mode"><option value="single">Single element · inspect one result</option><option value="array">Entire array · compute the 32 × 32 output tile</option></select></div>
+      <div id="single-dataflow-controls" class="motion-workbench">
         <div class="section-heading"><div><h3>Follow individual elements: move → multiply → reduce → write</h3><p class="small muted">Follow coordinate-labeled A[m,k] and B[k,n] elements, their FP32 partials, and C[m,n] through the connected accelerator. This spotlight follows one selected result and its two K-group columns, not all 256 PEs at once. Values are deterministic teaching samples—not Qwen operands; time is compressed, not an RTL waveform.</p></div><span id="motion-preference" class="pill">Smooth dataflow</span></div>
         <div class="motion-controls"><button id="motion-play" class="primary" type="button">Animate data</button><button id="motion-back" type="button" aria-label="Previous dataflow step">←</button><button id="motion-next" type="button" aria-label="Next dataflow step">→</button><button id="motion-reset" type="button">Reset data</button><input id="motion-frame" type="range" min="0" max="29" value="0" aria-label="Data movement and computation step"><label>Speed <select id="motion-speed"><option value="900">Slow</option><option value="500" selected>Normal</option><option value="180">Fast</option></select></label></div>
         <p id="motion-status" class="motion-status" role="status">Select Animate data to follow the selected result through NEST and BIRRD.</p>
         <div id="motion-elements" class="motion-elements" aria-label="Individual elements in the selected input and weight VNs"><p class="small muted">Animate or step to reveal the 16 individual elements in each selected VN. Click any element to inspect its multiply/accumulate.</p></div>
         <p id="motion-element-detail" class="motion-element-detail">Teal A elements stream from the input buffer. Amber B elements are preloaded and remain in PE-local weight storage during MACs.</p>
         <div class="motion-readouts"><pre id="motion-values">Synthetic FP16 operands → FP32 products and accumulation</pre><pre id="motion-network">Two PE partials → 8 BIRRD stages → FP32 OB → final-K FP16 Store</pre></div>
+      </div>
+      <div id="array-dataflow-controls" class="motion-workbench array-workbench" hidden>
+        <div class="section-heading"><div><h3>Entire array: 256 PEs → BIRRD → 1,024 outputs</h3><p class="small muted">Watch all 16 × 16 PEs multiply and accumulate together. Each dot group sends 16 row waves through the eight programmed BIRRD stages; eight reduced results per row fill the 32 × 32 output tile. A elements move while preloaded B weights stay in PE-local storage.</p></div><span class="pill">8 dot groups · 16 MAC steps each</span></div>
+        <div class="motion-controls"><button id="array-play" class="primary" type="button">Animate array</button><button id="array-back" type="button" aria-label="Previous array step">←</button><button id="array-next" type="button" aria-label="Next array step">→</button><button id="array-reset" type="button">Reset array</button><input id="array-frame" type="range" min="0" max="331" value="0" aria-label="Entire-array dataflow step"><label>Speed <select id="array-speed"><option value="350">Slow</option><option value="120" selected>Normal</option><option value="40">Fast</option></select></label></div>
+        <p id="array-status" class="motion-status" role="status">Animate or step to see the complete array computing one K tile.</p>
+        <div class="array-results"><div><canvas id="array-output" width="384" height="384" role="img" aria-label="32 by 32 output tile; colored cells show committed FP32 results, followed by FP16 Store only on the last K tile."></canvas><p class="small muted">Output tile · rows m, columns n · color shows value; the outline marks the inspected output.</p></div><pre id="array-summary" class="code-note">All 256 PEs participate. The output buffer keeps FP32 contributions across K tiles; only the final K tile is stored as FP16.</pre></div>
+        <p class="small muted">Deterministic synthetic operands, not Qwen tensor values. These compressed logical steps illustrate concurrent data movement and arithmetic; they are not RTL cycles or a measured pipeline schedule. The individual-element mode remains available for exact A/B coordinates and selected-result inspection.</p>
       </div>
       <p class="eyebrow">Whole-tile schedule overview · separate clock</p>
       <div class="playback"><button id="play" class="primary" type="button">Play</button><button id="step-back" type="button" aria-label="Previous illustration step">←</button><button id="step-next" type="button" aria-label="Next illustration step">→</button><input id="frame" type="range" min="0" value="0" aria-label="Illustration step"><label>Speed <select id="speed"><option value="450">Slow</option><option value="140" selected>Normal</option><option value="50">Fast</option></select></label><span id="frame-label"></span></div>
@@ -979,6 +996,195 @@
     else global.FeatherAnimation = api;
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
+  <script>/* Whole-tile numerical teaching model for the existing 16 × 16 FEATHER array.
+ * Logical route ticks illustrate concurrent row waves, not RTL clock timing.
+ * Reuses the single-result model's FP16 samples and exported BIRRD semantics.
+ */
+(function (global) {
+    "use strict";
+    const scalar = typeof module !== "undefined" && module.exports
+        ? require("./animation.js") : global.FeatherAnimation;
+    const cache = new WeakMap();
+    function check(condition, message) { if (!condition) throw new Error(message); }
+    function integer(value, minimum, maximum, name) {
+        check(Number.isSafeInteger(value) && value >= minimum && value <= maximum,
+            `${name} must be an integer in [${minimum}, ${maximum}].`);
+        return value;
+    }
+
+    function build(data, options = {}) {
+        check(scalar, "Load the single-result teaching model before the whole-array model.");
+        // Use the maintained adapter's complete hardware/EM/ES profile guard.
+        // This small validation trace has no preceding K tiles to replay.
+        scalar.build(data, {designId: options.designId, kTile: 0, kTiles: 1});
+        const kTiles = integer(options.kTiles ?? 1, 1, 1024, "kTiles");
+        const kTile = integer(options.kTile ?? 0, 0, kTiles - 1, "kTile");
+        const origins = {m: 0, k: kTile * 32, n: 0, ...(options.origins || {})};
+        for (const name of ["m", "k", "n"]) integer(origins[name], 0, 0x7fffffff - 32768, `origins.${name}`);
+        const firstK = origins.k - kTile * 32;
+        check(firstK >= 0, "K origin cannot precede the declared previous K tiles.");
+        const route = data.birrd.commands.find(command => command.reduction_width === 2);
+        check(route.committed_output_ports.length === 8
+            && route.committed_output_ports.every((port, index) => port === index),
+        "Whole-array animation requires exactly BIRRD output ports 0–7 committed to OB.");
+        for (let port = 0; port < 16; port++) {
+            const output = route.outputs[port];
+            check(output && output.port === port && output.committed_to_ob === (port < 8),
+                "BIRRD output commit metadata differs from the teaching mapping.");
+            if (port < 8) check(output.source_columns.length === 2
+                && output.source_columns[0] === port && output.source_columns[1] === port + 8,
+            "BIRRD output pairing differs from the teaching mapping.");
+        }
+        const key = JSON.stringify([options.designId || null, origins.m, origins.k, origins.n, kTile, kTiles]);
+        const cached = cache.get(data);
+        if (cached && cached.key === key) return cached.trace;
+
+        const owners = Array.from({length: 256}, (_, index) => {
+            const row = Math.floor(index / 16), col = index % 16;
+            return {row, col, replica: Math.floor((col % 8) / 2), kGroup: Math.floor(col / 8),
+                localN: row + 16 * (col % 2), n: origins.n + row + 16 * (col % 2)};
+        });
+        // Keep only the command dependencies for replay of preceding K tiles;
+        // recording their lane snapshots and node objects would waste memory.
+        const fastStages = route.stages.map((stage, stageIndex) => {
+            check(stage.stage === stageIndex && stage.nodes.length === 8, "Invalid BIRRD stage layout.");
+            const ports = new Set();
+            const nodes = stage.nodes.map(node => {
+                const mode = data.birrd.modes.find(item => item.code === node.command);
+                check(mode && node.input_ports.length === 2 && node.output_ports.length === 2,
+                    "Invalid BIRRD switch layout.");
+                for (const port of [...node.input_ports, ...node.output_ports]) integer(port, 0, 15, "BIRRD port");
+                node.output_ports.forEach(port => ports.add(port));
+                check(mode.output_dependencies.length === 2 && mode.output_dependencies.every(dependencies =>
+                    (dependencies.length === 1 || dependencies.length === 2)
+                    && dependencies.every(side => side === 0 || side === 1)), "Invalid BIRRD switch dependencies.");
+                return {inputs: node.input_ports, outputs: node.output_ports, dependencies: mode.output_dependencies};
+            });
+            check(ports.size === 16, "Incomplete BIRRD output stage.");
+            return nodes;
+        });
+        function fastNetwork(input) {
+            let values = input;
+            for (const stage of fastStages) {
+                const after = Array(16);
+                for (const node of stage) {
+                    const inputs = [values[node.inputs[0]], values[node.inputs[1]]];
+                    for (let side = 0; side < 2; side++) {
+                        const dependency = node.dependencies[side];
+                        after[node.outputs[side]] = dependency.length === 1 ? inputs[dependency[0]]
+                            : Math.fround(inputs[dependency[0]] + inputs[dependency[1]]);
+                    }
+                }
+                values = after;
+            }
+            return values;
+        }
+        function operands(kOrigin) {
+            const input = Array(1024), weight = Array(1024), inputBits = Array(1024), weightBits = Array(1024);
+            for (let first = 0; first < 32; first++) for (let second = 0; second < 32; second++) {
+                const index = first * 32 + second;
+                const a = scalar.sample("I", origins.m + first, kOrigin + second);
+                const b = scalar.sample("W", kOrigin + first, origins.n + second);
+                input[index] = a.value; inputBits[index] = a.bits;
+                weight[index] = b.value; weightBits[index] = b.bits;
+            }
+            return {input, weight, inputBits, weightBits};
+        }
+        function computeGroup(t, values, keepLanes) {
+            const partials = Array(256).fill(0), lanes = [];
+            for (let lane = 0; lane < 16; lane++) {
+                const step = keepLanes ? {lane, a: Array(256), b: Array(256), aBits: Array(256), bBits: Array(256),
+                    product: Array(256), before: partials.slice(), after: null} : null;
+                for (let index = 0; index < 256; index++) {
+                    const owner = owners[index], m = t * 4 + owner.replica, k = owner.kGroup * 16 + lane;
+                    const aIndex = m * 32 + k, bIndex = k * 32 + owner.localN;
+                    const a = values.input[aIndex], b = values.weight[bIndex], product = Math.fround(a * b);
+                    partials[index] = Math.fround(partials[index] + product);
+                    if (step) {
+                        step.a[index] = a; step.b[index] = b; step.product[index] = product;
+                        step.aBits[index] = values.inputBits[aIndex]; step.bBits[index] = values.weightBits[bIndex];
+                    }
+                }
+                if (step) { step.after = partials.slice(); lanes.push(step); }
+            }
+            return {partials, lanes};
+        }
+        function outputIndex(t, row, port) { return (t * 4 + Math.floor(port / 2)) * 32 + row + 16 * (port % 2); }
+        // OB retains FP32 across every preceding K tile. Replay the same frozen
+        // network and addition order, not an invented or unrounded prior value.
+        const prior = Array(1024).fill(0);
+        for (let previous = 0; previous < kTile; previous++) {
+            const values = operands(firstK + previous * 32);
+            for (let t = 0; t < 8; t++) {
+                const {partials} = computeGroup(t, values, false);
+                for (let row = 0; row < 16; row++) {
+                    const outputs = fastNetwork(partials.slice(row * 16, row * 16 + 16));
+                    for (let port = 0; port < 8; port++) {
+                        const index = outputIndex(t, row, port);
+                        prior[index] = Math.fround(prior[index] + outputs[port]);
+                    }
+                }
+            }
+        }
+        const current = operands(origins.k), partial = Array(1024), outputFP32 = Array(1024), groups = [];
+        for (let t = 0; t < 8; t++) {
+            const computed = computeGroup(t, current, true), networks = [], outputs = [];
+            for (let row = 0; row < 16; row++) {
+                const network = scalar.runNetwork(data, computed.partials.slice(row * 16, row * 16 + 16), 2);
+                networks.push({stages: network.stages.map(stage => ({stage: stage.stage,
+                    before: stage.before, after: stage.after})), outputs: network.outputs});
+                for (let port = 0; port < 8; port++) {
+                    const index = outputIndex(t, row, port), localM = Math.floor(index / 32), localN = index % 32;
+                    partial[index] = network.outputs[port];
+                    outputFP32[index] = Math.fround(prior[index] + partial[index]);
+                    outputs.push({row, port, colPair: [port, port + 8], localM, localN,
+                        m: origins.m + localM, n: origins.n + localN, index,
+                        partial: partial[index], prior: prior[index], after: outputFP32[index]});
+                }
+            }
+            groups.push({t, localMStart: t * 4, mStart: origins.m + t * 4, ...computed, networks, outputs});
+        }
+        const stored = kTile === kTiles - 1;
+        const fp16Bits = stored ? outputFP32.map(scalar.toFP16) : null;
+        const fp16Values = stored ? fp16Bits.map(scalar.fromFP16) : null;
+        const frames = [];
+        function append(phase, label, extra = {}) {
+            frames.push({phase, label, t: 0, lane: null, tick: null, injectRow: null, stages: [], obRow: null,
+                committedCount: 0, storeEnabled: false, ...extra});
+        }
+        append("load_input", "Load all 1,024 FP16 input elements into the input VNs");
+        append("load_weight", "Load all 1,024 FP16 weight elements into the weight VNs");
+        append("preload", "Preload stationary weights for all 256 PEs; accumulators begin at +0");
+        for (let t = 0; t < 8; t++) {
+            for (let lane = 0; lane < 16; lane++) append("mac", `Dot group ${t + 1}/8, element ${lane}: all 256 PEs multiply and accumulate`,
+                {t, lane, committedCount: t * 128});
+            for (let tick = 0; tick < 25; tick++) {
+                const injectRow = tick < 16 ? tick : null, obRow = tick >= 9 ? tick - 9 : null;
+                const stages = Array.from({length: 8}, (_, stage) => ({stage, row: tick - 1 - stage}))
+                    .filter(wave => wave.row >= 0 && wave.row < 16);
+                append("route", `Dot group ${t + 1}/8, logical route tick ${tick}: autopick → eight BIRRD stages → OB`,
+                    {t, tick, injectRow, stages, obRow, committedCount: t * 128 + Math.max(0, tick - 8) * 8});
+            }
+        }
+        append(stored ? "store" : "hold", stored
+            ? "All 1,024 outputs complete: round FP32 to FP16 and Store on the final K tile"
+            : "All 1,024 partial outputs remain FP32 in OB; subsequent K tiles must finish before Store",
+        {t: 7, committedCount: 1024, storeEnabled: stored});
+        frames.forEach((frame, index) => { frame.index = index; frame.progress = index / (frames.length - 1); });
+        const trace = {label: "Whole-array deterministic teaching data — logical ticks, not RTL clock cycles",
+            teachingOnly: true, rtlCycleAccurate: false, origins, kTile, kTiles, owners,
+            operands: current, groups, frames, partial, prior, outputFP32, stored, fp16Bits, fp16Values};
+        // A single cached selection bounds memory while smooth playback reuses
+        // snapshots. A different tile replaces the entry rather than growing it.
+        cache.set(data, {key, trace});
+        return trace;
+    }
+
+    const api = {build};
+    if (typeof module !== "undefined" && module.exports) module.exports = api;
+    else global.FeatherArrayAnimation = api;
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
   <script>/* Unified FEATHER view: buffers -> NEST -> real programmed BIRRD -> OB.
  * Dependency highlighting is derived from exported switch semantics. It is a
  * logical route, not a claim about simultaneous RTL pipeline occupancy.
@@ -1255,6 +1461,189 @@
     global.FeatherAccelerator = {draw, geometry};
 })(window);
 </script>
+  <script>/* Whole-tile teaching overlay. Logical waves illustrate all PEs and outputs;
+ * their display clock is deliberately independent of RTL cycle timing. */
+(function (global) {
+    "use strict";
+    const compact = value => String(Number(value.toPrecision(3)));
+    const waveColor = row => `hsl(${260 - row * 7} 55% 46%)`;
+
+    function visibleCommitted(frame, fraction) {
+        return frame.committedCount - (frame.obRow !== null && frame.obRow !== undefined && fraction < .8 ? 8 : 0);
+    }
+
+    function draw(canvas, model) {
+        const {data, trace, frame, index, fraction, state} = model;
+        const ctx = canvas.getContext("2d"), g = FeatherAccelerator.geometry;
+        const progress = Math.max(0, Math.min(1, fraction));
+        const group = trace.groups[frame.t ?? (index < 3 ? 0 : 7)], lane = frame.lane ?? 15;
+        const values = group.lanes[lane], tokens = [];
+        const px = col => g.x + col * g.dx + g.w / 2;
+        const py = row => g.y + row * g.dy + g.h / 2;
+        const sy = stage => 697 + stage * 41;
+        function pathPoint(points, position) {
+            const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]));
+            let distance = Math.max(0, Math.min(1, position)) * lengths.reduce((a, b) => a + b, 0);
+            for (let i = 0; i < lengths.length; i++) {
+                if (distance <= lengths[i] || i === lengths.length - 1) {
+                    const f = lengths[i] ? Math.min(1, distance / lengths[i]) : 1;
+                    return [points[i][0] + (points[i + 1][0] - points[i][0]) * f,
+                        points[i][1] + (points[i + 1][1] - points[i][1]) * f];
+                }
+                distance -= lengths[i];
+            }
+            return points[points.length - 1];
+        }
+        function packet(points, position, value, color, element, radius = 2.6) {
+            const [x, y] = pathPoint(points, position);
+            ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color; ctx.fill();
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = .65; ctx.stroke();
+            tokens.push({...element, value, x, y});
+        }
+        function caption(label, y, color = "#593d8f") {
+            ctx.fillStyle = "#fbfdfd"; ctx.fillRect(59, y - 14, 743, 19);
+            ctx.textAlign = "center"; ctx.font = "600 11px system-ui"; ctx.fillStyle = color;
+            ctx.fillText(label, 430, y);
+        }
+        // All 256 cells display a numerical accumulator, not a generic flash.
+        for (let row = 0; row < 16; row++) for (let col = 0; col < 16; col++) {
+            const pe = row * 16 + col, x = g.x + col * g.dx, y = g.y + row * g.dy;
+            const mac = frame.phase === "mac", ready = mac && progress >= .7;
+            const value = mac ? (ready ? values.after[pe] : values.before[pe]) :
+                ["route", "store", "hold"].includes(frame.phase) ? group.partials[pe] : 0;
+            const magnitude = Math.min(1, Math.abs(value) / 4);
+            ctx.fillStyle = mac ? `hsl(${col < 8 ? 164 : 36} 48% ${92 - 24 * magnitude - (ready ? 8 : 0)}%)` :
+                ["route", "store", "hold"].includes(frame.phase) ? `hsl(264 35% ${94 - 23 * magnitude}%)` : "#f3f6f8";
+            ctx.fillRect(x, y, g.w, g.h);
+            ctx.strokeStyle = row === state.row && col % 8 === state.col % 8 ? "#633ca5" : "#b8c9d0";
+            ctx.lineWidth = row === state.row && col % 8 === state.col % 8 ? 1.8 : .5;
+            ctx.strokeRect(x, y, g.w, g.h);
+            ctx.textAlign = "center"; ctx.font = "8px system-ui"; ctx.fillStyle = "#273b47";
+            ctx.fillText(compact(value), px(col), y + 11);
+            if (mac) {
+                // Amber resident weight marker stays put while its teal A packet moves.
+                ctx.fillStyle = "#b87313"; ctx.fillRect(x + g.w - 4, y + 2, 2, 2);
+            }
+        }
+        if (frame.phase === "load_input" || frame.phase === "load_weight") {
+            const input = frame.phase === "load_input", operand = input ? "I" : "W";
+            const scalar = Math.min(63, Math.floor(progress * 64)), substep = progress === 1 ? 1 : progress * 64 % 1;
+            const design = data.tile_designs.find(item => item.id === trace.designId) || data.tile_designs[0];
+            for (let bank = 0; bank < 16; bank++) {
+                const x = (input ? 68 : 459) + bank * 21, y = 126 + (scalar % 3 - 1) * 5;
+                const vn = design.operand_maps[operand].banks[bank].vns.find(item => item.vn_row === Math.floor(scalar / 16));
+                const [first, second] = vn.logical, element = scalar % 16;
+                const a = input ? first : first * 16 + element, b = input ? second * 16 + element : second;
+                const value = trace.operands[input ? "input" : "weight"][a * 32 + b];
+                const identity = input ? `A[${trace.origins.m + a},${trace.origins.k + b}]` :
+                    `B[${trace.origins.k + a},${trace.origins.n + b}]`;
+                packet([[input ? 23 : 827, y], [x, y]], substep, value,
+                    input ? "#07897c" : "#b87313", {operand, bank, scalarRow: scalar,
+                        identity}, 3);
+            }
+            caption(`Full tile DMA: 16 bank lanes × 64 FP16 scalars · bank row ${scalar}/63 (transfer compressed)`, 594);
+        } else if (frame.phase === "preload" || frame.phase === "mac") {
+            const mac = frame.phase === "mac", currentLane = mac ? lane : Math.min(15, Math.floor(progress * 16));
+            const records = group.lanes[currentLane];
+            const travel = mac ? Math.min(1, progress / .7) : progress === 1 ? 1 : progress * 16 % 1;
+            for (let row = 0; row < 16; row++) for (let col = 0; col < 16; col++) {
+                const pe = row * 16 + col, owner = trace.owners[pe];
+                const m = trace.origins.m + 4 * (frame.t ?? 0) + owner.replica;
+                const n = trace.origins.n + owner.localN, k = trace.origins.k + owner.kGroup * 16 + currentLane;
+                const offset = (row % 4 - 1.5) * 1.3, x = px(col) + offset;
+                packet([[mac ? 235 : 625, 150], [x, 178], [x, py(row)]], travel,
+                    records[mac ? "a" : "b"][pe], mac ? "#07897c" : "#b87313",
+                    {operand: mac ? "I" : "W", row, col, lane: currentLane, m, n, k,
+                        identity: mac ? `A[${m},${k}]` : `B[${k},${n}]`}, 2.2);
+            }
+            caption(mac ? `All 256 PEs: t=${frame.t}, ℓ=${lane} · teal A moves; amber B stays resident · numbers = FP32 sums` :
+                `Weight preload across all 256 PEs · VN element ℓ=${currentLane}/15 · four M replicas share B`, 594);
+        } else if (frame.phase === "route") {
+            caption(frame.injectRow === null ? "Column autopick · all 16 row waves injected; draining BIRRD" :
+                `Column autopick · row ${frame.injectRow} injects all 16 column partials`, 631);
+            if (frame.injectRow !== null) {
+                const row = frame.injectRow;
+                for (let col = 0; col < 16; col++) packet([[px(col), py(row)], [px(col), 639]], progress,
+                    group.partials[row * 16 + col], waveColor(row), {operand: "P", row, col,
+                        identity: `t${frame.t}:r${row}:P${col}`}, 3.5);
+            }
+            const route = data.birrd.commands.find(command => command.reduction_width === 2);
+            for (const occupied of frame.stages) {
+                const {stage, row} = occupied, network = group.networks[row].stages[stage], color = waveColor(row);
+                for (const node of route.stages[stage].nodes) for (let side = 0; side < 2; side++) {
+                    const source = node.input_ports[side], output = node.output_ports[side];
+                    const before = progress < .7;
+                    const path = before ? [[px(source), stage === 0 ? 639 : sy(stage - 1) + 22], [px(output), sy(stage)]] :
+                        [[(px(node.output_ports[0]) + px(node.output_ports[1])) / 2, sy(stage) + 10], [px(output), sy(stage) + 22]];
+                    packet(path, before ? progress / .7 : (progress - .7) / .3,
+                        before ? network.before[source] : network.after[output], color,
+                        {operand: "P", row, stage, port: before ? source : output,
+                            identity: `t${frame.t}:r${row}:S${stage}:${before ? "in" : "out"}${before ? source : output}`}, 3.1);
+                }
+                ctx.fillStyle = color; ctx.fillRect(15, sy(stage) + 2, 5, 18);
+                ctx.textAlign = "left"; ctx.font = "8px system-ui"; ctx.fillText(`r${row}`, 24, sy(stage) + 32);
+            }
+            if (frame.obRow !== null) {
+                for (let port = 0; port < 8; port++) {
+                    const output = group.outputs[frame.obRow * 8 + port];
+                    packet([[px(port), sy(7) + 22], [px(port), 1075], [px(port), 1130]], progress,
+                        output.partial, waveColor(frame.obRow), {operand: "O", row: frame.obRow, port,
+                            m: output.m, n: output.n, identity: `C[${output.m},${output.n}]`}, 3.8);
+                }
+            }
+            caption(`Dot group ${frame.t}: row waves through all 8 programmed stages · every committed row wave writes 8 outputs`, 594);
+            caption(`Whole-tile FP32 output progress: ${visibleCommitted(frame, progress)}/1,024 cells · raw ports 8–15 not committed`, 1139);
+        } else if (frame.phase === "store") {
+            const row = Math.min(31, Math.floor(progress * 32)), transfer = progress === 1 ? 1 : progress * 32 % 1;
+            for (let port = 0; port < 32; port++) {
+                const x = 73 + port * 23, distanceBeforeCast = Math.hypot(x - 430, 45);
+                const cast = transfer >= distanceBeforeCast / (distanceBeforeCast + Math.hypot(x - 430, 36));
+                const outputIndex = row * 32 + port;
+                packet([[x, 1144], [430, 1189], [x, 1225]], transfer,
+                    (cast ? trace.fp16Values : trace.outputFP32)[outputIndex], "#547abb", {operand: "O",
+                        m: trace.origins.m + row, n: trace.origins.n + port, format: cast ? "FP16" : "FP32",
+                        bits: cast ? trace.fp16Bits[outputIndex] : null,
+                        identity: `C[${trace.origins.m + row},${trace.origins.n + port}]`}, 2.6);
+            }
+            caption(`Final K tile: all 1,024 outputs narrow to FP16 RNE and Store · row ${row}/31 (transfer compressed)`, 1240);
+        } else if (frame.phase === "hold") {
+            caption("All 1,024 FP32 results stay in OB for the next K tile · no premature FP16 cast or Store", 1240);
+        }
+        Object.assign(canvas.dataset, {arrayPhase: frame.phase, arrayFrame: String(index),
+            arrayProgress: String(progress), arrayPeCount: "256", arrayMovingTokens: String(tokens.length),
+            arrayCommittedCount: String(visibleCommitted(frame, progress)), arrayTokens: JSON.stringify(tokens)});
+    }
+
+    function drawOutput(canvas, {trace, frame, fraction, state}) {
+        const ctx = canvas.getContext("2d"), size = 10, startX = 34, startY = 27;
+        canvas.width = 368; canvas.height = 365;
+        const count = visibleCommitted(frame, fraction), complete = new Set();
+        for (let t = 0; t < 8; t++) {
+            const remaining = Math.max(0, Math.min(128, count - t * 128));
+            trace.groups[t].outputs.slice(0, remaining).forEach(output => complete.add(output.index));
+        }
+        ctx.fillStyle = "#fbfdfd"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "10px system-ui"; ctx.fillStyle = "#47616e"; ctx.textAlign = "center";
+        for (let axis = 0; axis < 32; axis += 4) {
+            ctx.fillText(String(trace.origins.n + axis), startX + axis * size + 5, 17);
+            ctx.fillText(String(trace.origins.m + axis), 17, startY + axis * size + 8);
+        }
+        for (let m = 0; m < 32; m++) for (let n = 0; n < 32; n++) {
+            const index = m * 32 + n, ready = complete.has(index), value = trace.outputFP32[index];
+            ctx.fillStyle = ready ? `hsl(${value < 0 ? 271 : 163} 48% ${82 - Math.min(35, Math.abs(value) * 4)}%)` : "#e8edf0";
+            ctx.fillRect(startX + n * size, startY + m * size, size - 1, size - 1);
+        }
+        const m = 4 * (frame.t ?? 7) + Math.floor(state.col % 8 / 2), n = state.row + 16 * (state.col % 2);
+        ctx.strokeStyle = "#683dac"; ctx.lineWidth = 2;
+        ctx.strokeRect(startX + n * size - 1, startY + m * size - 1, size + 1, size + 1);
+        Object.assign(canvas.dataset, {committedCount: String(count), outputCount: "1024", stored: String(trace.stored && frame.phase === "store" && fraction === 1),
+            completedIndices: JSON.stringify([...complete]), selectedIndex: String(m * 32 + n)});
+    }
+
+    global.FeatherArrayView = {draw, drawOutput, visibleCommitted};
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
   <script>/* Mapper-driven adapter for the tutorial canvas helpers. No remote resources. */
 (() => {
     "use strict";
@@ -1267,6 +1656,8 @@
         registers: {}, timer: null, driving: false, phase: "idle", loads: 0,
         stores: 0, executions: 0, context: {n: 0, m: 0, k: 0}, description: ""};
     const motion = {trace: null, active: false, playing: false, index: 0, fraction: 0,
+        raf: null, timer: null, anchor: null, startFraction: 0};
+    const arrayMotion = {trace: null, active: false, playing: false, index: 0, fraction: 0,
         raf: null, timer: null, anchor: null, startFraction: 0};
     let elementTrace = null;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1347,13 +1738,23 @@
 
     function drawNest() {
         const animated = motion.active ? motion.trace.frames[motion.index] : null;
+        const arrayFrame = arrayMotion.active ? arrayMotion.trace.frames[arrayMotion.index] : null;
+        const teaching = arrayFrame || animated;
         FeatherAccelerator.draw($("nest"), {data, state, ownership, physical, origins,
-            phase: animated ? ({load_input: "load_i", load_weight: "load_w", mac: "stream",
-                store: "finish"}[animated.phase] || animated.phase) : machine.driving ? machine.phase : frames[state.frame].kind,
-            controller: animated ? "Teaching dataflow · selected operator tile · synthetic values" :
+            phase: teaching ? ({load_input: "load_i", load_weight: "load_w", mac: "stream",
+                store: "finish"}[teaching.phase] || teaching.phase) : machine.driving ? machine.phase : frames[state.frame].kind,
+            controller: arrayFrame ? "Whole-array teaching dataflow · 256 PEs · synthetic values" :
+                animated ? "Teaching dataflow · selected operator tile · synthetic values" :
                 machine.loaded ? `ISA PC ${machine.pc}/${machine.loaded.num_instructions} · ${machine.last ? machine.last.op : "ready"}` : null,
             motion: animated ? {data, trace: motion.trace, frame: animated,
                 index: motion.index, fraction: motion.fraction, reduced: reducedMotion.matches} : null});
+        if (arrayFrame) {
+            const model = {data, trace: arrayMotion.trace, frame: arrayFrame, index: arrayMotion.index,
+                fraction: arrayMotion.fraction, state, reduced: reducedMotion.matches};
+            FeatherArrayView.draw($("nest"), model);
+            FeatherArrayView.drawOutput($("array-output"), model);
+        } else Object.assign($("nest").dataset, {arrayPhase: "inactive", arrayFrame: "0", arrayProgress: "0",
+            arrayPeCount: "0", arrayMovingTokens: "0", arrayCommittedCount: "0", arrayTokens: "[]"});
         const p = ownership(state.row, state.col % 8), b = origins();
         const destination = physical("O", [p.m, Math.floor(p.n / 16)]);
         $("route-details").textContent = `PE row ${state.row}, columns ${state.col % 8} + ${state.col % 8 + 8} → programmed BIRRD → port ${state.col % 8} → C[${b.m + p.m},${b.n + p.n}] → OB bank ${destination.bank}, scalar row ${destination.scalar_row_base + p.n % 16}. Raw ports 8–15 are not committed.`;
@@ -1373,8 +1774,9 @@
     function updateFrame() {
         const frame = frames[state.frame];
         const animated = motion.active ? motion.trace.frames[motion.index] : null;
-        state.t = animated ? motion.trace.selection.t : frame.t;
-        state.lane = animated ? (animated.lane ?? (motion.index < 3 ? 0 : 15)) : frame.lane;
+        const arrayFrame = arrayMotion.active ? arrayMotion.trace.frames[arrayMotion.index] : null;
+        state.t = arrayFrame ? (arrayFrame.t ?? (arrayMotion.index < 3 ? 0 : 7)) : animated ? motion.trace.selection.t : frame.t;
+        state.lane = arrayFrame ? (arrayFrame.lane ?? (arrayMotion.index < 3 ? 0 : 15)) : animated ? (animated.lane ?? (motion.index < 3 ? 0 : 15)) : frame.lane;
         $("frame").value = state.frame;
         $("frame-label").textContent = `Step ${state.frame + 1} / ${frames.length}`;
         $("dot-index").value = state.t; $("lane-index").value = state.lane;
@@ -1390,6 +1792,10 @@
         if (animated) {
             $("phase-title").textContent = `Teaching dataflow · ${animated.phase === "birrd" ? "BIRRD stage " + animated.stage : animated.phase.replaceAll("_", " ")}`;
             $("phase-description").textContent = animated.label + ". Synthetic operands; these are logical steps, not RTL cycles.";
+        }
+        if (arrayFrame) {
+            $("phase-title").textContent = `Whole-array teaching dataflow · ${arrayFrame.phase.replaceAll("_", " ")}`;
+            $("phase-description").textContent = arrayFrame.label + ". All 256 PEs and 1,024 output cells; logical waves, not RTL cycles.";
         }
         $("step-back").disabled = state.frame === 0;
         $("step-next").disabled = state.frame === frames.length - 1;
@@ -1528,7 +1934,7 @@
     }
 
     function prepareMotion() {
-        pause(); pauseIsa(); machine.driving = false; updateMachine();
+        pause(); pauseIsa(); pauseArray(true); selectDataflowMode("single"); machine.driving = false; updateMachine();
         if (!motion.trace) {
             // Cache numeric work once per selection, never inside a rendering tick.
             motion.trace = FeatherAnimation.build(data, {row: state.row, col: state.col,
@@ -1584,6 +1990,138 @@
         if (reducedMotion.matches) motion.fraction = 1;
         motion.startFraction = motion.fraction;
         renderMotionStep(); scheduleMotion();
+    }
+
+    function selectDataflowMode(mode) {
+        $("dataflow-mode").value = mode;
+        ($("single-dataflow-controls") || document.querySelector(".motion-workbench")).hidden = mode !== "single";
+        $("array-dataflow-controls").hidden = mode !== "array";
+    }
+
+    function updateArrayUI() {
+        const active = arrayMotion.active && arrayMotion.trace;
+        const frame = active ? arrayMotion.trace.frames[arrayMotion.index] : null;
+        const status = $("array-status");
+        $("array-play").textContent = arrayMotion.playing ? "Pause array" : "Animate entire array";
+        $("array-play").setAttribute("aria-pressed", String(arrayMotion.playing));
+        $("array-frame").value = arrayMotion.index;
+        $("array-back").disabled = arrayMotion.index === 0;
+        $("array-next").disabled = Boolean(active && arrayMotion.index === arrayMotion.trace.frames.length - 1);
+        Object.assign(status.dataset, {phase: frame?.phase || "inactive", frame: String(arrayMotion.index),
+            fraction: String(arrayMotion.fraction), playing: String(arrayMotion.playing), reduced: String(reducedMotion.matches),
+            committedCount: String(frame?.committedCount || 0)});
+        if (!active) {
+            status.textContent = "Animate all 256 PEs, eight dot groups, and 1,024 output cells for the selected 32³ tile.";
+            $("array-summary").textContent = "Synthetic FP16 operands → all-array FP32 MACs → row waves through programmed BIRRD → complete output tile. Select a PE to inspect its values.";
+            const canvas = $("array-output"), ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            Object.assign(canvas.dataset, {committedCount: "0", outputCount: "1024", stored: "false", completedIndices: "[]"});
+            return;
+        }
+        const trace = arrayMotion.trace, t = frame.t ?? (arrayMotion.index < 3 ? 0 : 7);
+        const pe = state.row * 16 + state.col, owner = trace.owners[pe], group = trace.groups[t];
+        const m = trace.origins.m + 4 * t + owner.replica, n = owner.n;
+        const number = value => String(Number(value.toPrecision(7)));
+        status.textContent = `Step ${arrayMotion.index + 1}/${trace.frames.length} · ${frame.label}\n` +
+            `256 PEs · dot group ${t + 1}/8 · ${frame.committedCount}/1,024 outputs after this step · K tile ${trace.kTile + 1}/${trace.kTiles}` +
+            (reducedMotion.matches ? " · reduced motion: discrete snapshots" : " · smooth logical waves");
+        if (frame.phase === "mac") {
+            const values = group.lanes[frame.lane], k = trace.origins.k + owner.kGroup * 16 + frame.lane;
+            $("array-summary").textContent = `All 256 PEs update in parallel. Selected PE (${state.row},${state.col}) → C[${m},${n}]\n` +
+                `A[${m},${k}]=${number(values.a[pe])} × held B[${k},${n}]=${number(values.b[pe])}\n` +
+                `FP32: ${number(values.before[pe])} + ${number(values.product[pe])} → ${number(values.after[pe])}\n` +
+                "Teal dots move A; amber markers hold B. PE colors and numbers show each individual accumulator.";
+        } else if (frame.phase === "route") {
+            const occupied = frame.stages.map(item => `S${item.stage}: row ${item.row}`).join(" · ");
+            const selected = group.outputs[state.row * 8 + state.col % 8];
+            $("array-summary").textContent = `Autopick: ${frame.injectRow === null ? "draining" : "row " + frame.injectRow}\n` +
+                `${occupied || "First row entering the network"}\n` +
+                `OB write: ${frame.obRow === null ? "none yet" : "row " + frame.obRow + ", all 8 committed ports"}\n` +
+                `Selected result C[${selected.m},${selected.n}]: prior ${number(selected.prior)} + partial ${number(selected.partial)} → ${number(selected.after)} (FP32).\n` +
+                "Row colors track independent waves; ports 8–15 may carry copies but do not commit.";
+        } else if (frame.phase === "store" || frame.phase === "hold") {
+            const selected = group.outputs[state.row * 8 + state.col % 8];
+            $("array-summary").textContent = `All 1,024 output cells have received this K tile. Selected C[${selected.m},${selected.n}]=${number(selected.after)} (FP32).\n` +
+                (trace.stored ? `Final K tile: all outputs cast to FP16 RNE and Store. Selected bits: 0x${trace.fp16Bits[selected.index].toString(16).padStart(4, "0")}.` :
+                    "More K tiles remain: keep every result in FP32 OB; no FP16 cast and no Store.");
+        } else {
+            $("array-summary").textContent = frame.phase === "preload" ?
+                "All 256 PEs receive 16 stationary weights each; four M replicas share each B VN. The preload step compresses all 16 lanes before the first MAC." :
+                "Each input/weight tile has 1,024 FP16 elements, mapped to 16 banks × 64 scalar rows. The moving dots sweep the 16 physical bank lanes; transfer timing is compressed.";
+        }
+    }
+
+    function pauseArray(deactivate = false) {
+        if (arrayMotion.raf !== null) cancelAnimationFrame(arrayMotion.raf);
+        if (arrayMotion.timer !== null) clearTimeout(arrayMotion.timer);
+        Object.assign(arrayMotion, {raf: null, timer: null, playing: false, anchor: null});
+        if (deactivate) {
+            if (arrayMotion.active) state.frame = frames.findIndex(frame => frame.kind === "stream" && frame.t === state.t && frame.lane === state.lane);
+            Object.assign(arrayMotion, {active: false, trace: null, index: 0, fraction: 0});
+        }
+        updateArrayUI();
+    }
+
+    function prepareArray() {
+        pause(); pauseIsa(); pauseMotion(true); selectDataflowMode("array");
+        machine.driving = false; updateMachine();
+        try {
+            if (!arrayMotion.trace) {
+                arrayMotion.trace = FeatherArrayAnimation.build(data, {origins: origins(), kTile: state.k,
+                    kTiles: op().loop_counts.k, designId: design().id});
+                arrayMotion.index = 0; arrayMotion.fraction = 0;
+                $("array-frame").max = arrayMotion.trace.frames.length - 1;
+            }
+            arrayMotion.active = true; updateMatrices(); return true;
+        } catch (error) {
+            $("array-status").textContent = `Whole-array animation unavailable: ${error.message}`;
+            return false;
+        }
+    }
+
+    function renderArrayStep() {
+        updateArrayUI(); updateFrame();
+    }
+
+    function advanceArray() {
+        if (arrayMotion.index === arrayMotion.trace.frames.length - 1) {
+            arrayMotion.fraction = 1; pauseArray(); drawNest(); return false;
+        }
+        arrayMotion.index++; arrayMotion.fraction = reducedMotion.matches ? 1 : 0;
+        arrayMotion.anchor = null; arrayMotion.startFraction = 0;
+        renderArrayStep(); return true;
+    }
+
+    function scheduleArray() {
+        if (!arrayMotion.playing) return;
+        const duration = Number($("array-speed").value);
+        if (reducedMotion.matches) {
+            arrayMotion.timer = setTimeout(() => {
+                arrayMotion.timer = null;
+                if (advanceArray()) scheduleArray();
+            }, duration);
+        } else {
+            arrayMotion.raf = requestAnimationFrame(now => {
+                arrayMotion.raf = null;
+                if (arrayMotion.anchor === null) arrayMotion.anchor = now;
+                arrayMotion.fraction = Math.min(1, arrayMotion.startFraction + (now - arrayMotion.anchor) / duration);
+                $("array-status").dataset.fraction = String(arrayMotion.fraction);
+                drawNest();
+                if (arrayMotion.fraction === 1 && !advanceArray()) return;
+                scheduleArray();
+            });
+        }
+    }
+
+    function playArray() {
+        if (!prepareArray()) return;
+        if (arrayMotion.index === arrayMotion.trace.frames.length - 1 && arrayMotion.fraction === 1) {
+            arrayMotion.index = 0; arrayMotion.fraction = 0;
+        }
+        arrayMotion.playing = true; arrayMotion.anchor = null;
+        if (reducedMotion.matches) arrayMotion.fraction = 1;
+        arrayMotion.startFraction = arrayMotion.fraction;
+        renderArrayStep(); scheduleArray();
     }
 
     function bufferDetails(bank, vn) {
@@ -1649,7 +2187,7 @@
     }
 
     function clearProgram() {
-        pauseIsa(); pauseMotion(true);
+        pauseIsa(); pauseMotion(true); pauseArray(true);
         Object.assign(machine, {generated: null, loaded: null, decoded: [], pc: 0, last: null,
             registers: {}, driving: false, phase: "idle", loads: 0, stores: 0, executions: 0,
             context: {n: 0, m: 0, k: 0}, description: ""});
@@ -1704,7 +2242,7 @@
 
     function loadProgram() {
         if (!machine.generated) return;
-        pause(); pauseIsa(); pauseMotion(true);
+        pause(); pauseIsa(); pauseMotion(true); pauseArray(true);
         try {
             const decoded = FeatherProgram.validate(machine.generated, data);
             Object.assign(machine, {loaded: machine.generated, decoded, pc: 0, last: null,
@@ -1765,13 +2303,13 @@
     }
 
     function stepProgram() {
-        pause(); pauseIsa(); pauseMotion(true);
+        pause(); pauseIsa(); pauseMotion(true); pauseArray(true);
         if (!machine.loaded) return;
         executeInstruction(); finishInstructionBatch();
     }
 
     function runProgram() {
-        pause(); pauseMotion(true);
+        pause(); pauseMotion(true); pauseArray(true);
         if (machine.timer !== null) { pauseIsa(); return; }
         if (!machine.loaded) return;
         if (machine.pc >= machine.decoded.length) loadProgram();
@@ -1812,7 +2350,7 @@
     }
 
     function switchTab(name, focus = false) {
-        pause(); pauseIsa(); pauseMotion(); state.tab = name;
+        pause(); pauseIsa(); pauseMotion(); pauseArray(); state.tab = name;
         document.querySelectorAll("[data-tab]").forEach(button => {
             const active = button.dataset.tab === name;
             button.setAttribute("aria-selected", String(active)); button.tabIndex = active ? 0 : -1;
@@ -1832,6 +2370,32 @@
     }
 
     $("operator").replaceChildren(...data.operators.map((item, i) => new Option(item.name, String(i))));
+    $("dataflow-mode").addEventListener("change", () => {
+        const mode = $("dataflow-mode").value;
+        pause(); pauseIsa(); pauseMotion(true); pauseArray(true);
+        machine.driving = false; updateMachine(); selectDataflowMode(mode);
+        if (mode === "array" && prepareArray()) renderArrayStep();
+        else { updateMatrices(); updateFrame(); }
+    });
+    $("array-play").addEventListener("click", () => arrayMotion.playing ? pauseArray() : playArray());
+    for (const [id, delta] of [["array-back", -1], ["array-next", 1]]) $(id).addEventListener("click", () => {
+        pauseArray(); if (!prepareArray()) return;
+        arrayMotion.index = Math.max(0, Math.min(arrayMotion.trace.frames.length - 1, arrayMotion.index + delta));
+        arrayMotion.fraction = 1; renderArrayStep();
+    });
+    $("array-frame").addEventListener("input", () => {
+        const index = Number($("array-frame").value);
+        pauseArray(); if (!prepareArray()) return;
+        arrayMotion.index = Math.max(0, Math.min(arrayMotion.trace.frames.length - 1, index));
+        arrayMotion.fraction = 1; renderArrayStep();
+    });
+    $("array-reset").addEventListener("click", () => {
+        pauseArray(); if (!prepareArray()) return;
+        arrayMotion.index = 0; arrayMotion.fraction = 0; renderArrayStep();
+    });
+    $("array-speed").addEventListener("change", () => {
+        const running = arrayMotion.playing; pauseArray(); if (running) playArray();
+    });
     $("motion-play").addEventListener("click", () => motion.playing ? pauseMotion() : playMotion());
     $("motion-elements").addEventListener("click", event => {
         const button = event.target.closest("button[data-lane]");
@@ -1858,8 +2422,9 @@
         const running = motion.playing; pauseMotion(); if (running) playMotion();
     });
     reducedMotion.addEventListener("change", () => {
-        pauseMotion();
+        pauseMotion(); pauseArray();
         if (motion.active) { motion.fraction = 1; renderMotionStep(); }
+        if (arrayMotion.active) { arrayMotion.fraction = 1; renderArrayStep(); }
     });
     $("open-program").addEventListener("click", () => switchTab("program", true));
     $("program-scope").addEventListener("change", () => { clearProgram(); render(); });
@@ -1920,7 +2485,7 @@
         state.frame = frames.findIndex(frame => frame.kind === "stream" && frame.t === t && frame.lane === lane); updateFrame();
     });
     for (const [id, key] of [["pe-row", "row"], ["pe-col", "col"], ["output-row", "outputRow"]]) $(id).addEventListener("change", () => {
-        pauseMotion(true); state[key] = Number($(id).value); updateFrame();
+        pauseMotion(true); pauseArray(); state[key] = Number($(id).value); updateArrayUI(); updateFrame();
     });
     $("nest").addEventListener("click", event => {
         const rect = $("nest").getBoundingClientRect();
@@ -1928,7 +2493,7 @@
         const x = (event.clientX - rect.left) * g.width / rect.width, y = (event.clientY - rect.top) * g.height / rect.height;
         const col = Math.floor((x - g.x) / g.dx), row = Math.floor((y - g.y) / g.dy);
         if (col >= 0 && col < 16 && row >= 0 && row < 16) {
-            pauseMotion(true); state.col = col; state.row = row; updateFrame();
+            pauseMotion(true); pauseArray(); state.col = col; state.row = row; updateArrayUI(); updateFrame();
         }
     });
     $("zoom-array").addEventListener("click", () => {
@@ -1970,15 +2535,15 @@
     for (const id of ["play", "step-back", "step-next", "frame", "dot-index", "lane-index",
         "tile-n", "tile-m", "tile-k", "previous-tile", "next-tile", "reset"]) {
         for (const event of ["click", "input", "change"]) $(id).addEventListener(event, () => {
-            pauseMotion(true); pauseIsa(); machine.driving = false; updateMachine();
+            pauseMotion(true); pauseArray(true); pauseIsa(); machine.driving = false; updateMachine();
             // Do not rewrite a number input while its new value is being typed.
             if (!id.startsWith("tile-")) updateMatrices();
         }, true);
     }
     $("dataset-version").textContent = `Embedded data schema ${data.schema_version}.`;
-    document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); pauseIsa(); pauseMotion(); } });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); pauseIsa(); pauseMotion(); pauseArray(); } });
     window.addEventListener("resize", () => { if (motion.active) updateElementPanel(motion.trace.frames[motion.index]); });
-    pause(); updateMotionUI(); updateMachine(); render();
+    pause(); selectDataflowMode("single"); updateMotionUI(); updateArrayUI(); updateMachine(); render();
 })();
 </script>
       </div>

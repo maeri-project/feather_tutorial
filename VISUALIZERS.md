@@ -19,6 +19,25 @@ image using the maintained FEATHER_GEMM RTL runner. Workload values in the
 animation are deterministic teaching samples, not Qwen model tensors; animation
 steps are not measured RTL cycles.
 
+## Entire-array animation
+
+On the Qwen page, choose **Entire array** in the **Dataflow animation** selector,
+then **Animate entire array**. The original **Single element** view is retained.
+Use pause, arrows, the scrubber, reset, or speed controls to inspect:
+
+- FP16 input and weight transfers into the banked buffers and PE weight preload.
+- All 256 PE accumulators updating over 16 MAC steps per dot group.
+- Sixteen row waves per group moving through the eight programmed BIRRD stages;
+  only the eight committed output ports write the output buffer.
+- All 1,024 cells filling in the 32×32 output heatmap over eight dot groups.
+- FP32 contributions retained across K tiles, with FP16 rounding and Store only
+  on the final K tile. Select the last K tile to see the Store animation.
+
+The 332 logical frames compress bulk transfers and illustrate concurrent waves,
+not physical RTL cycle timing. Every MAC and committed row wave is represented.
+Single-element, entire-array, overview, and ISA playback clocks are mutually
+exclusive. Reduced-motion preferences use discrete snapshots; nothing autoplays.
+
 ## Rebuild the Qwen page
 
 The maintained compiler and standalone visualizer sources live in the sibling
@@ -49,6 +68,8 @@ export PLAYWRIGHT_BROWSERS_PATH=/path/to/playwright/browsers
 node tests/qwen_visualizer_browser_test.cjs
 node tests/feather_tutorial_browser_test.cjs
 node tests/site_shell_browser_test.cjs
+node tests/array_animation_test.cjs
+node tests/array_browser_test.cjs
 python3 tools/build_qwen_page_test.py
 ```
 
