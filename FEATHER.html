@@ -108,6 +108,7 @@
     /* tabs */
     .mg-tab-bar {
       display: flex; background: rgba(120,100,255,0.06);
+      align-items:center; flex-wrap:wrap;
       border-bottom: 2px solid var(--primary-color);
     }
     .mg-tab {
@@ -120,6 +121,19 @@
     .mg-tab.active { background: var(--bg-card); border-bottom-color: var(--primary-color); font-weight: 700; color: var(--text-main); }
     .mg-tab-content { flex:1; display:none; overflow:auto; position:relative; }
     .mg-tab-content.active { display:block; }
+    .mg-view-nav { position:sticky; top:0; z-index:1; padding:7px 12px; display:flex;
+      gap:6px; align-items:center; flex-wrap:wrap; background:var(--bg-card);
+      border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:11px; }
+    #mgAnimInfo { overflow-wrap:anywhere; line-height:1.5; }
+    .mg-app.mg-expanded { position:fixed; inset:16px; height:auto; margin:0; z-index:1200;
+      box-shadow:0 0 0 100vmax rgba(0,0,0,.5); }
+    .mg-expanded .mg-left { width:340px; min-width:300px; }
+    #mgWlM, #mgWlK, #mgWlN { width:60px; }
+    #mgExpandBtn { margin:4px 8px 4px auto; }
+    #mgDiagramScale { color:var(--text-main); background:var(--bg-body); font-size:11px;
+      padding:4px; border:1px solid var(--border-color); border-radius:4px; }
+    #mgFeatherCanvas { min-width:0; min-height:0; }
+    .mg-tab:focus-visible, .mg-btn:focus-visible { outline:2px solid var(--primary-color); outline-offset:-2px; }
     .mg-tab-content canvas { display:block; min-width: 700px; min-height: 600px; }
     .mg-legend {
       display:flex; gap:10px; flex-wrap:wrap; padding:6px 12px;
@@ -131,7 +145,7 @@
     /* modal */
     .mg-modal-overlay {
       display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;
+      background:rgba(0,0,0,0.5); z-index:1600; justify-content:center; align-items:center;
     }
     .mg-modal-overlay.show { display:flex; }
     .mg-modal {
@@ -158,6 +172,7 @@
     .mg-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
     .mg-toast {
       position:fixed; top:20px; right:20px; padding:12px 20px; border-radius:6px;
+      pointer-events:none;
       color:white; font-size:13px; z-index:2000; animation: mgFadeIn 0.3s; max-width:400px;
     }
     .mg-toast.success { background:#2E7D32; }
@@ -171,6 +186,9 @@
       .mg-app { flex-direction: column; height: auto; }
       .mg-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
       .mg-right { min-height: 500px; }
+      .mg-app.mg-expanded { inset:8px; }
+      .mg-expanded .mg-left { width:100%; min-width:0; max-height:35%; flex-shrink:0; }
+      .mg-expanded .mg-right { min-height:0; flex:1; }
     }
   </style>
 </head>
@@ -201,6 +219,7 @@
           <h3 class="nav-title">docs</h3>
           <ul class="nav-links">
             <li><a href="FEATHER.html" class="active">FEATHER</a></li>
+            <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
           </ul>
         </div>
       </nav>
@@ -252,8 +271,10 @@
             <h2>FEATHER Microarchitecture and MINISA ISA Visualizer</h2>
             <div class="text-block">
               <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
-                build ISA traces, and visualize the cycle-accurate NEST PE array pipeline, BIRRD reduction network,
-                and VN buffer layouts. The tool resets on page refresh.</p>
+                build ISA traces, and explore NEST compute connected to the BIRRD network in one FEATHER view,
+                alongside VN buffer layouts. Animation follows individual symbolic elements through an illustrative
+                schedule, not cycle-accurate RTL. BIRRD shows the actual port topology in PASS mode; this
+                editor does not encode switch commands. The tool resets on page refresh.</p>
             </div>
 
             <!-- The MINISA GUI application -->
@@ -355,15 +376,24 @@
 
               <!-- RIGHT PANEL -->
               <div class="mg-right">
-                <div class="mg-tab-bar">
-                  <div class="mg-tab active" onclick="mgSwitchTab('nest')">NEST PE Array</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('birrd')">BIRRD Network</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('buffer')">VN Buffers</div>
+                <div class="mg-tab-bar" role="tablist" aria-label="FEATHER visualization">
+                  <button class="mg-tab active" id="mg-feather-tab" data-tab="feather" role="tab" aria-selected="true" aria-controls="mg-tab-feather" onclick="mgSwitchTab('feather')">FEATHER · NEST + BIRRD</button>
+                  <button class="mg-tab" id="mg-buffer-tab" data-tab="buffer" role="tab" aria-selected="false" aria-controls="mg-tab-buffer" onclick="mgSwitchTab('buffer')">VN Buffers</button>
+                  <button class="mg-btn" id="mgExpandBtn" aria-pressed="false" onclick="mgToggleExpanded()">Expand</button>
                 </div>
                 <div class="mg-legend" id="mgLegend"></div>
-                <div class="mg-tab-content active" id="mg-tab-nest"><canvas id="mgNestCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-birrd"><canvas id="mgBirrdCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-buffer"><canvas id="mgBufferCanvas"></canvas></div>
+                <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
+                  <div class="mg-view-nav">Connected accelerator:
+                    <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
+                      <option value="fit">Fit diagram</option><option value="actual">Actual size</option>
+                    </select>
+                    <button class="mg-btn" onclick="mgScrollDiagram('nest')">NEST ↓</button>
+                    <button class="mg-btn" onclick="mgScrollDiagram('network')">BIRRD ↓</button>
+                    <button class="mg-btn" onclick="mgScrollDiagram('output')">Output ↓</button>
+                  </div>
+                  <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST, each NEST column feeds a BIRRD input, and network outputs connect to illustrative OVN port slots."></canvas>
+                </div>
+                <div class="mg-tab-content" id="mg-tab-buffer" role="tabpanel" aria-labelledby="mg-buffer-tab" tabindex="0"><canvas id="mgBufferCanvas" role="img" aria-label="Input, weight, and output VN buffer layouts"></canvas></div>
               </div>
             </div>
           </section>
@@ -701,7 +731,9 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   let mgInstructions = [];
   let mgSelectedIdx = -1;
   let mgAnimFrames = [], mgCurrentFrame = 0, mgPlaying = false, mgTimer = null;
-  let mgActiveTab = 'nest';
+  let mgActiveTab = 'feather';
+  let mgFrameProgress=1,mgLastTick=null,mgTraceSignature='';
+  const mgReducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 
   function mgCD(a,b){return Math.ceil(a/b);}
   function mgCL2(x){return x<=1?0:Math.ceil(Math.log2(x));}
@@ -766,7 +798,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgToast(msg,type='info',dur=3000){const t=document.createElement('div');t.className=`mg-toast ${type}`;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},dur);}
 
   // ---------- ISA List UI ----------
-  function mgRenderList(){const l=document.getElementById('mgIsaList');l.innerHTML='';
+  function mgRenderList(){
+    const signature=JSON.stringify([mgHW,mgInstructions]);
+    if(signature!==mgTraceSignature){mgTraceSignature=signature;mgInvalidateAnimation();}
+    const l=document.getElementById('mgIsaList');l.innerHTML='';
     mgInstructions.forEach((ins,i)=>{const d=document.createElement('div');d.className=`mg-isa-item${i===mgSelectedIdx?' selected':''}`;
       d.innerHTML=`<span class="mg-idx">${i+1}.</span><span class="mg-badge ${mgBadgeCls(ins.type)}">${ins.type.replace('Set','').replace('Layout','').replace('Execute','')}</span><span>${mgShortDesc(ins)}</span>`;
       d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDeriveWorkload();mgDrawActive();}
@@ -826,154 +861,269 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgSaveTrace(){if(!mgInstructions.length){mgToast('Nothing to save','warning');return;}
     const d={version:'1.0',hardware:{AH:mgHW.AH,AW:mgHW.AW,sram_mb:mgHW.sram_mb},workload:{M:mgGetWL('M'),K:mgGetWL('K'),N:mgGetWL('N')},instructions:mgInstructions.map(i=>({type:i.type,params:i.params}))};
     const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='minisa_trace.json';a.click();mgToast('Saved','success');}
-  function mgLoadTrace(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);mgInstructions=(d.instructions||[]).map(i=>({type:i.type,params:i.params}));
-    if(d.hardware){mgHW.AH=d.hardware.AH||4;mgHW.AW=d.hardware.AW||4;mgHW.sram_mb=d.hardware.sram_mb||4;document.getElementById('mgNestSize').value=mgHW.AH;document.getElementById('mgSramMB').value=mgHW.sram_mb;}
-    /* M,K,N are now derived from Set*VNLayout instructions via mgDeriveWorkload() called by mgRenderList() */
-    mgSelectedIdx=-1;mgRenderList();mgToast(`Loaded ${mgInstructions.length} instrs`,'success');}catch(err){mgToast('Load failed: '+err.message,'error');}};r.readAsText(f);ev.target.value='';}
+  function mgLoadTrace(ev){
+    const f=ev.target.files[0];if(!f)return;ev.target.value='';
+    if(f.size>1024*1024){mgToast('Load failed: trace exceeds 1 MiB','error');return;}
+    const r=new FileReader();r.onload=e=>{try{
+      const d=JSON.parse(e.target.result),hardware=d.hardware||mgHW;
+      if(![4,8,16].includes(hardware.AH)||hardware.AW!==hardware.AH)
+        throw Error('Use a square 4×4, 8×8, or 16×16 array');
+      if(!Number.isFinite(hardware.sram_mb)||hardware.sram_mb<1||hardware.sram_mb>4096)
+        throw Error('SRAM must be between 1 and 4096 MiB');
+      if(!Array.isArray(d.instructions)||d.instructions.length>4096)
+        throw Error('Expected an instruction array of at most 4096 entries');
+      const fields={SetIVNLayout:['order','M_L0','M_L1','J_L1'],
+        SetWVNLayout:['order','N_L0','N_L1','K_L1'],SetOVNLayout:['order','P_L0','P_L1','Q_L1'],
+        ExecuteMapping:['r0','c0','Gr','Gc','sr','sc'],ExecuteStreaming:['dataflow','m_0','s_m','T','vn_size']};
+      const instructions=d.instructions.map((ins,index)=>{
+        if(!ins||!Object.hasOwn(fields,ins.type)||!ins.params)throw Error('Unknown instruction '+(index+1));
+        const params={};for(const key of fields[ins.type]){
+          const value=ins.params[key];
+          if(!Number.isSafeInteger(value)||value<0||value>65536)throw Error('Invalid '+key+' in instruction '+(index+1));
+          params[key]=value;
+        }
+        if('order' in params&&(params.order>5||Object.entries(params).some(([k,v])=>k!=='order'&&v<1)))
+          throw Error('Invalid VN layout in instruction '+(index+1));
+        return{type:ins.type,params};
+      });
+      // Validate before assigning, so a malformed import leaves the editor intact.
+      mgStopAnim();mgHW={...mgHW,AH:hardware.AH,AW:hardware.AW,sram_mb:hardware.sram_mb};
+      mgInstructions=instructions;document.getElementById('mgNestSize').value=mgHW.AH;
+      document.getElementById('mgSramMB').value=mgHW.sram_mb;mgSelectedIdx=-1;mgRenderList();
+      mgToast('Loaded '+mgInstructions.length+' instrs','success');
+    }catch(err){mgToast('Load failed: '+err.message,'error');}};
+    r.readAsText(f);
+  }
 
   // ---------- HW Changes ----------
-  function mgOnNestSizeChange(){const s=parseInt(document.getElementById('mgNestSize').value);mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
+  function mgOnNestSizeChange(){const s=Number(document.getElementById('mgNestSize').value);
+    if(![4,8,16].includes(s))return;mgInvalidateAnimation();mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
   function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;if(mgActiveTab==='buffer')mgDrawBuffer();}
 
   // ---------- Tabs ----------
-  function mgSwitchTab(name){mgActiveTab=name;document.querySelectorAll('.mg-tab').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));
-    document.querySelectorAll('.mg-tab-content').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));mgUpdateLegend();mgDrawActive();}
+  function mgSwitchTab(name){
+    if(!['feather','buffer'].includes(name))return;
+    mgStopAnim();mgActiveTab=name;
+    document.querySelectorAll('.mg-tab').forEach(t=>{
+      const selected=t.dataset.tab===name;t.classList.toggle('active',selected);
+      t.setAttribute('aria-selected',String(selected));
+    });
+    document.querySelectorAll('.mg-tab-content').forEach(t=>t.classList.toggle('active',t.id==='mg-tab-'+name));
+    mgUpdateLegend();mgDrawActive();
+  }
   function mgUpdateLegend(){const l=document.getElementById('mgLegend');
-    if(mgActiveTab==='nest')l.innerHTML=[['Idle','#E8EAED'],['Loading W (WVN)','#C8E6C9'],['W Ready','#A5D6A7'],['Computing','#FFE082'],['Outputting (OVN)','#FFCDD2']].map(([n,c])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c}"></div>${n}</div>`).join('');
-    else if(mgActiveTab==='birrd')l.innerHTML=Object.entries(MG_EGG_MODES).map(([_,v])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${v.bg};border-color:${v.edge}"></div>${v.name}</div>`).join('');
-    else l.innerHTML=[['Streaming (IVN)','#BBDEFB','#1565C0'],['Stationary (WVN)','#C8E6C9','#2E7D32'],['Output (OVN)','#FFCDD2','#C62828']].map(([n,c,e])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c};border-color:${e}"></div>${n}</div>`).join('');}
-  function mgDrawActive(){if(mgActiveTab==='nest')mgDrawNest();else if(mgActiveTab==='birrd')mgDrawBirrd();else mgDrawBuffer();}
+    const items=mgActiveTab==='feather'
+      ?[['Input elements','#BBDEFB','#1565C0'],['Weight elements','#C8E6C9','#2E7D32'],
+        ['MAC','#FFE082','#D97706'],['Partial sums → BIRRD','#F5D0FE','#C026D3'],['Output OVN','#FFCDD2','#C62828']]
+      :[['Streaming (IVN)','#BBDEFB','#1565C0'],['Stationary (WVN)','#C8E6C9','#2E7D32'],['Output (OVN)','#FFCDD2','#C62828']];
+    l.innerHTML=items.map(([n,c,e])=>'<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:'+c+';border-color:'+e+'"></div>'+n+'</div>').join('');
+  }
+  function mgDrawActive(){
+    if(mgActiveTab==='feather')mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
+    else mgDrawBuffer();
+  }
 
   // ---------- Canvas Helpers ----------
   function mgRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
   function mgArrow(ctx,x1,y1,x2,y2,color,lw){const hl=8,a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
 
-  // ---------- NEST Visualization ----------
-  function mgDrawNest(frame){const cv=document.getElementById('mgNestCanvas'),ct=document.getElementById('mg-tab-nest');
-    const AH=mgHW.AH,AW=mgHW.AW;
-    /* Guarantee a minimum PE size so text stays readable at any array size */
-    const minPE=56;  /* minimum px per PE cell */
-    const peSize=Math.max(minPE, Math.min(70, (ct.clientWidth-200)/(AW*1.4)));
-    const peS=peSize*1.4;
-    const desiredW=Math.max(ct.clientWidth, mLForAW()+AW*peS+40);
-    const desiredH=Math.max(ct.clientHeight, 160+AH*peS+80);
-    cv.width=desiredW;cv.height=desiredH;
-    function mLForAW(){return AW>8?60:120;} /* narrower row-label margin for large arrays */
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-    const mL=mLForAW(),mT=140;
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
-    if(frame)ctx.fillText(`NEST PE Array (${AH}\u00d7${AW}) - Cycle ${frame.cycle}`,W/2,20);else ctx.fillText(`NEST PE Array (${AH}\u00d7${AW})`,W/2,20);
-    if(frame){ctx.font='12px sans-serif';ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';ctx.fillText(frame.phase.substring(0,60),W/2,36);}
-    const nTY=mT,bY=nTY-50,ncX=mL+(AW-1)*peS/2+peSize/2,iBX=ncX-peS*AW/4,wBX=ncX+peS*AW/4;
-    ctx.fillStyle='#BBDEFB';ctx.strokeStyle='#1565C0';ctx.lineWidth=2;mgRR(ctx,iBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#1565C0';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('Streaming Buffer',iBX,bY-1);ctx.fillText('(Inputs)',iBX,bY+11);mgArrow(ctx,iBX,bY+16,iBX,nTY-4,'#1565C0',2);
-    ctx.fillStyle='#C8E6C9';ctx.strokeStyle='#2E7D32';ctx.lineWidth=2;mgRR(ctx,wBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.fillText('Stationary Buffer',wBX,bY-1);ctx.fillText('(WVN)',wBX,bY+11);mgArrow(ctx,wBX,bY+16,wBX,nTY-4,'#2E7D32',2);
-    /* Adaptive font sizes based on PE cell size */
-    const fPE=Math.max(7,Math.min(9,Math.round(peSize*0.14)));   /* PE(r,c) label */
-    const fWVN=Math.max(6,Math.min(7,Math.round(peSize*0.11)));  /* WVN annotation */
-    const fMAC=Math.max(6,Math.min(8,Math.round(peSize*0.12)));  /* MAC count */
-    const fRow=Math.max(7,Math.min(10,Math.round(peSize*0.15))); /* Row label */
-    const rowBadgeW=Math.min(90, mL-10);  /* row badge width fits in left margin */
-    const rowBadgeH=Math.min(36, peSize*0.7);
-    for(let r=0;r<AH;r++){const y=mT+r*peS;let rL=`Row ${r}\nIdle`,rC=MG_PE_COLORS.idle;
-      if(frame){const pp=frame.pp[`${r},0`]||'idle';if(frame.aOR===r){rL=`Row ${r}\nOUT\u2192BIRRD`;rC=MG_PE_COLORS.outputting;}
-        else if(pp==='computing'||pp==='dp_done'){rL=`Row ${r}\n${frame.rI[r]||'MAC'}`;rC=MG_PE_COLORS.computing;}
-        else if((frame.aWR||[]).includes(r)&&frame.pLE[`${r},0`]>=0){rL=`Row ${r}\n\u2190W[${frame.pLE[`${r},0`]}]`;rC=MG_PE_COLORS.loading;}
-        else if(frame.pWI[`${r},0`]>=AH){rL=`Row ${r}\nWVN\u2713`;rC=MG_PE_COLORS.ready;}
-        else if(frame.pWI[`${r},0`]>0){rL=`Row ${r}\n[0:${frame.pWI[`${r},0`]-1}]`;rC=MG_PE_COLORS.loading;}}
-      ctx.fillStyle=rC;ctx.strokeStyle='#666';ctx.lineWidth=1;mgRR(ctx,4,y+peSize/2-rowBadgeH/2,rowBadgeW,rowBadgeH,5);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#333';ctx.font=`bold ${fRow}px sans-serif`;ctx.textAlign='center';
-      const rlLines=rL.split('\n');rlLines.forEach((l,li)=>ctx.fillText(l,4+rowBadgeW/2,y+peSize/2-(rlLines.length-1)*fRow*0.6+li*fRow*1.3));
-      for(let c=0;c<AW;c++){const x=mL+c*peS,k=`${r},${c}`;let col=MG_PE_COLORS.idle;
-        if(frame){const pp=frame.pp[k]||'idle';if(pp==='outputting')col=MG_PE_COLORS.outputting;else if(pp==='computing'||pp==='dp_done')col=MG_PE_COLORS.computing;else if(pp==='weights_ready')col=MG_PE_COLORS.ready;else if(pp==='loading_weights')col=MG_PE_COLORS.loading;}
-        ctx.fillStyle=col;ctx.strokeStyle='#1565C0';ctx.lineWidth=1.5;mgRR(ctx,x,y,peSize,peSize,4);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#333';ctx.font=`bold ${fPE}px sans-serif`;ctx.textAlign='center';ctx.fillText(`PE(${r},${c})`,x+peSize/2,y+peSize*.25);
-        let wt=`WVN(${r},${c})[-]`;if(frame)wt=frame.pWA[k]||wt;ctx.font=`${fWVN}px sans-serif`;ctx.fillStyle='#444';ctx.fillText(wt,x+peSize/2,y+peSize*.48);
-        ctx.font=`${fMAC}px sans-serif`;ctx.fillStyle='#666';ctx.fillText(`MAC:${frame?frame.pMC[k]||0:0}`,x+peSize/2,y+peSize*.72);
-        if(r<AH-1)mgArrow(ctx,x+peSize/2,y+peSize+2,x+peSize/2,y+peS-2,'#90A4AE',1);}}
-    const oY=mT+AH*peS+10;ctx.fillStyle='#C62828';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('OUTPUT to BIRRD (round-robin row)',ncX,oY+20);
-    for(let c=0;c<AW;c++){const x=mL+c*peS+peSize/2;mgArrow(ctx,x,mT+(AH-1)*peS+peSize+4,x,oY,'#C62828',2);}}
+  // ---------- Connected FEATHER microarchitecture ----------
+  // This topology is the original tutorial BIRRD wiring. AW=4 skips one
+  // first-half stage; every switch consumes the exact two indexed wires below.
+  function mgBirrdInputs(st,sw,AW=mgHW.AW){
+    const LV=mgCL2(AW),NS=AW/2,skip=AW===4?1:0;
+    const lls=(v,w)=>w<=1?v:((v<<1)|((v>>(w-1))&1))&((1<<w)-1);
+    const lrs=(v,w)=>w<=1?v:((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);
+    const br=(v,w)=>{let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;};
+    if(st===0)return[2*sw,2*sw+1];
+    const logical=st+skip*(LV-1);
+    if(logical<LV){const per=NS>>(st-1),group=Math.floor(sw/per),local=sw%per;
+      const offset=group*(AW>>(st-1)),bits=LV-st+1;
+      return[lls(local*2,bits)+offset,lls(local*2+1,bits)+offset];}
+    if(logical===LV)return[br(sw*2,LV),br(sw*2+1,LV)];
+    const exponent=(2*LV-1)-logical,per=exponent>=0?NS>>exponent:NS;
+    const group=Math.floor(sw/per),local=sw%per,offset=exponent>=0?group*(AW>>exponent):0;
+    const bits=exponent>=0?LV-exponent:LV;
+    return[lrs(local*2,bits)+offset,lrs(local*2+1,bits)+offset];
+  }
 
-  // ---------- BIRRD Visualization ----------
-  function mgDrawBirrd(){const cv=document.getElementById('mgBirrdCanvas'),ct=document.getElementById('mg-tab-birrd');
-    const AW=mgHW.AW,LV=mgCL2(AW),TOT=AW===4?2*LV-1:2*LV,NS=AW/2;
-    const pS=Math.min(100,Math.max(60,(ct.clientWidth-200)/AW));
-    const sS=Math.max(80, 90);
-    const eW=Math.min(50,pS*.8),eH=28;
-    const desiredW=Math.max(ct.clientWidth, (AW-1)*pS+200);
-    const desiredH=Math.max(ct.clientHeight, (TOT+3)*sS+80);
-    cv.width=desiredW; cv.height=desiredH;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-    const sX=(W-(AW-1)*pS)/2,sY=50;
-    function pX(p){return sX+p*pS;}function stY(s){return sY+(s+1)*sS;}
-    function lls(v,w){if(w<=1)return v;return((v<<1)|((v>>(w-1))&1))&((1<<w)-1);}
-    function lrs(v,w){if(w<=1)return v;return((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);}
-    function br(v,w){let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;}
-    function cls(s){const SK=AW===4?1:0;if(s===0)return'first';const lg=s+SK*(LV-1);if(lg<LV)return'first_half';if(lg===LV)return'middle';return'second_half';}
-    function gSI(st,sw){const SK=AW===4?1:0,role=cls(st);if(role==='first')return[2*sw,2*sw+1];
-      if(role==='first_half'){const s=st,ng=1<<(s-1),spg=NS>>(s-1),g=Math.floor(sw/spg),sig=sw%spg,go=g*(AW>>(s-1)),w=LV-s+1;return[lls(sig<<1,w)+go,lls((sig<<1)+1,w)+go];}
-      if(role==='middle')return[br(sw<<1,LV),br((sw<<1)+1,LV)];
-      const lg=st+SK*(LV-1),nge=(2*LV-1)-lg,ng2=nge>=0?(1<<nge):1,spg2=nge>=0?(NS>>nge):NS,g2=spg2>0?Math.floor(sw/spg2):0,sig2=spg2>0?(sw%spg2):sw,go2=nge>=0?(g2*(AW>>nge)):0,w2=nge>=0?(LV-nge):LV;
-      return[lrs(sig2<<1,w2)+go2,lrs((sig2<<1)+1,w2)+go2];}
-    /* Build input-port to x-position map for each stage.
-       Each EGG sw at stage s has output ports at indices 2*sw and 2*sw+1.
-       Their x-positions are pX(2*sw) and pX(2*sw+1). */
-    /* Build input-port-index to x-position map for each stage.
-       Each EGG sw at stage s reads from input ports gSI(s, sw) = [lo, hi].
-       Input port lo is on the left side of the EGG, hi on the right.
-       The x-position of input port lo = left side of EGG = pX(2*sw),
-       and input port hi = right side = pX(2*sw+1). */
-    function inputPortX(stage, portIdx) {
-      /* Find which EGG at this stage reads this port, and whether it's the lo or hi input */
-      for (let sw = 0; sw < NS; sw++) {
-        const [lo, hi] = gSI(stage, sw);
-        if (lo === portIdx) return pX(2 * sw);     /* left input of EGG */
-        if (hi === portIdx) return pX(2 * sw + 1); /* right input of EGG */
-      }
-      return pX(portIdx); /* fallback */
+  let mgFeatherGeometry=null;
+  let mgPriorOverflow='';
+  function mgToggleExpanded(){
+    const app=document.querySelector('.mg-app'),expanded=app.classList.toggle('mg-expanded');
+    const button=document.getElementById('mgExpandBtn');
+    button.textContent=expanded?'Restore':'Expand';button.setAttribute('aria-pressed',String(expanded));
+    if(expanded){mgPriorOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    else document.body.style.overflow=mgPriorOverflow;
+    requestAnimationFrame(mgDrawActive);
+  }
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&document.querySelector('.mg-app').classList.contains('mg-expanded'))mgToggleExpanded();
+  });
+  function mgScrollDiagram(section){
+    if(!mgFeatherGeometry)return;const pane=document.getElementById('mg-tab-feather');
+    const positions={nest:0,network:mgFeatherGeometry.nestBottom-30,output:mgFeatherGeometry.outputY-120};
+    pane.scrollTo({top:(positions[section]||0)*mgFeatherGeometry.scale,behavior:mgReducedMotion.matches?'instant':'smooth'});
+  }
+  function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
+    const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
+    const AH=mgHW.AH,AW=mgHW.AW,stages=AW===4?3:2*mgCL2(AW);
+    const cell=AW>8?48:58,pitch=cell+18,top=148;
+    const width=Math.max(700,ct.clientWidth,100+AW*pitch+32);
+    const left=(width-((AW-1)*pitch+cell))/2;
+    const columnX=c=>left+c*pitch+cell/2;
+    const nestBottom=top+(AH-1)*pitch+cell,networkTop=nestBottom+100;
+    const stageY=s=>networkTop+80+s*72,outputY=stageY(stages-1)+108,eggHeight=28;
+    const height=outputY+112;
+    const fit=document.getElementById('mgDiagramScale').value==='fit';
+    const availableHeight=Math.max(1,ct.clientHeight-ct.querySelector('.mg-view-nav').offsetHeight-12);
+    const scale=fit?Math.min(1,Math.max(1,ct.clientWidth-12)/width,availableHeight/height):1;
+    cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';
+    cv.style.margin=fit?'0 auto':'0';
+    if(cv.width!==width)cv.width=width;if(cv.height!==height)cv.height=height;
+    const ctx=cv.getContext('2d');
+    ctx.clearRect(0,0,width,height);
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';
+    const muted=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';
+    const center=(columnX(0)+columnX(AW-1))/2;
+    const columnLinks=Array.from({length:AW},(_,c)=>({column:c,input:c,
+      from:[columnX(c),nestBottom],to:[columnX(c),networkTop]}));
+    const inputSlot=(s,p)=>{
+      for(let sw=0;sw<AW/2;sw++){const pair=mgBirrdInputs(s,sw,AW);
+        if(pair[0]===p)return 2*sw;if(pair[1]===p)return 2*sw+1;}
+      throw Error('Unconnected BIRRD port');
+    };
+    const networkPath=(s,p)=>{
+      const slot=inputSlot(s,p),start=s===0?networkTop:stageY(s-1)+eggHeight/2;
+      const end=stageY(s)-eggHeight/2,mid=(start+end)/2;
+      return[[columnX(p),start],[columnX(p),mid-4],[columnX(slot),mid+4],[columnX(slot),end]];
+    };
+    mgFeatherGeometry={width,height,scale,cell,pitch,left,top,nestBottom,networkTop,outputY,
+      stages,columnLinks,portX:Array.from({length:AW},(_,c)=>columnX(c)),
+      stageY:Array.from({length:stages},(_,s)=>stageY(s))};
+    cv.dataset.arrayWidth=AW;cv.dataset.stages=stages;cv.dataset.columnLinks=AW;
+    cv.dataset.networkLinks=AW*stages;cv.dataset.animationFrame=mgCurrentFrame;
+    cv.dataset.animationProgress=progress.toFixed(3);cv.dataset.switchMode='PASS';
+    function label(text,x,y,color=textColor,size=12,bold=false){
+      ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(bold?'bold ':'')+size+'px sans-serif';ctx.fillText(text,x,y);
     }
-    ctx.fillStyle='#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(`BIRRD Network (AW=${AW})`,W/2,18);
-    ctx.font='11px sans-serif';ctx.fillStyle='#666';ctx.fillText(`${TOT} stages | ${NS} EGGs/stage`,W/2,34);
-    for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`In${p}`,x,sY-4);ctx.beginPath();ctx.arc(x,sY+6,5,0,Math.PI*2);ctx.fillStyle='#C8E6C9';ctx.fill();ctx.strokeStyle='#2E7D32';ctx.lineWidth=1.5;ctx.stroke();}
-    const oY=stY(TOT)+20;for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#C62828';ctx.font='bold 10px sans-serif';ctx.fillText(`Out${p}`,x,oY+18);ctx.beginPath();ctx.arc(x,oY+4,5,0,Math.PI*2);ctx.fillStyle='#FFCDD2';ctx.fill();ctx.strokeStyle='#C62828';ctx.lineWidth=1.5;ctx.stroke();}
-    for(let s=0;s<TOT;s++){const sy=stY(s);ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='right';ctx.fillText(`S${s}`,sX-20,sy+4);
-      for(let sw=0;sw<NS;sw++){const oL=2*sw,oH=2*sw+1,xc=(pX(oL)+pX(oH))/2;
-        ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#FF8F00';ctx.lineWidth=1.5;mgRR(ctx,xc-eW/2,sy-eH/2,eW,eH,4);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`E${sw}`,xc,sy+4);
-        /* Draw input lines into this EGG from above */
-        if(s===0){
-          /* First stage: inputs come from top input ports */
-          const [li,hi]=gSI(s,sw);
-          ctx.strokeStyle='#1565C0';ctx.lineWidth=1;
-          ctx.beginPath();ctx.moveTo(pX(li),sY+11);ctx.lineTo(pX(oL),sy-eH/2);ctx.stroke();
-          ctx.beginPath();ctx.moveTo(pX(hi),sY+11);ctx.lineTo(pX(oH),sy-eH/2);ctx.stroke();
-        }
-        /* Draw output stubs from EGG downward */
-        ctx.strokeStyle='#2E7D32';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sy+eH/2);ctx.lineTo(pX(oL),sy+eH/2+6);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sy+eH/2);ctx.lineTo(pX(oH),sy+eH/2+6);ctx.stroke();}
-      /* Interstage connections: from output ports of stage s to input ports of stage s+1 */
-      if(s<TOT-1){
-        const yS=sy+eH/2+6, yE=stY(s+1)-eH/2, yM=(yS+yE)/2;
-        /* For each output port of this stage, find where it connects as input to next stage */
-        for(let outPort=0;outPort<AW;outPort++){
-          const xSrc=pX(outPort); /* output port x-position */
-          /* Find which EGG in stage s+1 reads this output port, and get its input x-position */
-          const xDst=inputPortX(s+1, outPort);
-          if(Math.abs(xSrc-xDst)<1){
-            ctx.strokeStyle='#1565C0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xDst,yE);ctx.stroke();
-          } else {
-            ctx.strokeStyle='#E65100';ctx.lineWidth=1;
-            ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xSrc,yM+2);ctx.stroke();
-            ctx.beginPath();ctx.moveTo(xSrc,yM+2);ctx.lineTo(xDst,yM-2);ctx.stroke();
-            ctx.beginPath();ctx.moveTo(xDst,yM-2);ctx.lineTo(xDst,yE);ctx.stroke();
+    function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
+    function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
+      points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
+    label('FEATHER · NEST compute → BIRRD network → output buffer',center,24,textColor,12,true);
+    label('Illustrative dataflow • logical elements, not RTL-cycle timing',center,43,muted,11);
+    const inputX=center-AW*pitch/4,weightX=center+AW*pitch/4;
+    box(inputX-72,65,144,40,'#BBDEFB','#1565C0');label('Streaming buffer (IVN)',inputX,89,'#1565C0',11,true);
+    box(weightX-72,65,144,40,'#C8E6C9','#2E7D32');label('Stationary buffer (WVN)',weightX,89,'#2E7D32',11,true);
+    mgArrow(ctx,inputX,105,inputX,top-14,'#1565C0',2);
+    mgArrow(ctx,weightX,105,weightX,top-14,'#2E7D32',2);
+    label('NEST · '+AH+' × '+AW+' PE array',center,top-9,textColor,12,true);
+    for(let r=0;r<AH;r++){
+      const y=top+r*pitch;
+      label('Row '+r,43,y+cell/2,muted,11,true);
+      for(let c=0;c<AW;c++){
+        const x=left+c*pitch,key=r+','+c,phase=frame?frame.pp[key]:'idle';
+        const colors={loading_weights:MG_PE_COLORS.loading,weights_ready:MG_PE_COLORS.ready,
+          computing:MG_PE_COLORS.computing,dp_done:MG_PE_COLORS.computing,outputting:MG_PE_COLORS.outputting};
+        box(x,y,cell,cell,colors[phase]||MG_PE_COLORS.idle,'#1565C0');
+        label('PE('+r+','+c+')',x+cell/2,y+14,'#263238',9,true);
+        label('W: '+(frame?frame.pWI[key]||0:0)+' / '+AH,x+cell/2,y+28,'#37474F',9);
+        label('MAC: '+(frame?frame.pMC[key]||0:0),x+cell/2,y+42,'#37474F',9);
+        if(r<AH-1)mgArrow(ctx,columnX(c),y+cell+1,columnX(c),y+pitch-2,'#90A4AE',1);
+      }
+    }
+    // Every NEST column has its own continuous physical link to network input.
+    columnLinks.forEach(link=>{
+      path([link.from,link.to],'#C62828',1.5);
+      label('C'+link.column,columnX(link.column),nestBottom+19,'#C62828',9);
+    });
+    box(left-12,nestBottom+31,(AW-1)*pitch+cell+24,38,'#F3E8FF','#9333EA');
+    label('Row autopick → '+AW+' column partial sums',center,nestBottom+45,textColor,12,true);
+    label('BIRRD · '+stages+' stages · '+AW/2+' EGGs per stage',center,nestBottom+62,muted,11);
+    for(let p=0;p<AW;p++){
+      label('In'+p,columnX(p),networkTop-8,'#C62828',9);
+      ctx.beginPath();ctx.arc(columnX(p),networkTop,4,0,Math.PI*2);ctx.fillStyle='#C62828';ctx.fill();
+    }
+    for(let s=0;s<stages;s++){
+      for(let p=0;p<AW;p++)path(networkPath(s,p),inputSlot(s,p)===p?'#1565C0':'#D97706',1.1);
+      label('Stage '+s,42,stageY(s)+4,muted,10,true);
+      for(let sw=0;sw<AW/2;sw++){
+        const x=columnX(2*sw)-10,w=pitch+20,y=stageY(s);
+        box(x,y-eggHeight/2,w,eggHeight,'#FFF9C4','#E69519');
+        const [lo,hi]=mgBirrdInputs(s,sw,AW);
+        // Distinct input/output ports and local PASS paths are visible.
+        path([[columnX(2*sw),y-eggHeight/2],[columnX(2*sw),y+eggHeight/2]],'#A16207',1);
+        path([[columnX(2*sw+1),y-eggHeight/2],[columnX(2*sw+1),y+eggHeight/2]],'#A16207',1);
+        label('E'+sw+' · PASS',x+w/2,y+3,'#713F12',9,true);
+        label(lo,columnX(2*sw),y-19,muted,8);label(hi,columnX(2*sw+1),y-19,muted,8);
+      }
+    }
+    for(let p=0;p<AW;p++){
+      mgArrow(ctx,columnX(p),stageY(stages-1)+eggHeight/2,columnX(p),outputY,'#C62828',1.5);
+      label('Out'+p,columnX(p),outputY-9,'#C62828',9);
+      box(columnX(p)-cell/2,outputY,cell,40,'#FFCDD2','#C62828');
+      label('OVN '+p,columnX(p),outputY+25,'#9F1239',9,true);
+    }
+    label('Output buffer · OVN port slots (topology preview)',center,outputY+65,textColor,12,true);
+    label('Topology preview: EGGs shown in PASS mode; this editor does not encode BIRRD switch commands.',center,outputY+85,muted,10);
+    let tokenCount=0,networkTokens=0;
+    function token(points,text,color,position=progress){
+      const lengths=points.slice(1).map((point,i)=>Math.hypot(point[0]-points[i][0],point[1]-points[i][1]));
+      let remaining=lengths.reduce((a,b)=>a+b,0)*Math.max(0,Math.min(1,position)),x=points[0][0],y=points[0][1];
+      for(let i=0;i<lengths.length;i++){
+        const t=lengths[i]?Math.min(1,remaining/lengths[i]):1;
+        x=points[i][0]+(points[i+1][0]-points[i][0])*t;y=points[i][1]+(points[i+1][1]-points[i][1])*t;
+        if(remaining<=lengths[i])break;remaining-=lengths[i];
+      }
+      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+      ctx.font='bold 9px sans-serif';const tw=ctx.measureText(text).width+8;
+      ctx.fillStyle='rgba(255,255,255,0.93)';ctx.fillRect(x-tw/2,y-20,tw,13);
+      label(text,x,y-10,color,9,true);tokenCount++;
+    }
+    if(frame){
+      for(const r of frame.aWR||[])for(let c=0;c<AW;c++){
+        const element=frame.pLE[r+','+c];
+        if(element>=0)token([[weightX,105],[columnX(c),top-26],[columnX(c),top+r*pitch+cell/2]],
+          'W'+element,'#15803D');
+      }
+      for(const r of frame.aIR||[]){
+        const key=r+',0',lane=Math.max(0,(frame.pMC[key]||1)-1)%AH;
+        if(frame.pp[key]==='computing'||frame.pp[key]==='dp_done'||frame.pp[key]==='outputting')
+          for(let c=0;c<AW;c++)token([[inputX,105],[columnX(c),top-17],[columnX(c),top+r*pitch+cell/2]],
+            (frame.rI[r]||'IVN')+'['+lane+']','#1D4ED8');
+      }
+      // Each issued row is tracked independently through the real stage wiring.
+      // PASS preview preserves token identity; it does not invent a reduction.
+      for(let age=0;age<=stages+1;age++){
+        const source=mgAnimFrames[mgCurrentFrame-age];
+        if(!source||source.aOR<0||source.iteration!==frame.iteration)continue;
+        for(let col=0;col<AW;col++){
+          const name='R'+source.aOR+'·C'+col;
+          if(age===0){
+            token([[columnX(col),top+source.aOR*pitch+cell],
+              [columnX(col),nestBottom],[columnX(col),networkTop]],name,'#C026D3');
+          }else{
+            let port=col;
+            for(let s=0;s<Math.min(age-1,stages);s++)port=inputSlot(s,port);
+            if(age<=stages){
+              const s=age-1,points=networkPath(s,port),slot=inputSlot(s,port);
+              points.push([columnX(slot),stageY(s)+eggHeight/2]);
+              token(points,name,'#C026D3');networkTokens++;
+            }else{
+              token([[columnX(port),stageY(stages-1)+eggHeight/2],[columnX(port),outputY+18]],name,'#C62828');
+              networkTokens++;
+            }
           }
         }
-      } else {
-        /* Last stage to outputs */
-        for(let p=0;p<AW;p++){ctx.strokeStyle='#C62828';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(p),sy+eH/2+6);ctx.lineTo(pX(p),oY-1);ctx.stroke();}
       }
-    }}
+    }
+    cv.dataset.tokenCount=tokenCount;cv.dataset.networkTokens=networkTokens;
+  }
+  // Keep callable aliases for saved tutorial snippets, not separate tabs.
+  function mgDrawNest(frame){mgDrawFeather(frame);}
+  function mgDrawBirrd(){mgDrawFeather();}
 
   // ---------- Buffer Visualization ----------
   function mgDrawBuffer(){const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');
@@ -1016,10 +1166,12 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       /* Line 3: VNs and capacity */
       ctx.fillText(`VNs=${tV}, cap=${cap}`,px+pW/2,pSY-18);
       const dn=bt.op==='W'?{nL0:a0,nL1:a1,kL1:a2}:bt.op==='I'?{mL0:a0,mL1:a1,jL1:a2}:{pL0:a0,pL1:a1,qL1:a2};
-      const iN=bt.op==='W'?['kL1','nL0','nL1']:bt.op==='I'?['jL1','mL0','mL1']:['pL0','pL1','qL1'];
-      const a2l={};for(let d0=0;d0<dn[iN[0]];d0++)for(let d1=0;d1<dn[iN[1]];d1++)for(let d2=0;d2<dn[iN[2]];d2++){
-        const ix={};ix[iN[0]]=d0;ix[iN[1]]=d1;ix[iN[2]]=d2;const pm=MG_PERM_TABLE[order][bt.op];
-        const L=ix[pm[0]]*(dn[pm[1]]*dn[pm[2]])+ix[pm[1]]*dn[pm[2]]+ix[pm[2]];
+      // Decode only displayed addresses; a large valid layout must not allocate
+      // or iterate through its entire virtual buffer just to draw 16 rows.
+      const a2l={},pm=MG_PERM_TABLE[order][bt.op];
+      for(let L=0;L<Math.min(tV,nC*nR);L++){
+        const ix={},inner=dn[pm[1]]*dn[pm[2]];
+        ix[pm[0]]=Math.floor(L/inner);ix[pm[1]]=Math.floor(L/dn[pm[2]])%dn[pm[1]];ix[pm[2]]=L%dn[pm[2]];
         if(bt.op==='W')a2l[L]=`${bt.pf}\nk=${ix.kL1},n=${ix.nL0*a1+ix.nL1}`;
         else if(bt.op==='I')a2l[L]=`${bt.pf}\nm=${ix.mL0*a1+ix.mL1},j=${ix.jL1}`;
         else a2l[L]=`${bt.pf}\np=${ix.pL0*a1+ix.pL1},q=${ix.qL1}`;}
@@ -1034,7 +1186,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
             const lns=lb.split('\n');lns.forEach((l,li)=>ctx.fillText(l,x+cW/2,y+cH/2-(lns.length-1)*fLH/2+li*fLH+2));}}}});}
 
   // ---------- Animation Engine ----------
-  function mgGenerateAnimation(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}
+  function mgGenerateAnimation(){mgStopAnim();if(!mgInstructions.length){mgToast('No instructions','warning');return;}
     const errs=mgValSeq();if(errs.length>0&&!confirm(`${errs.length} error(s). Generate anyway?`))return;
     const AH=mgHW.AH,AW=mgHW.AW;let nWV=1,nIV=AH,nOR=AH;const esP=[];
     mgInstructions.forEach(ins=>{if(ins.type==='SetWVNLayout')nWV=Math.max(1,ins.params.N_L1*ins.params.K_L1);
@@ -1042,6 +1194,8 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       else if(ins.type==='SetOVNLayout')nOR=Math.max(1,ins.params.P_L1);
       else if(ins.type==='ExecuteStreaming')esP.push({T:ins.params.T,vn_size:ins.params.vn_size,s_m:ins.params.s_m,m_0:ins.params.m_0});});
     const nMap=mgInstructions.filter(i=>i.type==='ExecuteMapping').length,iters=Math.max(1,nMap);
+    const stepsPerIteration=AH*AH+Math.max(AH,nIV,...esP.map(p=>p.T))+2*AH+2*mgCL2(AW)+3;
+    if(stepsPerIteration*iters>4096){mgToast('Animation preview is limited to 4,096 illustrative steps. Shorten T or the trace.','warning',6000);return;}
     let all=[];
     let prevEmStart=0, prevWvnPreloaded=0;
     for(let it=0;it<iters;it++){const ep=esP[it]||null;let iI=nIV,iV=AH,iS=1,iM=0;
@@ -1055,6 +1209,12 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
         wvnPreloaded=Math.min(AH,Math.max(0,Math.floor(prevStreamDur/AH)));
       }
       const fs=mgGenFrames(AH,AW,iI,iV,iS,iM,wvnPreloaded);
+      fs.forEach(f=>{f.iteration=it;});
+      // Flush the displayed BIRRD pipeline before changing mapping iterations.
+      const tail=fs[fs.length-1],drain=(AW===4?3:2*mgCL2(AW))+2;
+      for(let step=1;step<=drain;step++)fs.push({...tail,cycle:tail.cycle+step,
+        phase:'BIRRD pipeline → output buffer',aOR:-1,aWR:[],aIR:[],
+        pp:Object.fromEntries(Object.keys(tail.pp).map(key=>[key,'weights_ready']))});
       if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}
       /* Annotate previous EM frames with WVN prefetch info */
       if(it>0&&wvnPreloaded>0&&all.length){
@@ -1067,7 +1227,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       prevEmStart=fs.length?fs[0].cycle:0;
       prevWvnPreloaded=wvnPreloaded;
       all=all.concat(fs);}
-    mgAnimFrames=all;mgCurrentFrame=0;mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
+    mgAnimFrames=all;mgCurrentFrame=0;mgFrameProgress=1;mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
 
   function mgGenFrames(AH,AW,nI,vS,s_m,m_0,wvnPre){
     vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);
@@ -1112,13 +1272,52 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       const awD=cy>=tWC,aiD=cy>=iSC+nI+AH-1,aoD=Object.keys(rDC).every(r=>rDC[r]===rDO[r]);if(awD&&aiD&&aoD&&!pO.length)break;}return fs;}
 
   // ---------- Animation Playback ----------
-  function mgStepAnim(d){if(!mgAnimFrames.length)return;mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));mgUpdateAnimDisplay();}
-  function mgTogglePlay(){mgPlaying=!mgPlaying;document.getElementById('mgPlayBtn').textContent=mgPlaying?'Pause':'Play';if(mgPlaying)mgRunAnim();else if(mgTimer){clearTimeout(mgTimer);mgTimer=null;}}
-  function mgRunAnim(){if(!mgPlaying||!mgAnimFrames.length)return;mgCurrentFrame=(mgCurrentFrame+1)%mgAnimFrames.length;mgUpdateAnimDisplay();
-    const sp=parseFloat(document.getElementById('mgSpeedSlider').value)||1;mgTimer=setTimeout(mgRunAnim,Math.floor(1000/sp));}
-  function mgUpdateAnimDisplay(){if(!mgAnimFrames.length){document.getElementById('mgAnimInfo').textContent='No animation';document.getElementById('mgFrameInfo').textContent='0/0';return;}
-    const fr=mgAnimFrames[mgCurrentFrame];document.getElementById('mgAnimInfo').textContent=`Cycle ${fr.cycle}: ${fr.phase.substring(0,50)}`;
-    document.getElementById('mgFrameInfo').textContent=`${mgCurrentFrame}/${mgAnimFrames.length-1}`;if(mgActiveTab==='nest')mgDrawNest(fr);}
+  function mgStopAnim(){
+    mgPlaying=false;if(mgTimer!==null){cancelAnimationFrame(mgTimer);mgTimer=null;}
+    document.getElementById('mgPlayBtn').textContent='Play';
+  }
+  function mgInvalidateAnimation(){
+    mgStopAnim();mgAnimFrames=[];mgCurrentFrame=0;mgFrameProgress=1;mgUpdateAnimDisplay();
+  }
+  function mgStepAnim(d){
+    mgStopAnim();if(!mgAnimFrames.length)return;
+    mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));
+    mgFrameProgress=1;mgUpdateAnimDisplay();
+  }
+  function mgTogglePlay(){
+    if(mgPlaying){mgStopAnim();return;}
+    if(!mgAnimFrames.length){mgToast('Generate an animation first','info');return;}
+    if(mgActiveTab!=='feather')mgSwitchTab('feather');
+    if(mgCurrentFrame===mgAnimFrames.length-1){mgCurrentFrame=0;mgFrameProgress=0;}
+    if(mgFrameProgress>=1)mgFrameProgress=0;
+    mgPlaying=true;mgLastTick=null;document.getElementById('mgPlayBtn').textContent='Pause';
+    mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgRunAnim(now){
+    mgTimer=null;if(!mgPlaying)return;
+    if(mgLastTick===null)mgLastTick=now;
+    const speed=Math.max(.1,Math.min(5,Number(document.getElementById('mgSpeedSlider').value)||1));
+    mgFrameProgress+=Math.min(100,now-mgLastTick)*speed/1000;mgLastTick=now;
+    if(mgFrameProgress>=1){
+      mgFrameProgress=0;
+      if(mgCurrentFrame===mgAnimFrames.length-1){mgFrameProgress=1;mgStopAnim();mgUpdateAnimDisplay();return;}
+      mgCurrentFrame++;mgUpdateAnimDisplay();
+    }
+    if(!mgReducedMotion.matches)mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgFrameProgress);
+    if(mgPlaying)mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgUpdateAnimDisplay(){
+    if(!mgAnimFrames.length){
+      document.getElementById('mgAnimInfo').textContent='Generate an illustrative dataflow animation.';
+      document.getElementById('mgFrameInfo').textContent='0/0';mgDrawActive();return;
+    }
+    const fr=mgAnimFrames[mgCurrentFrame];
+    document.getElementById('mgAnimInfo').textContent='Step '+fr.cycle+': '+fr.phase;
+    document.getElementById('mgFrameInfo').textContent=mgCurrentFrame+'/'+(mgAnimFrames.length-1);
+    if(mgActiveTab==='feather')mgDrawFeather(fr,mgReducedMotion.matches?1:mgFrameProgress);
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)mgStopAnim();});
+  mgReducedMotion.addEventListener('change',()=>{mgStopAnim();mgFrameProgress=1;mgDrawActive();});
 
   // ---------- Resize ----------
   let mgResizeT;window.addEventListener('resize',()=>{clearTimeout(mgResizeT);mgResizeT=setTimeout(mgDrawActive,100);});
