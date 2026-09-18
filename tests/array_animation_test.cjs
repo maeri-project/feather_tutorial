@@ -16,11 +16,12 @@ const context = vm.createContext({});
 function embedded(header, signature, filename) {
     const candidates = blocks.filter(block => block.trimStart().startsWith(header) && block.includes(signature));
     assert.equal(candidates.length, 1, `Expected exactly one embedded ${filename} model`);
-    // Run only the two maintained numerical modules, never the page's DOM,
+    // Run only the maintained numerical models and shared scheduler, never the page's DOM,
     // controller, navigation, data payload, or third-party script blocks.
     vm.runInContext(candidates[0], context, {filename, timeout: 3000});
 }
 embedded("/* Numerical teaching frames for the unified FEATHER drawing.", "global.FeatherAnimation = api", "animation.js");
+embedded("/* Shared, deliberately simplified timing for the numerical teaching views.", "global.FeatherPipeline = api", "pipeline.js");
 embedded("/* Whole-tile numerical teaching model for the existing", "global.FeatherArrayAnimation = api", "array_animation.js");
 const scalar = context.FeatherAnimation, array = context.FeatherArrayAnimation;
 let assertions = 0;
@@ -35,7 +36,8 @@ function bits(value) { float[0] = value; return word[0]; }
 const trace = array.build(data);
 equal(array.build(data), trace, "same selection reuses the cached compact snapshots");
 check(array.build(data) === trace, "cache returns the same trace identity");
-equal(trace.frames.length, 332, "332 logical frames, not an RTL cycle count");
+equal(trace.explanationFrames.length, 332, "the numerical explanation retains its 332 arithmetic/routing snapshots");
+check(trace.frames.some(frame => frame.phase === "pipeline"), "public playback uses the overlapping pipeline timeline");
 equal(trace.teachingOnly, true, "synthetic operands labeled as teaching data");
 equal(trace.rtlCycleAccurate, false, "no RTL timing claim");
 equal(trace.groups.length, 8, "all eight output dot groups");
@@ -106,7 +108,9 @@ for (let t = 0; t < 8; t++) {
             equal(trace.outputFP32[output.index], expected, "tile OB value indexed by C coordinate");
         }
     }
-    const frames = trace.frames.slice(3 + 41 * t, 3 + 41 * (t + 1));
+    // Preserve independent arithmetic/routing checks on explanation snapshots;
+    // the pipeline browser regression checks simultaneous public playback.
+    const frames = trace.explanationFrames.slice(3 + 41 * t, 3 + 41 * (t + 1));
     equal(frames.slice(0, 16).map(frame => frame.phase), Array(16).fill("mac"), "whole-array MAC phase order");
     equal(frames.slice(16).map(frame => frame.phase), Array(25).fill("route"), "25 pipelined logical routing ticks");
     equal(frames.slice(0, 16).map(frame => frame.lane), Array.from({length: 16}, (_, lane) => lane), "every lane in order");

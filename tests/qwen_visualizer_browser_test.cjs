@@ -265,6 +265,7 @@ async function checkAnimation(browser, output, data, errors, externalRequests) {
         check(await page.locator("#motion-frame").getAttribute("aria-label"), "animation scrubber has accessible name");
         check(await page.locator("#motion-next").getAttribute("aria-label"), "animation step has accessible name");
 
+        await select("dataflow-mode", "single");
         await select("motion-speed", 900); await click("motion-play");
         await advance(160);
         const first = await state(), firstPixels = await pixels(), statusText = await read("motion-status");
@@ -582,8 +583,9 @@ async function main() {
         await page.goto(pathToFileURL(html).href, {waitUntil: "load"});
         const data = await page.locator("#case-data").evaluate(node => JSON.parse(node.textContent));
         equal(data.operators.length, 9, "nine operators embedded");
-        equal(await page.locator("#operator option").allTextContents(),
-            data.operators.map(op => op.name), "all nine operator options");
+        equal(await page.locator("#operator option").evaluateAll(nodes => nodes.filter(node => /^\d+$/.test(node.value)).map(node => node.textContent)),
+            data.operators.map(op => `${op.name} · prefill · ${op.shape.M} × ${op.shape.K} × ${op.shape.N}`), "all nine original operator options with explicit phase and shape");
+        equal(await page.locator('#operator option[value^="act:"]').count(), 22, "all ACT workloads are also available in the full-operator selector");
         equal(await page.locator("#operator-table tbody tr").count(), 9, "nine table rows");
         checkBirrd(data);
         groups.push("independent RTL wiring, command decoding and symbolic BIRRD dependencies");
@@ -1007,12 +1009,16 @@ async function main() {
         await generate(7, "operator");
         await page.locator("#load-program").click();
         await page.locator("#accelerator-run").click();
-        await page.waitForFunction(() => /PC = 416\n/.test(document.getElementById("live-registers").textContent));
-        await counts(416, 128, 64, 16);
+        const attention = data.operators[7], attentionLoops = attention.loop_counts;
+        await page.waitForFunction(count => document.getElementById("live-registers")
+            .textContent.includes(`PC = ${count}\n`), attention.schedule_cost.instruction_count);
+        await counts(attention.schedule_cost.instruction_count, attentionLoops.compute_tiles * 2,
+            attentionLoops.compute_tiles, attentionLoops.output_tiles);
         equal([await value("#tile-n"), await value("#tile-m"), await value("#tile-k")],
-            ["3", "3", "3"], "full attention program finishes at final tile");
+            [attentionLoops.n, attentionLoops.m, attentionLoops.k].map(count => String(count - 1)),
+            "full attention program finishes at final tile");
         equal(await text("#accelerator-run"), "Run ISA", "full program stops itself");
-        groups.push("all nine full operator JSON/hex exports; 128³ attention executes 416 instructions, 64 ES, 16 Stores");
+        groups.push(`all nine full operator JSON/hex exports; deployed attention executes ${attention.schedule_cost.instruction_count} instructions, ${attentionLoops.compute_tiles} ES, ${attentionLoops.output_tiles} Stores`);
         console.log(`PASS ${groups[groups.length - 1]}`);
 
         await tab("program");

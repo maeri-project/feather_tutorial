@@ -172,6 +172,23 @@ SITE_ADAPTATION = """
 [data-theme="dark"] .qwen-app .partial.first { color: #d3c2f3; }
 [data-theme="dark"] .qwen-app .partial.second { color: #f4d397; }
 .qwen-app .program-preview { background: var(--code-bg); color: var(--code-text); }
+.qwen-app .act-details { background: var(--bg-sidebar); color: var(--text-main); }
+.qwen-app #act-layout-table button[aria-pressed=true],
+.qwen-app #act-trace tr[data-current=true] td,
+.qwen-app #full-act-layout-table button[aria-pressed=true],
+.qwen-app #full-act-trace tr[data-current=true] td {
+  background: var(--bg-sidebar); color: var(--text-main);
+  border-color: var(--primary-color);
+}
+.qwen-app #act-layout-table button[aria-pressed=true], .qwen-app #full-act-layout-table button[aria-pressed=true] { box-shadow: inset 0 0 0 1px var(--primary-color); }
+.qwen-app #act-trace tr[data-current=true] td:first-child, .qwen-app #full-act-trace tr[data-current=true] td:first-child { box-shadow: inset 3px 0 var(--primary-color); }
+/* Keep the specified operand colors readable beside the light hardware SVG. */
+.qwen-app .act-legend { background: #fafcfc; color: #596d7b; padding: 8px; border-radius: 6px; color-scheme: light; }
+.qwen-app .act-grid, .qwen-app .act-grid > * { min-width: 0; }
+.qwen-app #act-workspace, .qwen-app #act-teaching, .qwen-app #teaching-examples,
+.qwen-app #full-operator-examples, .qwen-app #full-act-workspace, .qwen-app #full-act-teaching {
+  scroll-margin-top: calc(var(--header-height) + 16px);
+}
 .qwen-app .nest-viewport, .qwen-app .canvas-scroll { background: #fafcfc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
 .qwen-app section { margin-bottom: 24px; }
 .qwen-app .datapath-grid, .qwen-app .program-grid { min-width: 0; }
@@ -206,7 +223,7 @@ def build(source, shell):
         raise ValueError("Standalone source must contain embedded CSS and a body")
     prefix_match = re.search(r"(<div class=\"app-layout\">.*?</header>)", shell, re.S)
     if prefix_match is None:
-        raise ValueError("index.html no longer contains the expected tutorial shell")
+        raise ValueError("The selected shell page no longer contains the expected tutorial shell")
     prefix = prefix_match.group(1)
     prefix = prefix.replace(' class="active"', '')
     link = '<li><a href="QWEN3_MINISA_VISUALIZER.html" class="active" aria-current="page">Qwen3 MINISA Explorer</a></li>'
@@ -259,12 +276,14 @@ def main():
     parser.add_argument("--source", required=True, type=Path,
                         help="Standalone FEATHER_GEMM/RTL/fp16/QWEN3_MINISA_VISUALIZER.html")
     parser.add_argument("--out", type=Path, default=ROOT / "QWEN3_MINISA_VISUALIZER.html")
+    parser.add_argument("--shell", type=Path, default=ROOT / "FEATHER.html",
+                        help="Existing tutorial page whose sidebar and top bar are preserved")
     parser.add_argument("--check", action="store_true", help="Check freshness without writing")
     args = parser.parse_args()
     if args.source.resolve() == args.out.resolve():
         parser.error("Source and output must be different files")
     try:
-        result = build(args.source.read_text(encoding="utf-8"), (ROOT / "index.html").read_text(encoding="utf-8"))
+        result = build(args.source.read_text(encoding="utf-8"), args.shell.read_text(encoding="utf-8"))
         current = args.out.read_text(encoding="utf-8") if args.out.exists() else None
         if args.check:
             if current != result:

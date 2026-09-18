@@ -10,8 +10,14 @@ The left sidebar offers two complementary pages:
   or output buffer in the architecture (or its **Inspect** button) to open a
   live scalar-layout inspector without leaving the diagram.
 - `QWEN3_MINISA_VISUALIZER.html` is the detailed FP16 Qwen3 explorer. It embeds
-  the compiler-exported nine-operator mappings, real BIRRD commands, synthetic
-  scalar dataflow, and packed MINISA generation/import/export. The website
+  the nine original full-layer prefill operators plus all 22 recorded ACT
+  prefill/decode workloads. All 31 choices are available in **Full-workload
+  demonstrations**, with synchronized N/M/K tile navigation, animation,
+  physical-buffer layouts, and instruction views. ACT cases preserve their
+  recorded partition shapes and original instruction downloads; they are not
+  relabeled as complete Qwen layers. Each case also has a separate animated
+  teaching example. Real BIRRD commands, deterministic synthetic dataflow, and
+  packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
 
@@ -23,22 +29,42 @@ steps are not measured RTL cycles.
 
 ## Entire-array animation
 
-On the Qwen page, choose **Entire array** in the **Dataflow animation** selector,
-then **Animate entire array**. The original **Single element** view is retained.
-Use pause, arrows, the scrubber, reset, or speed controls to inspect:
+The Qwen page defaults to **Entire array · overlapping pipeline** for the
+original operators. Press **Animate array** or **Jump to overlap**. ACT teaching
+widgets also offer **Jump to overlap**, including the widgets embedded in the
+full-workload section. The original scalar path remains available as
+**Isolated result explanation · one path**; it explains one result, not the
+timing of the whole array. Use pause, arrows, the scrubber, reset, or speed
+controls to inspect:
 
 - FP16 input and weight transfers into the banked buffers and PE weight preload.
-- All 256 PE accumulators updating over 16 MAC steps per dot group.
-- Sixteen row waves per group moving through the eight programmed BIRRD stages;
-  only the eight committed output ports write the output buffer.
-- All 1,024 cells filling in the 32×32 output heatmap over eight dot groups.
+- Row-staggered inputs and MACs: each PE row receives a sample one logical
+  cycle after its upstream row, with source identity and physical addresses.
+- Completed rows taking the column buses while later rows continue computing;
+  the eight programmed BIRRD stages and output writes overlap both operations.
+- Partial results retaining their source row and dot group throughout the
+  network, even when different groups are active simultaneously.
+- Exact physical output destinations. The original 32×32 examples fill all
+  1,024 cells over eight dot groups; ACT cases use their actual tile layouts,
+  active lanes, padding, and tail shapes.
 - FP32 contributions retained across K tiles, with FP16 rounding and Store only
   on the final K tile. Select the last K tile to see the Store animation.
 
-The 332 logical frames compress bulk transfers and illustrate concurrent waves,
-not physical RTL cycle timing. Every MAC and committed row wave is represented.
-Single-element, entire-array, overview, and ISA playback clocks are mutually
-exclusive. Reduced-motion preferences use discrete snapshots; nothing autoplays.
+With 16 resident weights and 48 inputs streamed from cycle 0, the first dot's
+PE rows complete at logical cycles 15–30. The registered column bus carries
+those rows at cycles 16–31; the next dot's row 0 takes the bus at cycle 32.
+Inputs, computation, bus transfers, all occupied BIRRD stages, and output
+writes are shown together. Short-VN dot groups are spaced at least 16 cycles
+apart to avoid column-bus contention, and changed mappings or weights retain
+their preload barriers.
+
+These are idealized teaching cycles: bulk transfers, RTL arithmetic flush
+latency, and controller gaps are compressed, not measured hardware clocks.
+The deployed RTL's extra arithmetic latency and dot-group gaps mean its exact
+timestamps differ. The whole-tile schedule overview is a separate control-phase
+summary, not a MAC-cycle waveform. Single-element, entire-array, overview, ISA,
+and ACT teaching playback clocks are mutually exclusive. Reduced-motion
+preferences use discrete snapshots; nothing autoplays.
 
 ## Generic tutorial buffer inspection
 
@@ -110,12 +136,14 @@ The maintained compiler and standalone visualizer sources live in the sibling
 cd ../FEATHER_GEMM
 python tb/scripts/build_minisa_visualizer.py
 cd ../feather_tutorial
-python3 tools/build_qwen_page.py --source ../FEATHER_GEMM/RTL/fp16/QWEN3_MINISA_VISUALIZER.html
-python3 tools/build_qwen_page.py --source ../FEATHER_GEMM/RTL/fp16/QWEN3_MINISA_VISUALIZER.html --check
+python3 tools/build_qwen_page.py --source ../FEATHER_GEMM/RTL/fp16/QWEN3_MINISA_VISUALIZER.html --shell QWEN3_MINISA_VISUALIZER.html
+python3 tools/build_qwen_page.py --source ../FEATHER_GEMM/RTL/fp16/QWEN3_MINISA_VISUALIZER.html --shell QWEN3_MINISA_VISUALIZER.html --check
 ```
 
 The importer needs only Python's standard library. `--source` can point to any
 checkout of the standalone artifact; this is a build-time dependency only.
+`--shell` preserves the selected existing page's navigation and top bar; it
+defaults to `FEATHER.html` when creating a page for the first time.
 No GEMM checkout or Python server is needed by the published page. Do not use
 the already packaged page as input, and do not replace the original FEATHER
 editor with the Qwen page. The generated page records its source SHA-256.
@@ -139,11 +167,15 @@ node tests/feather_packet_motion_browser_test.cjs
 node tests/site_shell_browser_test.cjs
 node tests/array_animation_test.cjs
 node tests/array_browser_test.cjs
+node tests/pipeline_browser_test.cjs
 python3 tools/build_qwen_page_test.py
 ```
 
-Tests cover the original editor and unified 4/8/16-wide tutorial, all nine Qwen
-operators, programmed BIRRD connectivity, VN addresses, ISA import/export,
-single-element arithmetic and moving pixels, playback isolation, reduced
-motion, desktop and mobile layouts. Optional webfonts on original tutorial
-pages are not required for the Qwen application to work offline.
+Tests cover the original editor and unified 4/8/16-wide tutorial, the nine
+original Qwen operators and all 22 ACT workload selections, programmed BIRRD
+connectivity, VN addresses, ISA import/export, scalar and row-staggered array
+arithmetic, simultaneous input/bus/network/output packets, moving pixels,
+playback isolation, reduced motion, and desktop/mobile layouts. The numeric
+array test loads the embedded models from this page, without requiring a GEMM
+checkout. Optional webfonts on original tutorial pages are not required for
+the Qwen application to work offline.

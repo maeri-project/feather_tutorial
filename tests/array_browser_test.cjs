@@ -56,20 +56,20 @@ function check(value, message) { assert(value, message); assertions++; }
         await page.clock.install({time: new Date("2026-01-01T00:00:00Z")});
         await page.clock.pauseAt(new Date("2026-01-01T00:00:01Z"));
         await page.goto(pathToFileURL(html).href);
-        equal(await page.locator("#dataflow-mode").inputValue(), "single", "single-element mode remains the default");
-        check(await page.locator("#array-dataflow-controls").isHidden(), "new controls do not clutter single-element mode");
-        await run(2000); equal((await status()).phase, "inactive", "no automatic array playback");
+        equal(await page.locator("#dataflow-mode").inputValue(), "array", "overlapping whole-array pipeline is the default");
+        check(await page.locator("#array-dataflow-controls").isVisible(), "pipeline playback controls are visible by default");
+        await run(2000); equal((await status()).playing, "false", "no automatic array playback");
         await select("dataflow-mode", "array");
         check(await page.locator("#single-dataflow-controls").isHidden(), "single-element inspector remains separate");
         equal((await status()).playing, "false", "choosing a mode does not autoplay");
-        equal(await page.locator("#array-frame").getAttribute("max"), "331", "complete 332-step tile trace");
-        await scrub(8);
+        equal(await page.locator("#array-frame").getAttribute("max"), "156", "complete 153-cycle overlapped execution plus load/preload/final steps");
+        await scrub(18);
         const mac = await drawing(), packets = JSON.parse(mac.arrayTokens);
-        equal([mac.arrayPhase, mac.arrayPeCount, mac.arrayMovingTokens], ["mac", "256", "256"], "all PEs receive scalar input packets");
+        equal([mac.arrayPhase, mac.arrayPeCount, mac.arrayMovingTokens], ["pipeline", "256", "256"], "all PEs receive independently staggered scalar input packets at cycle 15");
         equal(new Set(packets.map(p => p.row * 16 + p.col)).size, 256, "one individual packet per PE");
         for (const packet of packets) {
-            const m = Math.floor(packet.col % 8 / 2), n = packet.row + 16 * (packet.col % 2), k = 16 * Math.floor(packet.col / 8) + 5;
-            equal([packet.m, packet.n, packet.k, packet.lane, packet.operand], [m, n, k, 5, "I"], "every packet has the correct element coordinates");
+            const lane = 15 - packet.row, m = Math.floor(packet.col % 8 / 2), n = packet.row + 16 * (packet.col % 2), k = 16 * Math.floor(packet.col / 8) + lane;
+            equal([packet.m, packet.n, packet.k, packet.lane, packet.operand], [m, n, k, lane, "I"], "every packet has the correct row-specific element coordinates");
             equal(packet.identity, `A[${m},${k}]`, "packet identifies its actual A scalar");
             check(Number.isFinite(packet.value), "packet has a finite operand value");
         }
@@ -101,7 +101,7 @@ function check(value, message) { assert(value, message); assertions++; }
         const snapshots = await page.evaluate(() => {
             const range = document.getElementById("array-frame"), output = document.getElementById("array-output"), results = [];
             for (let t = 0; t < 8; t++) for (let row = 0; row < 16; row++) {
-                range.value = String(28 + t * 41 + row); range.dispatchEvent(new Event("input", {bubbles: true}));
+                range.value = String(28 + t * 16 + row); range.dispatchEvent(new Event("input", {bubbles: true}));
                 results.push({t, row, count: Number(output.dataset.committedCount), indices: JSON.parse(output.dataset.completedIndices)});
             }
             return results;
@@ -115,9 +115,9 @@ function check(value, message) { assert(value, message); assertions++; }
             snapshot.indices.forEach(index => seen.add(index));
         }
         equal([...seen].sort((a, b) => a - b), Array.from({length: 1024}, (_, i) => i), "all 1,024 output cells are covered exactly once");
-        await scrub(331); equal((await status()).phase, "hold", "nonfinal K tile never stores");
+        await scrub(156); equal((await status()).phase, "hold", "nonfinal K tile never stores");
         equal([(await heatmap()).committedCount, (await heatmap()).stored], ["1024", "false"], "complete FP32 tile retained without cast");
-        await select("operator", 7); await tile("k", 3); await select("dataflow-mode", "array"); await scrub(331);
+        await select("operator", 7); await tile("k", 3); await select("dataflow-mode", "array"); await scrub(156);
         equal([(await status()).phase, (await heatmap()).stored], ["store", "true"], "last K tile stores the full result");
         const stored = JSON.parse((await drawing()).arrayTokens);
         equal(stored.map(packet => packet.identity), Array.from({length: 32}, (_, n) => `C[31,${n}]`), "compressed Store sweep reaches the last complete output row");
@@ -128,7 +128,7 @@ function check(value, message) { assert(value, message); assertions++; }
             const trace = FeatherArrayAnimation.build(data, {origins: {m: 0, k: 96, n: 0}, kTile: 3, kTiles: 4});
             return {fp32: trace.outputFP32, fp16: trace.fp16Values};
         });
-        await scrub(330); await click("array-play"); const formats = new Set();
+        await scrub(155); await click("array-play"); const formats = new Set();
         for (let tick = 0; tick < 10; tick++) {
             await run(16);
             if ((await status()).phase !== "store") continue;
@@ -141,7 +141,7 @@ function check(value, message) { assert(value, message); assertions++; }
         equal([...formats].sort(), ["FP16", "FP32"], "Store animation shows both sides of the FP32-to-FP16 boundary");
         await click("array-play");
         await select("operator", 6); await tile("k", 95);
-        const start = Date.now(); await select("dataflow-mode", "array"); await scrub(331);
+        const start = Date.now(); await select("dataflow-mode", "array"); await scrub(156);
         check(Date.now() - start < 10000, "maximum K tile remains responsive while prior FP32 contributions are computed");
         equal((await status()).phase, "store", "maximum supported K tile completes");
 

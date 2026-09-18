@@ -28,7 +28,9 @@ async function main() {
         }
         await page.goto(pathToFileURL(path.join(root, "index.html")).href);
         await page.locator('.sidebar a[href="QWEN3_MINISA_VISUALIZER.html"]').click();
-        check(await page.locator("#operator option").count() === 9, "sidebar opens functioning Qwen app");
+        await page.waitForFunction(() => window.FeatherFullWorkloads);
+        check(await page.locator("#operator option").count() === 31, "sidebar opens all original and ACT workloads");
+        check(await page.locator('#operator option[value^="act:"]').count() === 22, "all recorded ACT cases remain selectable");
         check(await page.locator(".sidebar .active").count() === 1, "one active page");
         check(await page.locator('.sidebar .active').getAttribute("aria-current") === "page", "current page announced");
         check(await page.locator("main").count() === 1, "one main landmark");
@@ -57,8 +59,11 @@ async function main() {
         check(await page.locator("#mg-feather-tab").count() === 1, "sidebar preserves original unified editor");
         await page.locator("#mobile-menu-btn").click();
         await page.locator('.sidebar a[href="QWEN3_MINISA_VISUALIZER.html"]').click();
+        await page.waitForFunction(() => window.FeatherFullWorkloads);
         await page.screenshot({path: path.join(output, "mobile.png")});
-        check(await page.locator("#motion-play").isVisible(), "single-element controls available on mobile");
+        check(await page.locator("#array-play").isVisible(), "overlapping pipeline controls visible by default on mobile");
+        await page.locator("#dataflow-mode").selectOption("single");
+        check(await page.locator("#motion-play").isVisible(), "isolated-result controls remain available on mobile");
         check(errors.length === 0, `no browser exceptions: ${errors.join("; ")}`);
         check(remote.every(url => /^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(url)), "only optional existing tutorial fonts requested");
         console.log(`PASS ${assertions} site-shell assertions; screenshots: ${output}`);

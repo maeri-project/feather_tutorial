@@ -68,7 +68,7 @@ class CssScopingTest(unittest.TestCase):
 class PagePackagingTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.shell = (PACKAGER.ROOT / "index.html").read_text(encoding="utf-8")
+        cls.shell = (PACKAGER.ROOT / "FEATHER.html").read_text(encoding="utf-8")
 
     def test_payload_and_control_ids_are_unchanged(self):
         result = PACKAGER.build(SOURCE, self.shell)
@@ -112,6 +112,12 @@ class PagePackagingTest(unittest.TestCase):
         result = PACKAGER.build(SOURCE, shell)
         self.assertEqual(result.count('href="QWEN3_MINISA_VISUALIZER.html"'), 1)
         self.assertEqual(result.count('aria-current="page"'), 1)
+
+    def test_act_widgets_use_native_theme_without_recoloring_the_diagram(self):
+        result = PACKAGER.build(SOURCE, self.shell)
+        self.assertIn('.qwen-app .act-details { background: var(--bg-sidebar); color: var(--text-main); }', result)
+        self.assertIn('.qwen-app #act-trace tr[data-current=true] td', result)
+        self.assertIn('.qwen-app .act-legend { background: #fafcfc;', result)
 
 
 class CommandLineTest(unittest.TestCase):
