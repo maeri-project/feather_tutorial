@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FEATHER vs. Systolic Array - RAIC Tutorial</title>
+  <meta name="description" content="Compare 16 by 16 FEATHER and systolic arrays using identical irregular GEMM chains, explicit mapping assumptions, and animated data movement.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/feather_comparison.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section"><h3 class="nav-title">tutorial</h3><ul class="nav-links"><li><a href="index.html">ASPLOS'26@Pittsburgh</a></li></ul></div>
+        <div class="nav-section"><h3 class="nav-title">docs</h3><ul class="nav-links">
+          <li><a href="FEATHER.html">FEATHER</a></li>
+          <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
+          <li><a class="active" aria-current="page" href="FEATHER_VS_SYSTOLIC.html">FEATHER vs. Systolic</a></li>
+        </ul></div>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg></button>
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+        <div class="top-actions"><button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+        </button></div>
+      </header>
+      <div class="content-wrapper comparison-content">
+        <article class="doc-content comparison-page">
+          <section id="comparison-intro" class="hero-section">
+            <div class="comparison-eyebrow">ONE WORKLOAD · TWO 256-PE ARRAYS</div>
+            <h1>FEATHER vs. Systolic</h1>
+            <p class="subtitle">See how shape, mapping, and layout affect the work that reaches each PE.</p>
+            <p>Follow the same operands through a 16×16 systolic array and a 16×16 FEATHER NEST. Start with <code>1×12×32</code> (M×K×N), then follow a connected chain whose output becomes the next layer’s input.</p>
+            <div class="comparison-note"><strong>A transparent teaching model, not a hardware benchmark.</strong> The clock counts simplified logical issue, propagation, reduction, and drain steps. Weights are assumed available, memory stalls and actual FP16 pipeline/control delays are not modeled. Compare the assumptions below before reading a cycle difference as an architectural advantage.</div>
+          </section>
+
+          <section id="comparison-arrays" aria-labelledby="comparison-arrays-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">01 / MAPPING &amp; COMPUTATION</div><h2 id="comparison-arrays-title">Same GEMM, different spatial work</h2></div><span class="comparison-badge">16×16 vs. 16×16</span></div>
+            <div class="comparison-controls comparison-card">
+              <label class="comparison-field">Workload chain<select id="comparison-preset" aria-label="Workload chain"></select></label>
+              <label class="comparison-field">Systolic baseline<select id="comparison-baseline" aria-label="Systolic baseline"><option value="os">Output-stationary (M×N)</option><option value="ws">Weight-stationary (K×N)</option><option value="is">Input-stationary (M×K)</option><option value="best">Best modeled stationary mapping</option></select></label>
+              <label class="comparison-field comparison-layer-field">Selected GEMM<select id="comparison-layer" aria-label="Selected GEMM"></select></label>
+            </div>
+            <p id="comparison-preset-note" class="comparison-muted"></p>
+            <div id="comparison-chain-strip" class="comparison-chain-strip" aria-label="Connected workload chain"></div>
+            <div class="comparison-playback comparison-card">
+              <div class="comparison-play-buttons"><button id="comparison-play" class="comparison-primary" type="button">Play</button><button id="comparison-step" type="button">Step +1</button><button id="comparison-reset" type="button">Reset</button><button id="comparison-peak" type="button">Jump to active wave</button></div>
+              <label class="comparison-field comparison-compact">Playback<select id="comparison-scope"><option value="layer">Selected layer</option><option value="chain">Entire chain</option></select></label>
+              <label class="comparison-field comparison-compact">Speed<select id="comparison-speed"><option value="1">1 cycle/s</option><option value="4" selected>4 cycles/s</option><option value="12">12 cycles/s</option><option value="30">30 cycles/s</option></select></label>
+              <div class="comparison-timeline"><label for="comparison-scrub">Shared logical cycle <output id="comparison-cycle">0</output></label><input id="comparison-scrub" type="range" min="0" max="1" value="0" step="1"><div id="comparison-clock-note" class="comparison-muted"></div></div>
+            </div>
+            <div class="comparison-legend" aria-label="Data colors"><span><i class="comparison-input"></i>Input · #004C99</span><span><i class="comparison-weight"></i>Weight · #006633</span><span><i class="comparison-partial"></i>Partial · #4C0099</span><span><i class="comparison-result"></i>Result · #990000</span><span><i class="comparison-idle"></i>Unmapped / idle</span></div>
+            <div class="comparison-array-grid">
+              <div class="comparison-array-card comparison-card"><div class="comparison-array-heading"><div><span class="comparison-eyebrow">SYSTOLIC ARRAY</span><h3 id="comparison-sa-name">Output-stationary</h3></div><span id="comparison-sa-phase" class="comparison-badge"></span></div><p id="comparison-sa-mapping" class="comparison-mapping"></p><canvas id="comparison-sa" width="640" height="660" aria-label="Animated 16 by 16 systolic array"></canvas><div id="comparison-sa-metrics" class="comparison-metric-grid"></div><p id="comparison-sa-caption" class="comparison-caption"></p></div>
+              <div class="comparison-array-card comparison-card"><div class="comparison-array-heading"><div><span class="comparison-eyebrow">FEATHER · NEST + BIRRD</span><h3 id="comparison-feather-name">Adaptive spatial mapping</h3></div><span id="comparison-feather-phase" class="comparison-badge"></span></div><p id="comparison-feather-mapping" class="comparison-mapping"></p><canvas id="comparison-feather" width="640" height="660" aria-label="Animated 16 by 16 FEATHER NEST and BIRRD"></canvas><div id="comparison-feather-metrics" class="comparison-metric-grid"></div><p id="comparison-feather-caption" class="comparison-caption"></p></div>
+            </div>
+            <p class="comparison-note comparison-metric-note"><strong>Four different quantities:</strong> mapped PEs show occupied spatial slots; instantaneous MACs count useful operations on this clock tick; peak MACs are the largest one-tick count; integrated MAC utilization is useful M×K×N operations ÷ (256 × modeled cycles), including modeled fill/drain. These numbers are not interchangeable.</p>
+            <div class="comparison-numeric comparison-card"><div><h3>Same inputs. Same mathematical result.</h3><p class="comparison-muted">Inspect one output from this layer. Both mappings evaluate the same deterministic operands; this is integer-valued mathematical GEMM, not bit-exact FP16 RTL execution.</p></div><label class="comparison-field comparison-compact">Output row M<input id="comparison-output-m" type="number" min="0" value="0"></label><label class="comparison-field comparison-compact">Output column N<input id="comparison-output-n" type="number" min="0" value="0"></label><div id="comparison-numeric-result" class="comparison-numeric-result" aria-live="polite"></div></div>
+          </section>
+
+          <section id="comparison-chain" aria-labelledby="comparison-chain-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">02 / A CHAIN OF SHAPES</div><h2 id="comparison-chain-title">A new shape can need a new mapping</h2></div></div>
+            <p>Each row is an actual edge in this example chain: <code>Cᵢ[M,Nᵢ] → Aᵢ₊₁[M,Kᵢ₊₁]</code>, with <code>Nᵢ = Kᵢ₊₁</code>. A 16-wide dimension is not required. FEATHER uses checked-in, compiler-generated selections from a bounded set of legal mapping candidates—not a browser search or proof of global optimality. The systolic baseline can also be changed, including a best-of-three comparison.</p>
+            <div class="comparison-table-scroll"><table class="comparison-table"><thead><tr><th scope="col">Layer / M×K×N</th><th scope="col">Systolic mapping</th><th scope="col">FEATHER mapping</th><th scope="col">Mapped PEs<br>SA / FEATHER</th><th scope="col">Logical cycles<br>SA / FEATHER</th><th scope="col">MAC utilization<br>SA / FEATHER</th></tr></thead><tbody id="comparison-chain-rows"></tbody></table></div>
+            <div id="comparison-chain-summary" class="comparison-summary-grid"></div>
+            <p class="comparison-muted">Mapping-dependent gains are not universal. Try the regular control and a weight-stationary or best modeled systolic baseline. Shape alone does not establish that FEATHER outperforms every systolic dataflow.</p>
+          </section>
+
+          <section id="comparison-layout" aria-labelledby="comparison-layout-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">03 / PRODUCER → CONSUMER</div><h2 id="comparison-layout-title">Layout switching is a separate question</h2></div><span class="comparison-badge">Architectural what-if</span></div>
+            <p>A producer’s output order may differ from the next mapping’s input order. Watch the same output coordinates change bank/slot assignment below. A matching layout has <strong>zero additional repack traffic</strong>. Baseline assumptions and any copy cost are explicit, not hidden inside MAC utilization.</p>
+            <div class="comparison-layout-controls comparison-card"><label class="comparison-field">Chain boundary<select id="comparison-boundary" aria-label="Producer consumer boundary"></select></label><label class="comparison-field">FEATHER layout policy<select id="comparison-layout-mode"><option value="switch">Architectural layout switching</option><option value="fixed">Fixed output layout + repack</option></select></label><label class="comparison-field comparison-compact">Repack bandwidth (elements/cycle)<input id="comparison-bandwidth" type="number" min="1" max="256" value="16" step="1"></label><label class="comparison-field comparison-compact">Mapping configuration cycles<input id="comparison-config" type="number" min="0" max="64" value="1" step="1"></label><label class="comparison-checkbox"><input id="comparison-compatible" type="checkbox"> Layout-aware systolic writer / already compatible</label><button id="comparison-layout-play" type="button">Animate layout bridge</button></div>
+            <canvas id="comparison-bridge" width="1240" height="360" aria-label="Animated producer output to consumer input buffer layout"></canvas>
+            <div id="comparison-layout-summary" class="comparison-summary-grid"></div>
+            <p id="comparison-layout-detail" class="comparison-muted"></p><p class="comparison-muted">Bank cells illustrate MINISA whole-tensor rank orders, not the allocation of a currently resident RTL tile. For a one-row tensor, different rank orders can collapse to the same addresses. Try the short-batch chain to see a nontrivial producer–consumer permutation.</p>
+            <div class="comparison-note"><strong>Capability boundary:</strong> FEATHER’s architectural dataflow/layout flexibility motivates this what-if. The current FP16 RTL path is weight-oriented: this page’s implemented-mode comparison varies spatial mapping and partitioning, not an unsupported runtime dataflow switch. Reduction–reordering (RIR), producer-to-consumer on-chip reuse, and avoiding materialization are architectural illustrations, not verified capabilities of the current MINISA FP16 runtime.</div>
+          </section>
+
+          <section id="comparison-assumptions" aria-labelledby="comparison-assumptions-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">READ THE MODEL</div><h2 id="comparison-assumptions-title">What this comparison does—and does not—claim</h2></div></div>
+            <div class="comparison-assumption-grid"><div class="comparison-card"><h3>Equal work, visible mapping</h3><p>Both sides have 256 PEs and perform identical mathematical GEMMs. Equal PE counts do not imply equal area, storage, wiring cost, or clock frequency. No batch fusion or independent request packing is credited. Inactive edge coordinates do no useful MACs. The selected baseline determines which two GEMM dimensions occupy the systolic grid.</p></div><div class="comparison-card"><h3>Logical clocks, not measurements</h3><p>Animations count useful MAC events and model-specific propagation/reduction/drain overhead. They omit DMA/off-chip traffic, WS/IS partial-sum spill traffic, buffer capacity, clock frequency, physical timing, energy, and common resident-weight loading. Layout costs are editable illustrative estimates, not benchmark data.</p></div><div class="comparison-card"><h3>Spatial occupancy is not throughput</h3><p>For <code>1×12×32</code>, FEATHER expands N ownership across rows and columns; K=12 is not split. Other mappings can partition K and use BIRRD to combine partials. A wavefront, output contention, reduction, or setup can still limit instantaneous or average utilization. More mapped PEs alone is not a speedup claim.</p></div><div class="comparison-card"><h3>For architectural evidence</h3><p>Read the <a href="https://arxiv.org/abs/2405.13170" target="_blank" rel="noopener">FEATHER paper</a> for architecture, <a href="https://github.com/scalesim-project/SCALE-Sim" target="_blank" rel="noopener">SCALE-Sim</a> for a systolic simulation framework, and the <a href="https://github.com/maeri-project/FEATHER_GEMM/blob/fp16/RTL/fp16/INTERFACE_SPEC.md" target="_blank" rel="noopener">current FP16 interface contract</a> for implementation scope. This page does not run SCALE-Sim or RTL.</p></div></div>
+            <details class="comparison-formulas comparison-card"><summary>Show mapping and timing formulas</summary><div id="comparison-model-formulas"></div></details>
+          </section>
+        </article>
+      </div>
+      <footer class="site-footer"><p>&copy; 2026 FEATHER Tutorial.</p></footer>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script src="script/feather_comparison_data.js"></script>
+  <script src="script/feather_comparison_model.js"></script>
+  <script src="script/feather_comparison_view.js"></script>
+</body>
+</html>
