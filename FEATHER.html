@@ -14,6 +14,8 @@
     rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/feather_buffer_popup.css">
+  <link rel="stylesheet" href="script/feather_packet_motion.css">
 
   <!-- Scoped styles for MINISA interactive tool -->
   <style>
@@ -93,9 +95,9 @@
       display: inline-block; padding: 1px 6px; border-radius: 3px;
       font-size: 10px; font-weight: 600;
     }
-    .mg-badge-ivn { background: #E3F2FD; color: #1565C0; }
-    .mg-badge-wvn { background: #E8F5E9; color: #2E7D32; }
-    .mg-badge-ovn { background: #FFEBEE; color: #C62828; }
+    .mg-badge-ivn { background: #E6EDF5; color: #004C99; }
+    .mg-badge-wvn { background: #E6F0EB; color: #006633; }
+    .mg-badge-ovn { background: #F5E6E6; color: #990000; }
     .mg-badge-em  { background: #FFF8E1; color: #F57C00; }
     .mg-badge-es  { background: #FFF8E1; color: #F57C00; }
     .mg-details {
@@ -108,6 +110,7 @@
     /* tabs */
     .mg-tab-bar {
       display: flex; background: rgba(120,100,255,0.06);
+      align-items:center; flex-wrap:wrap;
       border-bottom: 2px solid var(--primary-color);
     }
     .mg-tab {
@@ -120,6 +123,20 @@
     .mg-tab.active { background: var(--bg-card); border-bottom-color: var(--primary-color); font-weight: 700; color: var(--text-main); }
     .mg-tab-content { flex:1; display:none; overflow:auto; position:relative; }
     .mg-tab-content.active { display:block; }
+    .mg-view-nav { position:sticky; top:0; z-index:1; padding:7px 12px; display:flex;
+      gap:6px; align-items:center; flex-wrap:wrap; background:var(--bg-card);
+      border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:11px; }
+    #mgAnimInfo { overflow-wrap:anywhere; line-height:1.5; }
+    .mg-app.mg-expanded { position:fixed; inset:16px; height:auto; margin:0; z-index:1200;
+      box-shadow:0 0 0 100vmax rgba(0,0,0,.5); }
+    .mg-expanded .mg-left { width:340px; min-width:300px; }
+    #mgWlM, #mgWlK, #mgWlN { width:60px; }
+    #mgExpandBtn { margin:4px 8px 4px auto; }
+    #mgDiagramScale { color:var(--text-main); background:var(--bg-body); font-size:11px;
+      padding:4px; border:1px solid var(--border-color); border-radius:4px; }
+    #mgFeatherCanvas { min-width:0; min-height:0; }
+    #mgMotionMount { overflow:auto; min-height:0; }
+    .mg-tab:focus-visible, .mg-btn:focus-visible { outline:2px solid var(--primary-color); outline-offset:-2px; }
     .mg-tab-content canvas { display:block; min-width: 700px; min-height: 600px; }
     .mg-legend {
       display:flex; gap:10px; flex-wrap:wrap; padding:6px 12px;
@@ -131,7 +148,7 @@
     /* modal */
     .mg-modal-overlay {
       display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;
+      background:rgba(0,0,0,0.5); z-index:1600; justify-content:center; align-items:center;
     }
     .mg-modal-overlay.show { display:flex; }
     .mg-modal {
@@ -158,6 +175,7 @@
     .mg-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
     .mg-toast {
       position:fixed; top:20px; right:20px; padding:12px 20px; border-radius:6px;
+      pointer-events:none;
       color:white; font-size:13px; z-index:2000; animation: mgFadeIn 0.3s; max-width:400px;
     }
     .mg-toast.success { background:#2E7D32; }
@@ -171,6 +189,9 @@
       .mg-app { flex-direction: column; height: auto; }
       .mg-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
       .mg-right { min-height: 500px; }
+      .mg-app.mg-expanded { inset:8px; }
+      .mg-expanded .mg-left { width:100%; min-width:0; max-height:35%; flex-shrink:0; }
+      .mg-expanded .mg-right { min-height:0; flex:1; }
     }
   </style>
 </head>
@@ -201,6 +222,7 @@
           <h3 class="nav-title">docs</h3>
           <ul class="nav-links">
             <li><a href="FEATHER.html" class="active">FEATHER</a></li>
+            <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
           </ul>
         </div>
       </nav>
@@ -252,8 +274,10 @@
             <h2>FEATHER Microarchitecture and MINISA ISA Visualizer</h2>
             <div class="text-block">
               <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
-                build ISA traces, and visualize the cycle-accurate NEST PE array pipeline, BIRRD reduction network,
-                and VN buffer layouts. The tool resets on page refresh.</p>
+                build ISA traces, and explore NEST compute connected to the BIRRD network in one FEATHER view,
+                alongside VN buffer layouts. Animation follows individual symbolic elements through a bounded
+                teaching excerpt, not every T dot group or cycle-accurate RTL. BIRRD shows the actual port topology in PASS mode; this
+                editor does not encode switch commands. The tool resets on page refresh.</p>
             </div>
 
             <!-- The MINISA GUI application -->
@@ -355,15 +379,28 @@
 
               <!-- RIGHT PANEL -->
               <div class="mg-right">
-                <div class="mg-tab-bar">
-                  <div class="mg-tab active" onclick="mgSwitchTab('nest')">NEST PE Array</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('birrd')">BIRRD Network</div>
-                  <div class="mg-tab" onclick="mgSwitchTab('buffer')">VN Buffers</div>
+                <div class="mg-tab-bar" role="tablist" aria-label="FEATHER visualization">
+                  <button class="mg-tab active" id="mg-feather-tab" data-tab="feather" role="tab" aria-selected="true" aria-controls="mg-tab-feather" onclick="mgSwitchTab('feather')">FEATHER · NEST + BIRRD</button>
+                  <button class="mg-tab" id="mg-buffer-tab" data-tab="buffer" role="tab" aria-selected="false" aria-controls="mg-tab-buffer" onclick="mgSwitchTab('buffer')">VN Buffers</button>
+                  <button class="mg-btn" id="mgExpandBtn" aria-pressed="false" onclick="mgToggleExpanded()">Expand</button>
                 </div>
                 <div class="mg-legend" id="mgLegend"></div>
-                <div class="mg-tab-content active" id="mg-tab-nest"><canvas id="mgNestCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-birrd"><canvas id="mgBirrdCanvas"></canvas></div>
-                <div class="mg-tab-content" id="mg-tab-buffer"><canvas id="mgBufferCanvas"></canvas></div>
+                <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
+                  <div class="mg-view-nav">Connected accelerator:
+                    <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
+                      <option value="fit">Fit diagram</option><option value="actual">Actual size</option>
+                    </select>
+                    <button class="mg-btn" onclick="mgScrollDiagram('nest')">NEST ↓</button>
+                    <button class="mg-btn" onclick="mgScrollDiagram('network')">BIRRD ↓</button>
+                    <button class="mg-btn" onclick="mgScrollDiagram('output')">Output ↓</button>
+                    <button class="mg-btn" id="mgInspectI" aria-haspopup="dialog" onclick="mgOpenBuffer('I',this)">Inspect streaming</button>
+                    <button class="mg-btn" id="mgInspectW" aria-haspopup="dialog" onclick="mgOpenBuffer('W',this)">Inspect stationary</button>
+                    <button class="mg-btn" id="mgInspectO" aria-haspopup="dialog" onclick="mgOpenBuffer('O',this)">Inspect output</button>
+                  </div>
+                  <div id="mgMotionMount" tabindex="0" aria-label="Detailed data movement panel"></div>
+                  <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST; each PE's bottom-right output connects diagonally to the vertical bus on its column's right side. Each column bus connects directly to a BIRRD input. Network outputs route illustrative partial results to addressed output-buffer cells. Use the Inspect buttons to explore each buffer's scalar layout."></canvas>
+                </div>
+                <div class="mg-tab-content" id="mg-tab-buffer" role="tabpanel" aria-labelledby="mg-buffer-tab" tabindex="0"><canvas id="mgBufferCanvas" role="img" aria-label="Input, weight, and output VN buffer layouts"></canvas></div>
               </div>
             </div>
           </section>
@@ -673,6 +710,11 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   </div>
 
   <script src="script.js"></script>
+  <script src="script/feather_buffer_model.js"></script>
+  <script src="script/feather_buffer_view.js"></script>
+  <script src="script/feather_buffer_popup.js"></script>
+  <script src="script/feather_buffer_integration.js"></script>
+  <script src="script/feather_packet_motion.js"></script>
 
   <script>
   // ============================================================================
@@ -694,14 +736,22 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     4:{W:["nL1","kL1","nL0"],I:["mL1","jL1","mL0"],O:["qL1","pL1","pL0"]},
     5:{W:["nL1","nL0","kL1"],I:["mL1","mL0","jL1"],O:["qL1","pL0","pL1"]},
   };
-  const MG_PE_COLORS = {idle:'#E8EAED',loading:'#C8E6C9',ready:'#A5D6A7',computing:'#FFE082',outputting:'#FFCDD2',input:'#BBDEFB'};
+  // Data identity colors are shared by the diagram, moving packets and legends.
+  // Light surface tints retain readable labels; PE/BIRRD values stay partials
+  // until they leave the network for the output buffer.
+  const MG_DATA_COLORS = {input:'#004C99',weight:'#006633',result:'#990000',partial:'#4C0099'};
+  const MG_DATA_FILLS = {input:'#E6EDF5',weight:'#E6F0EB',result:'#F5E6E6',partial:'#EDE6F5'};
+  const MG_PE_COLORS = {idle:'#E8EAED',loading:MG_DATA_FILLS.weight,ready:'#B3D1C2',computing:'#FFE082',outputting:MG_DATA_FILLS.partial,input:MG_DATA_FILLS.input};
   const MG_EGG_MODES = {0:{name:'Pass',bg:'#E8F5E9',edge:'#2E7D32'},3:{name:'Swap',bg:'#FFF3E0',edge:'#E65100'},1:{name:'Add-L',bg:'#E3F2FD',edge:'#1565C0'},2:{name:'Add-R',bg:'#F3E5F5',edge:'#7B1FA2'}};
 
   let mgHW = {AH:4,AW:4,sram_mb:4,frac_stream:0.4,frac_stationary:0.4,frac_output:0.2};
   let mgInstructions = [];
   let mgSelectedIdx = -1;
   let mgAnimFrames = [], mgCurrentFrame = 0, mgPlaying = false, mgTimer = null;
-  let mgActiveTab = 'nest';
+  let mgActiveTab = 'feather';
+  let mgFrameProgress=1,mgLastTick=null,mgTraceSignature='';
+  let mgMotionLink=null,mgMotionPackets=[],mgReplayFrameIndex=null;
+  const mgReducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 
   function mgCD(a,b){return Math.ceil(a/b);}
   function mgCL2(x){return x<=1?0:Math.ceil(Math.log2(x));}
@@ -766,7 +816,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgToast(msg,type='info',dur=3000){const t=document.createElement('div');t.className=`mg-toast ${type}`;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},dur);}
 
   // ---------- ISA List UI ----------
-  function mgRenderList(){const l=document.getElementById('mgIsaList');l.innerHTML='';
+  function mgRenderList(){
+    const signature=JSON.stringify([mgHW,mgInstructions]);
+    if(signature!==mgTraceSignature){mgTraceSignature=signature;mgInvalidateAnimation();}
+    const l=document.getElementById('mgIsaList');l.innerHTML='';
     mgInstructions.forEach((ins,i)=>{const d=document.createElement('div');d.className=`mg-isa-item${i===mgSelectedIdx?' selected':''}`;
       d.innerHTML=`<span class="mg-idx">${i+1}.</span><span class="mg-badge ${mgBadgeCls(ins.type)}">${ins.type.replace('Set','').replace('Layout','').replace('Execute','')}</span><span>${mgShortDesc(ins)}</span>`;
       d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDeriveWorkload();mgDrawActive();}
@@ -826,248 +879,487 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   function mgSaveTrace(){if(!mgInstructions.length){mgToast('Nothing to save','warning');return;}
     const d={version:'1.0',hardware:{AH:mgHW.AH,AW:mgHW.AW,sram_mb:mgHW.sram_mb},workload:{M:mgGetWL('M'),K:mgGetWL('K'),N:mgGetWL('N')},instructions:mgInstructions.map(i=>({type:i.type,params:i.params}))};
     const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='minisa_trace.json';a.click();mgToast('Saved','success');}
-  function mgLoadTrace(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);mgInstructions=(d.instructions||[]).map(i=>({type:i.type,params:i.params}));
-    if(d.hardware){mgHW.AH=d.hardware.AH||4;mgHW.AW=d.hardware.AW||4;mgHW.sram_mb=d.hardware.sram_mb||4;document.getElementById('mgNestSize').value=mgHW.AH;document.getElementById('mgSramMB').value=mgHW.sram_mb;}
-    /* M,K,N are now derived from Set*VNLayout instructions via mgDeriveWorkload() called by mgRenderList() */
-    mgSelectedIdx=-1;mgRenderList();mgToast(`Loaded ${mgInstructions.length} instrs`,'success');}catch(err){mgToast('Load failed: '+err.message,'error');}};r.readAsText(f);ev.target.value='';}
+  function mgLoadTrace(ev){
+    const f=ev.target.files[0];if(!f)return;ev.target.value='';
+    if(f.size>1024*1024){mgToast('Load failed: trace exceeds 1 MiB','error');return;}
+    const r=new FileReader();r.onload=e=>{try{
+      const d=JSON.parse(e.target.result),hardware=d.hardware||mgHW;
+      if(![4,8,16].includes(hardware.AH)||hardware.AW!==hardware.AH)
+        throw Error('Use a square 4×4, 8×8, or 16×16 array');
+      if(!Number.isFinite(hardware.sram_mb)||hardware.sram_mb<1||hardware.sram_mb>4096)
+        throw Error('SRAM must be between 1 and 4096 MiB');
+      if(!Array.isArray(d.instructions)||d.instructions.length>4096)
+        throw Error('Expected an instruction array of at most 4096 entries');
+      const fields={SetIVNLayout:['order','M_L0','M_L1','J_L1'],
+        SetWVNLayout:['order','N_L0','N_L1','K_L1'],SetOVNLayout:['order','P_L0','P_L1','Q_L1'],
+        ExecuteMapping:['r0','c0','Gr','Gc','sr','sc'],ExecuteStreaming:['dataflow','m_0','s_m','T','vn_size']};
+      const instructions=d.instructions.map((ins,index)=>{
+        if(!ins||!Object.hasOwn(fields,ins.type)||!ins.params)throw Error('Unknown instruction '+(index+1));
+        const params={};for(const key of fields[ins.type]){
+          const value=ins.params[key];
+          if(!Number.isSafeInteger(value)||value<0||value>65536)throw Error('Invalid '+key+' in instruction '+(index+1));
+          params[key]=value;
+        }
+        if('order' in params&&(params.order>5||Object.entries(params).some(([k,v])=>k!=='order'&&v<1)))
+          throw Error('Invalid VN layout in instruction '+(index+1));
+        return{type:ins.type,params};
+      });
+      // Validate before assigning, so a malformed import leaves the editor intact.
+      mgStopAnim();mgHW={...mgHW,AH:hardware.AH,AW:hardware.AW,sram_mb:hardware.sram_mb};
+      mgInstructions=instructions;document.getElementById('mgNestSize').value=mgHW.AH;
+      document.getElementById('mgSramMB').value=mgHW.sram_mb;mgSelectedIdx=-1;mgRenderList();
+      mgToast('Loaded '+mgInstructions.length+' instrs','success');
+    }catch(err){mgToast('Load failed: '+err.message,'error');}};
+    r.readAsText(f);
+  }
 
   // ---------- HW Changes ----------
-  function mgOnNestSizeChange(){const s=parseInt(document.getElementById('mgNestSize').value);mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
-  function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;if(mgActiveTab==='buffer')mgDrawBuffer();}
+  function mgOnNestSizeChange(){const s=Number(document.getElementById('mgNestSize').value);
+    if(![4,8,16].includes(s))return;mgInvalidateAnimation();mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
+  function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;mgDrawActive();mgBufferLink?.refresh();}
 
   // ---------- Tabs ----------
-  function mgSwitchTab(name){mgActiveTab=name;document.querySelectorAll('.mg-tab').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));
-    document.querySelectorAll('.mg-tab-content').forEach((t,i)=>t.classList.toggle('active',['nest','birrd','buffer'][i]===name));mgUpdateLegend();mgDrawActive();}
+  function mgSwitchTab(name){
+    if(!['feather','buffer'].includes(name))return;
+    mgStopAnim();mgActiveTab=name;
+    document.querySelectorAll('.mg-tab').forEach(t=>{
+      const selected=t.dataset.tab===name;t.classList.toggle('active',selected);
+      t.setAttribute('aria-selected',String(selected));
+    });
+    document.querySelectorAll('.mg-tab-content').forEach(t=>t.classList.toggle('active',t.id==='mg-tab-'+name));
+    mgUpdateLegend();mgDrawActive();
+  }
   function mgUpdateLegend(){const l=document.getElementById('mgLegend');
-    if(mgActiveTab==='nest')l.innerHTML=[['Idle','#E8EAED'],['Loading W (WVN)','#C8E6C9'],['W Ready','#A5D6A7'],['Computing','#FFE082'],['Outputting (OVN)','#FFCDD2']].map(([n,c])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c}"></div>${n}</div>`).join('');
-    else if(mgActiveTab==='birrd')l.innerHTML=Object.entries(MG_EGG_MODES).map(([_,v])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${v.bg};border-color:${v.edge}"></div>${v.name}</div>`).join('');
-    else l.innerHTML=[['Streaming (IVN)','#BBDEFB','#1565C0'],['Stationary (WVN)','#C8E6C9','#2E7D32'],['Output (OVN)','#FFCDD2','#C62828']].map(([n,c,e])=>`<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:${c};border-color:${e}"></div>${n}</div>`).join('');}
-  function mgDrawActive(){if(mgActiveTab==='nest')mgDrawNest();else if(mgActiveTab==='birrd')mgDrawBirrd();else mgDrawBuffer();}
+    const items=mgActiveTab==='feather'
+      ?[['Input elements',MG_DATA_COLORS.input,MG_DATA_COLORS.input],['Weight elements',MG_DATA_COLORS.weight,MG_DATA_COLORS.weight],
+        ['MAC','#FFE082','#D97706'],['Partial results · PE → column buses → BIRRD',MG_DATA_COLORS.partial,MG_DATA_COLORS.partial],['Output OVN',MG_DATA_COLORS.result,MG_DATA_COLORS.result]]
+      :[['Streaming (IVN)',MG_DATA_COLORS.input,MG_DATA_COLORS.input],['Stationary (WVN)',MG_DATA_COLORS.weight,MG_DATA_COLORS.weight],['Output (OVN)',MG_DATA_COLORS.result,MG_DATA_COLORS.result]];
+    l.innerHTML=items.map(([n,c,e])=>'<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:'+c+';border-color:'+e+'"></div>'+n+'</div>').join('');
+  }
+  function mgDrawActive(){
+    if(mgActiveTab==='feather')mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
+    else mgDrawBuffer();
+  }
 
   // ---------- Canvas Helpers ----------
   function mgRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
   function mgArrow(ctx,x1,y1,x2,y2,color,lw){const hl=8,a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
 
-  // ---------- NEST Visualization ----------
-  function mgDrawNest(frame){const cv=document.getElementById('mgNestCanvas'),ct=document.getElementById('mg-tab-nest');
-    const AH=mgHW.AH,AW=mgHW.AW;
-    /* Guarantee a minimum PE size so text stays readable at any array size */
-    const minPE=56;  /* minimum px per PE cell */
-    const peSize=Math.max(minPE, Math.min(70, (ct.clientWidth-200)/(AW*1.4)));
-    const peS=peSize*1.4;
-    const desiredW=Math.max(ct.clientWidth, mLForAW()+AW*peS+40);
-    const desiredH=Math.max(ct.clientHeight, 160+AH*peS+80);
-    cv.width=desiredW;cv.height=desiredH;
-    function mLForAW(){return AW>8?60:120;} /* narrower row-label margin for large arrays */
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-    const mL=mLForAW(),mT=140;
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
-    if(frame)ctx.fillText(`NEST PE Array (${AH}\u00d7${AW}) - Cycle ${frame.cycle}`,W/2,20);else ctx.fillText(`NEST PE Array (${AH}\u00d7${AW})`,W/2,20);
-    if(frame){ctx.font='12px sans-serif';ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';ctx.fillText(frame.phase.substring(0,60),W/2,36);}
-    const nTY=mT,bY=nTY-50,ncX=mL+(AW-1)*peS/2+peSize/2,iBX=ncX-peS*AW/4,wBX=ncX+peS*AW/4;
-    ctx.fillStyle='#BBDEFB';ctx.strokeStyle='#1565C0';ctx.lineWidth=2;mgRR(ctx,iBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#1565C0';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('Streaming Buffer',iBX,bY-1);ctx.fillText('(Inputs)',iBX,bY+11);mgArrow(ctx,iBX,bY+16,iBX,nTY-4,'#1565C0',2);
-    ctx.fillStyle='#C8E6C9';ctx.strokeStyle='#2E7D32';ctx.lineWidth=2;mgRR(ctx,wBX-60,bY-16,120,32,6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.fillText('Stationary Buffer',wBX,bY-1);ctx.fillText('(WVN)',wBX,bY+11);mgArrow(ctx,wBX,bY+16,wBX,nTY-4,'#2E7D32',2);
-    /* Adaptive font sizes based on PE cell size */
-    const fPE=Math.max(7,Math.min(9,Math.round(peSize*0.14)));   /* PE(r,c) label */
-    const fWVN=Math.max(6,Math.min(7,Math.round(peSize*0.11)));  /* WVN annotation */
-    const fMAC=Math.max(6,Math.min(8,Math.round(peSize*0.12)));  /* MAC count */
-    const fRow=Math.max(7,Math.min(10,Math.round(peSize*0.15))); /* Row label */
-    const rowBadgeW=Math.min(90, mL-10);  /* row badge width fits in left margin */
-    const rowBadgeH=Math.min(36, peSize*0.7);
-    for(let r=0;r<AH;r++){const y=mT+r*peS;let rL=`Row ${r}\nIdle`,rC=MG_PE_COLORS.idle;
-      if(frame){const pp=frame.pp[`${r},0`]||'idle';if(frame.aOR===r){rL=`Row ${r}\nOUT\u2192BIRRD`;rC=MG_PE_COLORS.outputting;}
-        else if(pp==='computing'||pp==='dp_done'){rL=`Row ${r}\n${frame.rI[r]||'MAC'}`;rC=MG_PE_COLORS.computing;}
-        else if((frame.aWR||[]).includes(r)&&frame.pLE[`${r},0`]>=0){rL=`Row ${r}\n\u2190W[${frame.pLE[`${r},0`]}]`;rC=MG_PE_COLORS.loading;}
-        else if(frame.pWI[`${r},0`]>=AH){rL=`Row ${r}\nWVN\u2713`;rC=MG_PE_COLORS.ready;}
-        else if(frame.pWI[`${r},0`]>0){rL=`Row ${r}\n[0:${frame.pWI[`${r},0`]-1}]`;rC=MG_PE_COLORS.loading;}}
-      ctx.fillStyle=rC;ctx.strokeStyle='#666';ctx.lineWidth=1;mgRR(ctx,4,y+peSize/2-rowBadgeH/2,rowBadgeW,rowBadgeH,5);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#333';ctx.font=`bold ${fRow}px sans-serif`;ctx.textAlign='center';
-      const rlLines=rL.split('\n');rlLines.forEach((l,li)=>ctx.fillText(l,4+rowBadgeW/2,y+peSize/2-(rlLines.length-1)*fRow*0.6+li*fRow*1.3));
-      for(let c=0;c<AW;c++){const x=mL+c*peS,k=`${r},${c}`;let col=MG_PE_COLORS.idle;
-        if(frame){const pp=frame.pp[k]||'idle';if(pp==='outputting')col=MG_PE_COLORS.outputting;else if(pp==='computing'||pp==='dp_done')col=MG_PE_COLORS.computing;else if(pp==='weights_ready')col=MG_PE_COLORS.ready;else if(pp==='loading_weights')col=MG_PE_COLORS.loading;}
-        ctx.fillStyle=col;ctx.strokeStyle='#1565C0';ctx.lineWidth=1.5;mgRR(ctx,x,y,peSize,peSize,4);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#333';ctx.font=`bold ${fPE}px sans-serif`;ctx.textAlign='center';ctx.fillText(`PE(${r},${c})`,x+peSize/2,y+peSize*.25);
-        let wt=`WVN(${r},${c})[-]`;if(frame)wt=frame.pWA[k]||wt;ctx.font=`${fWVN}px sans-serif`;ctx.fillStyle='#444';ctx.fillText(wt,x+peSize/2,y+peSize*.48);
-        ctx.font=`${fMAC}px sans-serif`;ctx.fillStyle='#666';ctx.fillText(`MAC:${frame?frame.pMC[k]||0:0}`,x+peSize/2,y+peSize*.72);
-        if(r<AH-1)mgArrow(ctx,x+peSize/2,y+peSize+2,x+peSize/2,y+peS-2,'#90A4AE',1);}}
-    const oY=mT+AH*peS+10;ctx.fillStyle='#C62828';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('OUTPUT to BIRRD (round-robin row)',ncX,oY+20);
-    for(let c=0;c<AW;c++){const x=mL+c*peS+peSize/2;mgArrow(ctx,x,mT+(AH-1)*peS+peSize+4,x,oY,'#C62828',2);}}
+  // ---------- Connected FEATHER microarchitecture ----------
+  // This topology is the original tutorial BIRRD wiring. AW=4 skips one
+  // first-half stage; every switch consumes the exact two indexed wires below.
+  function mgBirrdInputs(st,sw,AW=mgHW.AW){
+    const LV=mgCL2(AW),NS=AW/2,skip=AW===4?1:0;
+    const lls=(v,w)=>w<=1?v:((v<<1)|((v>>(w-1))&1))&((1<<w)-1);
+    const lrs=(v,w)=>w<=1?v:((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);
+    const br=(v,w)=>{let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;};
+    if(st===0)return[2*sw,2*sw+1];
+    const logical=st+skip*(LV-1);
+    if(logical<LV){const per=NS>>(st-1),group=Math.floor(sw/per),local=sw%per;
+      const offset=group*(AW>>(st-1)),bits=LV-st+1;
+      return[lls(local*2,bits)+offset,lls(local*2+1,bits)+offset];}
+    if(logical===LV)return[br(sw*2,LV),br(sw*2+1,LV)];
+    const exponent=(2*LV-1)-logical,per=exponent>=0?NS>>exponent:NS;
+    const group=Math.floor(sw/per),local=sw%per,offset=exponent>=0?group*(AW>>exponent):0;
+    const bits=exponent>=0?LV-exponent:LV;
+    return[lrs(local*2,bits)+offset,lrs(local*2+1,bits)+offset];
+  }
 
-  // ---------- BIRRD Visualization ----------
-  function mgDrawBirrd(){const cv=document.getElementById('mgBirrdCanvas'),ct=document.getElementById('mg-tab-birrd');
-    const AW=mgHW.AW,LV=mgCL2(AW),TOT=AW===4?2*LV-1:2*LV,NS=AW/2;
-    const pS=Math.min(100,Math.max(60,(ct.clientWidth-200)/AW));
-    const sS=Math.max(80, 90);
-    const eW=Math.min(50,pS*.8),eH=28;
-    const desiredW=Math.max(ct.clientWidth, (AW-1)*pS+200);
-    const desiredH=Math.max(ct.clientHeight, (TOT+3)*sS+80);
-    cv.width=desiredW; cv.height=desiredH;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-    const sX=(W-(AW-1)*pS)/2,sY=50;
-    function pX(p){return sX+p*pS;}function stY(s){return sY+(s+1)*sS;}
-    function lls(v,w){if(w<=1)return v;return((v<<1)|((v>>(w-1))&1))&((1<<w)-1);}
-    function lrs(v,w){if(w<=1)return v;return((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);}
-    function br(v,w){let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;}
-    function cls(s){const SK=AW===4?1:0;if(s===0)return'first';const lg=s+SK*(LV-1);if(lg<LV)return'first_half';if(lg===LV)return'middle';return'second_half';}
-    function gSI(st,sw){const SK=AW===4?1:0,role=cls(st);if(role==='first')return[2*sw,2*sw+1];
-      if(role==='first_half'){const s=st,ng=1<<(s-1),spg=NS>>(s-1),g=Math.floor(sw/spg),sig=sw%spg,go=g*(AW>>(s-1)),w=LV-s+1;return[lls(sig<<1,w)+go,lls((sig<<1)+1,w)+go];}
-      if(role==='middle')return[br(sw<<1,LV),br((sw<<1)+1,LV)];
-      const lg=st+SK*(LV-1),nge=(2*LV-1)-lg,ng2=nge>=0?(1<<nge):1,spg2=nge>=0?(NS>>nge):NS,g2=spg2>0?Math.floor(sw/spg2):0,sig2=spg2>0?(sw%spg2):sw,go2=nge>=0?(g2*(AW>>nge)):0,w2=nge>=0?(LV-nge):LV;
-      return[lrs(sig2<<1,w2)+go2,lrs((sig2<<1)+1,w2)+go2];}
-    /* Build input-port to x-position map for each stage.
-       Each EGG sw at stage s has output ports at indices 2*sw and 2*sw+1.
-       Their x-positions are pX(2*sw) and pX(2*sw+1). */
-    /* Build input-port-index to x-position map for each stage.
-       Each EGG sw at stage s reads from input ports gSI(s, sw) = [lo, hi].
-       Input port lo is on the left side of the EGG, hi on the right.
-       The x-position of input port lo = left side of EGG = pX(2*sw),
-       and input port hi = right side = pX(2*sw+1). */
-    function inputPortX(stage, portIdx) {
-      /* Find which EGG at this stage reads this port, and whether it's the lo or hi input */
-      for (let sw = 0; sw < NS; sw++) {
-        const [lo, hi] = gSI(stage, sw);
-        if (lo === portIdx) return pX(2 * sw);     /* left input of EGG */
-        if (hi === portIdx) return pX(2 * sw + 1); /* right input of EGG */
-      }
-      return pX(portIdx); /* fallback */
+  let mgFeatherGeometry=null;
+  let mgBufferLink=null;
+  function mgOpenBuffer(operand,opener){mgBufferLink?.open(operand,opener);}
+  let mgPriorOverflow='';
+  function mgToggleExpanded(){
+    const app=document.querySelector('.mg-app'),expanded=app.classList.toggle('mg-expanded');
+    const button=document.getElementById('mgExpandBtn');
+    button.textContent=expanded?'Restore':'Expand';button.setAttribute('aria-pressed',String(expanded));
+    if(expanded){mgPriorOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    else document.body.style.overflow=mgPriorOverflow;
+    requestAnimationFrame(mgDrawActive);
+  }
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!mgBufferLink?.popup.isOpen()&&document.querySelector('.mg-app').classList.contains('mg-expanded'))mgToggleExpanded();
+  });
+  function mgScrollDiagram(section){
+    if(!mgFeatherGeometry)return;const pane=document.getElementById('mg-tab-feather');
+    const positions={nest:0,network:mgFeatherGeometry.nestBottom-30,output:mgFeatherGeometry.outputY-120};
+    const offset=section==='nest'?0:document.getElementById('mgFeatherCanvas').offsetTop;
+    pane.scrollTo({top:offset+(positions[section]||0)*mgFeatherGeometry.scale,behavior:mgReducedMotion.matches?'instant':'smooth'});
+  }
+  function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
+    const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
+    const AH=mgHW.AH,AW=mgHW.AW,stages=AW===4?3:2*mgCL2(AW);
+    const bufferView=mgBufferLink.prepare(frame,progress);
+    const bufferHeights=Object.fromEntries(['I','W','O'].map(operand=>[operand,
+      FeatherBufferView.height(mgBufferLink.getLayout(operand),mgBufferLink.windowFor(operand))]));
+    const cell=AW>8?48:58,pitch=cell+18,cardWidth=AW*44+58;
+    const top=65+Math.max(bufferHeights.I,bufferHeights.W)+48;
+    const width=Math.max(700,ct.clientWidth,100+AW*pitch+32,2*cardWidth+80);
+    const left=(width-((AW-1)*pitch+cell))/2;
+    const columnX=c=>left+c*pitch+cell/2;
+    // One output bus in the whitespace to each column's right. The BIRRD
+    // ports share its x coordinate, so no selector block or bus jog is drawn.
+    const busX=c=>left+c*pitch+cell+(pitch-cell)/2;
+    const portX=busX,busTapFraction=.25;
+    const nestBottom=top+(AH-1)*pitch+cell,networkTop=nestBottom+100;
+    const stageY=s=>networkTop+80+s*72,outputY=stageY(stages-1)+108,eggHeight=28;
+    const height=outputY+60+bufferHeights.O+78;
+    const fit=document.getElementById('mgDiagramScale').value==='fit';
+    const motionMount=document.getElementById('mgMotionMount');
+    motionMount.style.maxHeight=Math.max(110,Math.floor(ct.clientHeight*.45))+'px';
+    const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
+      Math.max(1,ct.clientHeight-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);
+    let scale=fit?fittedScale():1;
+    cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';
+    cv.style.margin=fit?'0 auto':'0';
+    if(cv.width!==width)cv.width=width;if(cv.height!==height)cv.height=height;
+    const ctx=cv.getContext('2d');
+    ctx.clearRect(0,0,width,height);
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';
+    const muted=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';
+    const center=(columnX(0)+columnX(AW-1))/2;
+    const inputX=center-cardWidth/2-16,weightX=center+cardWidth/2+16;
+    const bufferRegions=[{operand:'I',x:inputX-cardWidth/2,y:65,width:cardWidth,height:bufferHeights.I},
+      {operand:'W',x:weightX-cardWidth/2,y:65,width:cardWidth,height:bufferHeights.W},
+      {operand:'O',x:portX(0)-cell/2,y:outputY+60,width:(AW-1)*pitch+cell,height:bufferHeights.O}];
+    const columnLinks=Array.from({length:AW},(_,c)=>({column:c,input:c,
+      from:[busX(c),top],to:[busX(c),networkTop]}));
+    const peBusLinks=Array.from({length:AH*AW},(_,index)=>{
+      const row=Math.floor(index/AW),column=index%AW,bottom=top+row*pitch+cell;
+      return{row,column,from:[left+column*pitch+cell,bottom],
+        to:[busX(column),bottom+(pitch-cell)/2]};
+    });
+    const inputSlot=(s,p)=>{
+      for(let sw=0;sw<AW/2;sw++){const pair=mgBirrdInputs(s,sw,AW);
+        if(pair[0]===p)return 2*sw;if(pair[1]===p)return 2*sw+1;}
+      throw Error('Unconnected BIRRD port');
+    };
+    const networkPath=(s,p)=>{
+      const slot=inputSlot(s,p),start=s===0?networkTop:stageY(s-1)+eggHeight/2;
+      const end=stageY(s)-eggHeight/2,mid=(start+end)/2;
+      return[[portX(p),start],[portX(p),mid-4],[portX(slot),mid+4],[portX(slot),end]];
+    };
+    mgFeatherGeometry={width,height,scale,cell,pitch,left,top,nestBottom,networkTop,outputY,
+      stages,columnLinks,peBusLinks,busTapFraction,bufferRegions,busX:Array.from({length:AW},(_,c)=>busX(c)),
+      portX:Array.from({length:AW},(_,c)=>portX(c)),
+      stageY:Array.from({length:stages},(_,s)=>stageY(s))};
+    cv.dataset.arrayWidth=AW;cv.dataset.stages=stages;cv.dataset.columnLinks=AW;
+    cv.dataset.peBusLinks=peBusLinks.length;
+    cv.dataset.networkLinks=AW*stages;cv.dataset.animationFrame=mgCurrentFrame;
+    cv.dataset.animationProgress=progress.toFixed(3);cv.dataset.switchMode='PASS';
+    function label(text,x,y,color=textColor,size=12,bold=false){
+      ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(bold?'bold ':'')+size+'px sans-serif';ctx.fillText(text,x,y);
     }
-    ctx.fillStyle='#333';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(`BIRRD Network (AW=${AW})`,W/2,18);
-    ctx.font='11px sans-serif';ctx.fillStyle='#666';ctx.fillText(`${TOT} stages | ${NS} EGGs/stage`,W/2,34);
-    for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#2E7D32';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`In${p}`,x,sY-4);ctx.beginPath();ctx.arc(x,sY+6,5,0,Math.PI*2);ctx.fillStyle='#C8E6C9';ctx.fill();ctx.strokeStyle='#2E7D32';ctx.lineWidth=1.5;ctx.stroke();}
-    const oY=stY(TOT)+20;for(let p=0;p<AW;p++){const x=pX(p);ctx.fillStyle='#C62828';ctx.font='bold 10px sans-serif';ctx.fillText(`Out${p}`,x,oY+18);ctx.beginPath();ctx.arc(x,oY+4,5,0,Math.PI*2);ctx.fillStyle='#FFCDD2';ctx.fill();ctx.strokeStyle='#C62828';ctx.lineWidth=1.5;ctx.stroke();}
-    for(let s=0;s<TOT;s++){const sy=stY(s);ctx.fillStyle='#333';ctx.font='bold 10px sans-serif';ctx.textAlign='right';ctx.fillText(`S${s}`,sX-20,sy+4);
-      for(let sw=0;sw<NS;sw++){const oL=2*sw,oH=2*sw+1,xc=(pX(oL)+pX(oH))/2;
-        ctx.fillStyle='#FFF9C4';ctx.strokeStyle='#FF8F00';ctx.lineWidth=1.5;mgRR(ctx,xc-eW/2,sy-eH/2,eW,eH,4);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#333';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(`E${sw}`,xc,sy+4);
-        /* Draw input lines into this EGG from above */
-        if(s===0){
-          /* First stage: inputs come from top input ports */
-          const [li,hi]=gSI(s,sw);
-          ctx.strokeStyle='#1565C0';ctx.lineWidth=1;
-          ctx.beginPath();ctx.moveTo(pX(li),sY+11);ctx.lineTo(pX(oL),sy-eH/2);ctx.stroke();
-          ctx.beginPath();ctx.moveTo(pX(hi),sY+11);ctx.lineTo(pX(oH),sy-eH/2);ctx.stroke();
-        }
-        /* Draw output stubs from EGG downward */
-        ctx.strokeStyle='#2E7D32';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(oL),sy+eH/2);ctx.lineTo(pX(oL),sy+eH/2+6);ctx.stroke();ctx.beginPath();ctx.moveTo(pX(oH),sy+eH/2);ctx.lineTo(pX(oH),sy+eH/2+6);ctx.stroke();}
-      /* Interstage connections: from output ports of stage s to input ports of stage s+1 */
-      if(s<TOT-1){
-        const yS=sy+eH/2+6, yE=stY(s+1)-eH/2, yM=(yS+yE)/2;
-        /* For each output port of this stage, find where it connects as input to next stage */
-        for(let outPort=0;outPort<AW;outPort++){
-          const xSrc=pX(outPort); /* output port x-position */
-          /* Find which EGG in stage s+1 reads this output port, and get its input x-position */
-          const xDst=inputPortX(s+1, outPort);
-          if(Math.abs(xSrc-xDst)<1){
-            ctx.strokeStyle='#1565C0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xDst,yE);ctx.stroke();
-          } else {
-            ctx.strokeStyle='#E65100';ctx.lineWidth=1;
-            ctx.beginPath();ctx.moveTo(xSrc,yS);ctx.lineTo(xSrc,yM+2);ctx.stroke();
-            ctx.beginPath();ctx.moveTo(xSrc,yM+2);ctx.lineTo(xDst,yM-2);ctx.stroke();
-            ctx.beginPath();ctx.moveTo(xDst,yM-2);ctx.lineTo(xDst,yE);ctx.stroke();
-          }
-        }
-      } else {
-        /* Last stage to outputs */
-        for(let p=0;p<AW;p++){ctx.strokeStyle='#C62828';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pX(p),sy+eH/2+6);ctx.lineTo(pX(p),oY-1);ctx.stroke();}
+    function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
+    function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
+      points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
+    label('FEATHER · NEST compute → BIRRD network → output buffer',center,24,textColor,12,true);
+    label('Illustrative dataflow • logical elements, not RTL-cycle timing',center,43,muted,11);
+    box(bufferRegions[0].x,65,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label('Streaming buffer (IVN)',inputX,82,MG_DATA_COLORS.input,11,true);
+    box(bufferRegions[1].x,65,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label('Stationary buffer (WVN)',weightX,82,MG_DATA_COLORS.weight,11,true);
+    mgArrow(ctx,inputX,65+bufferHeights.I,inputX,top-14,MG_DATA_COLORS.input,2);
+    mgArrow(ctx,weightX,65+bufferHeights.W,weightX,top-14,MG_DATA_COLORS.weight,2);
+    label('NEST · '+AH+' × '+AW+' PE array',center,top-9,textColor,12,true);
+    for(let r=0;r<AH;r++){
+      const y=top+r*pitch;
+      label('Row '+r,43,y+cell/2,muted,11,true);
+      for(let c=0;c<AW;c++){
+        const x=left+c*pitch,key=r+','+c,phase=frame?frame.pp[key]:'idle';
+        const colors={loading_weights:MG_PE_COLORS.loading,weights_ready:MG_PE_COLORS.ready,
+          computing:MG_PE_COLORS.computing,dp_done:MG_PE_COLORS.outputting,outputting:MG_PE_COLORS.outputting};
+        const edge=phase==='outputting'||phase==='dp_done'?MG_DATA_COLORS.partial:
+          phase==='loading_weights'||phase==='weights_ready'?MG_DATA_COLORS.weight:'#607D8B';
+        box(x,y,cell,cell,colors[phase]||MG_PE_COLORS.idle,edge);
+        label('PE('+r+','+c+')',x+cell/2,y+14,'#263238',9,true);
+        label('W: '+(frame?frame.pWI[key]||0:0)+' / '+AH,x+cell/2,y+28,'#37474F',9);
+        label('MAC: '+(frame?frame.pMC[key]||0:0),x+cell/2,y+42,'#37474F',9);
+        if(r<AH-1)mgArrow(ctx,columnX(c),y+cell+1,columnX(c),y+pitch-2,'#90A4AE',1);
       }
-    }}
+    }
+    // Every PE has a diagonal output tap; each vertical bus continues straight
+    // into its BIRRD input. Keep the full bus visible without an overlay block.
+    peBusLinks.forEach(link=>path([link.from,link.to],MG_DATA_COLORS.partial,1.3));
+    columnLinks.forEach(link=>{
+      path([link.from,link.to],MG_DATA_COLORS.partial,1.8);
+    });
+    label('Column',44,nestBottom+32,MG_DATA_COLORS.partial,10,true);
+    label('buses',44,nestBottom+47,MG_DATA_COLORS.partial,10,true);
+    label('BIRRD',44,networkTop+32,MG_DATA_COLORS.partial,11,true);
+    label(stages+' stages',44,networkTop+47,muted,9);
+    for(let p=0;p<AW;p++){
+      label('In'+p,portX(p)-14,networkTop-8,MG_DATA_COLORS.partial,9);
+      ctx.beginPath();ctx.arc(portX(p),networkTop,4,0,Math.PI*2);ctx.fillStyle=MG_DATA_COLORS.partial;ctx.fill();
+    }
+    for(let s=0;s<stages;s++){
+      for(let p=0;p<AW;p++)path(networkPath(s,p),MG_DATA_COLORS.partial,1.1);
+      label('Stage '+s,42,stageY(s)+4,muted,10,true);
+      for(let sw=0;sw<AW/2;sw++){
+        const x=portX(2*sw)-10,w=pitch+20,y=stageY(s);
+        box(x,y-eggHeight/2,w,eggHeight,MG_DATA_FILLS.partial,MG_DATA_COLORS.partial);
+        const [lo,hi]=mgBirrdInputs(s,sw,AW);
+        // Distinct input/output ports and local PASS paths are visible.
+        path([[portX(2*sw),y-eggHeight/2],[portX(2*sw),y+eggHeight/2]],MG_DATA_COLORS.partial,1);
+        path([[portX(2*sw+1),y-eggHeight/2],[portX(2*sw+1),y+eggHeight/2]],MG_DATA_COLORS.partial,1);
+        label('E'+sw+' · PASS',x+w/2,y+3,MG_DATA_COLORS.partial,9,true);
+        label(lo,portX(2*sw),y-19,muted,8);label(hi,portX(2*sw+1),y-19,muted,8);
+      }
+    }
+    for(let p=0;p<AW;p++){
+      mgArrow(ctx,portX(p),stageY(stages-1)+eggHeight/2,portX(p),outputY,MG_DATA_COLORS.result,1.5);
+      path([[portX(p),outputY],[portX(p),outputY+18]],MG_DATA_COLORS.result,1);
+      label('Out'+p,portX(p),outputY-9,MG_DATA_COLORS.result,9);
+      // These are BIRRD output ports, not SRAM banks or a second buffer.
+      ctx.beginPath();ctx.arc(portX(p),outputY+18,3,0,Math.PI*2);ctx.fillStyle=MG_DATA_COLORS.result;ctx.fill();
+      label('Port '+p,portX(p),outputY+34,MG_DATA_COLORS.result,9,true);
+    }
+    const outputRegion=bufferRegions[2];
+    box(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height,MG_DATA_FILLS.result,MG_DATA_COLORS.result);
+    label('Output buffer (OVN) · physical banks',outputRegion.x+outputRegion.width/2,outputRegion.y+17,MG_DATA_COLORS.result,11,true);
+    mgBufferLink?.drawMini(ctx,mgFeatherGeometry);
+    label('Both tabs share VN rows and scalar lanes. Click a buffer for exact addresses.',center,outputRegion.y+outputRegion.height+24,textColor,11,true);
+    label('PASS topology: output writes show intended partial-sum destinations, not reduced GEMM values.',center,outputRegion.y+outputRegion.height+46,muted,10);
+    let tokenCount=0,networkTokens=0;const resultTokens=[],bufferTokens=[],motionPackets=[];
+    const snapshot=frame?.snapshotIndex??frame?.iteration??0;
+    const selectedKey=mgMotionLink?.selectedKey();
+    function scalarPacket(access){
+      const operand=access.operand,forward=access.phase==='forward';
+      const origin=(operand==='W'?'Stationary':'Streaming')+' bank '+access.bank+' · scalar row '+access.scalarRow;
+      return {key:operand+':'+snapshot+':'+access.bank+':'+access.scalarRow+':'+access.peCol,
+        tag:operand+access.bank+'.'+access.scalarRow,label:access.label,operand,bank:access.bank,scalarRow:access.scalarRow,
+        peRow:access.peRow,peCol:access.peCol,originLabel:origin,
+        sourceLabel:forward?'PE['+(access.peRow-1)+','+access.peCol+'] (forwarded)':origin,
+        destinationLabel:'PE['+access.peRow+','+access.peCol+']',
+        stageLabel:forward?'Forward the same input to the next PE row':operand==='W'?'Load stationary weight':'Read streaming input',
+        phase:access.phase,shape:(access.bank+access.scalarRow)%4,valid:access.valid};
+    }
+    function token(points,text,color,position=progress,packet=null){
+      const lengths=points.slice(1).map((point,i)=>Math.hypot(point[0]-points[i][0],point[1]-points[i][1]));
+      let remaining=lengths.reduce((a,b)=>a+b,0)*Math.max(0,Math.min(1,position)),x=points[0][0],y=points[0][1];
+      const trail=[points[0]];
+      for(let i=0;i<lengths.length;i++){
+        const t=lengths[i]?Math.min(1,remaining/lengths[i]):1;
+        x=points[i][0]+(points[i+1][0]-points[i][0])*t;y=points[i][1]+(points[i+1][1]-points[i][1])*t;
+        trail.push([x,y]);
+        if(remaining<=lengths[i])break;remaining-=lengths[i];
+      }
+      // Retain the requested semantic color; address tags and shape marks
+      // distinguish scalars, including multicast copies of the same element.
+      const focused=packet?.key===selectedKey;
+      ctx.save();ctx.globalAlpha=focused ? .85 : .32;
+      path(trail,color,focused?4:2);
+      ctx.setLineDash([3,3]);ctx.strokeStyle=color;ctx.lineWidth=1;
+      ctx.strokeRect(points[0][0]-7,points[0][1]-7,14,14);ctx.setLineDash([]);
+      if(progress>=1){ctx.beginPath();ctx.arc(x,y,focused?11:8,0,Math.PI*2);ctx.stroke();}
+      ctx.restore();
+      const landed=packet?.phase==='preview-write'&&packet.valid&&
+        x>=outputRegion.x&&x<=outputRegion.x+outputRegion.width&&y>=outputRegion.y;
+      const clipBounds=landed?outputRegion:null;
+      function decorationBounds(cx,cy,w,h){
+        if(!clipBounds)return{x:cx-w/2,y:cy,width:w,height:h};
+        w=Math.min(w,clipBounds.width-4);
+        return{x:Math.max(clipBounds.x+2,Math.min(cx-w/2,clipBounds.x+clipBounds.width-w-2)),
+          y:Math.max(clipBounds.y+2,Math.min(cy,clipBounds.y+clipBounds.height-h-2)),width:w,height:h};
+      }
+      // A packet's identity remains in the detail view. Its local annotations
+      // must fit inside the SRAM card once the packet enters that card.
+      ctx.save();
+      if(clipBounds){ctx.beginPath();ctx.rect(clipBounds.x,clipBounds.y,clipBounds.width,clipBounds.height);ctx.clip();}
+      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+      ctx.font='bold 9px sans-serif';const tw=ctx.measureText(text).width+8;
+      const labelBounds=decorationBounds(x,y-20,tw,13);
+      ctx.fillStyle='rgba(255,255,255,0.93)';ctx.fillRect(labelBounds.x,labelBounds.y,labelBounds.width,labelBounds.height);
+      label(text,labelBounds.x+labelBounds.width/2,labelBounds.y+10,color,9,true);tokenCount++;
+      if(packet){
+        const mark=['●','◆','■','▲'][packet.shape];
+        const tag=mark+' '+packet.tag;
+        ctx.font='bold 8px sans-serif';const badgeWidth=ctx.measureText(tag).width+8;
+        const badgeBounds=decorationBounds(x,y+8,badgeWidth,12);
+        ctx.fillStyle=color;ctx.fillRect(badgeBounds.x,badgeBounds.y,badgeBounds.width,badgeBounds.height);
+        label(tag,badgeBounds.x+badgeBounds.width/2,badgeBounds.y+9,'#fff',8,true);
+        const x0=Math.min(x-11,labelBounds.x,badgeBounds.x),y0=Math.min(y-11,labelBounds.y,badgeBounds.y);
+        const x1=Math.max(x+11,labelBounds.x+labelBounds.width,badgeBounds.x+badgeBounds.width);
+        const y1=Math.max(y+11,labelBounds.y+labelBounds.height,badgeBounds.y+badgeBounds.height);
+        const renderedBounds={x:x0,y:y0,width:x1-x0,height:y1-y0};
+        motionPackets.push({...packet,color,points,x,y,progress:Math.max(0,Math.min(1,progress)),focused,
+          labelBounds,badgeBounds,renderedBounds,clipBounds:clipBounds?{...clipBounds}:null});
+      }
+      ctx.restore();
+      return{x,y};
+    }
+    if(frame){
+      for(const r of frame.aWR||[])for(let c=0;c<AW;c++){
+        const element=frame.pLE[r+','+c];
+        const access=mgBufferLink?.read('W',r,c);
+        if(element>=0&&access?.valid){
+          const start=mgBufferLink.point('W',access.cell,mgFeatherGeometry);
+          if(!start)continue;
+          const points=[start,[columnX(c),top-26],[columnX(c),top+r*pitch+cell/2]];
+          const point=token(points,access.label,MG_DATA_COLORS.weight,progress,scalarPacket(access));
+          const {cell:scalarCell,...metadata}=access;bufferTokens.push({...metadata,...point,points});
+        }
+      }
+      for(const r of frame.aIR||[]){
+        const key=r+',0',lane=Math.max(0,(frame.pMC[key]||1)-1)%AH;
+        if(frame.pp[key]==='computing'||frame.pp[key]==='dp_done'||frame.pp[key]==='outputting')
+          for(let c=0;c<AW;c++){
+            const access=r===0?mgBufferLink?.read('I',r,c):mgBufferLink?.forward(r,c);
+            if(!access?.valid)continue;
+            const start=r===0?mgBufferLink.point('I',access.cell,mgFeatherGeometry):[columnX(c),top+(r-1)*pitch+cell];
+            if(!start)continue;
+            const points=r===0?[start,[columnX(c),top-17],[columnX(c),top+r*pitch+cell/2]]:[start,[columnX(c),top+r*pitch+cell/2]];
+            const point=token(points,access.label,MG_DATA_COLORS.input,progress,scalarPacket(access));
+            const {cell:scalarCell,...metadata}=access;bufferTokens.push({...metadata,...point,points});
+          }
+      }
+      // Each issued row is tracked independently through the real stage wiring.
+      // PASS preview preserves token identity; it does not invent a reduction.
+      for(let age=0;age<=stages+1;age++){
+        const source=mgAnimFrames[mgCurrentFrame-age];
+        if(!source||source.aOR<0||source.iteration!==frame.iteration)continue;
+        for(let col=0;col<AW;col++){
+          const name='R'+source.aOR+'·C'+col;
+          const target=mgBufferLink?.result(age,col),dot=source.outputDot??target?.t??0;
+          const sourcePE='PE['+source.aOR+','+col+']';
+          const destination=target?.valid?'Output bank '+target.bank+' · scalar row '+target.scalarRow:'Unmapped output (no SRAM write)';
+          const packet={key:'P:'+snapshot+':'+(mgCurrentFrame-age)+':'+col,
+            tag:'P'+(snapshot+1)+':'+source.aOR+'.'+col+'·d'+dot,label:target?.valid?'partial '+target.label:name+' partial',
+            operand:'O',bank:target?.bank??null,scalarRow:target?.scalarRow??null,peRow:source.aOR,peCol:col,
+            originLabel:sourcePE+' · dot '+dot+' → '+destination,sourceLabel:sourcePE,
+            destinationLabel:'BIRRD input '+col,stageLabel:'PE result → diagonal tap → column bus',
+            phase:'partial',age,shape:(source.aOR+col+dot)%4,valid:Boolean(target?.valid)};
+          let points,point;
+          if(age===0){
+            const tap=peBusLinks[source.aOR*AW+col];
+            points=[tap.from,tap.to,columnLinks[col].to];
+            // Give the short diagonal tap a visible quarter of the teaching
+            // step, then follow the vertical bus. This is not RTL timing.
+            const diagonal=Math.hypot(tap.to[0]-tap.from[0],tap.to[1]-tap.from[1]);
+            const vertical=networkTop-tap.to[1],p=Math.max(0,Math.min(1,progress));
+            const distance=p<busTapFraction?diagonal*p/busTapFraction:
+              diagonal+vertical*(p-busTapFraction)/(1-busTapFraction);
+            path(points,MG_DATA_COLORS.partial,2.5);
+            point=token(points,name,MG_DATA_COLORS.partial,distance/(diagonal+vertical),packet);
+          }else{
+            let port=col;
+            for(let s=0;s<Math.min(age-1,stages);s++)port=inputSlot(s,port);
+            if(age<=stages){
+              const s=age-1,slot=inputSlot(s,port);points=networkPath(s,port);
+              points.push([portX(slot),stageY(s)+eggHeight/2]);
+              packet.sourceLabel=s===0?'BIRRD input '+port:'Stage '+(s-1)+' output '+port;
+              packet.destinationLabel='Stage '+s+' output '+slot;
+              packet.stageLabel='BIRRD stage '+s+' · PASS preserves this partial';
+              point=token(points,name,MG_DATA_COLORS.partial,progress,packet);networkTokens++;
+            }else{
+              points=[[portX(port),stageY(stages-1)+eggHeight/2],[portX(port),outputY+18]];
+              packet.sourceLabel='BIRRD output '+port;packet.destinationLabel=destination;
+              packet.stageLabel='Preview partial writeback · not a reduced GEMM result';packet.phase='preview-write';
+              if(target?.valid){
+                const destination=mgBufferLink.point('O',target.cell,mgFeatherGeometry);
+                if(!destination)continue;
+                points.push([destination[0],outputY+48],destination);
+                path(points,MG_DATA_COLORS.result,1);
+              }
+              point=token(points,name,MG_DATA_COLORS.result,progress,packet);
+              if(target?.valid){const {cell,...metadata}=target;bufferTokens.push({...metadata,...point,points,
+                status:progress>=1?'preview-written':'in-flight'});}
+              networkTokens++;
+            }
+          }
+          resultTokens.push({row:source.aOR,column:col,age,identity:name,points,...point});
+        }
+      }
+    }
+    cv.dataset.tokenCount=tokenCount;cv.dataset.networkTokens=networkTokens;
+    cv.dataset.resultTokens=JSON.stringify(resultTokens);
+    cv.dataset.bufferEvents=JSON.stringify((bufferView?.events||[]).map(({cell,...event})=>event));
+    cv.dataset.bufferTokens=JSON.stringify(bufferTokens);
+    cv.dataset.bufferWindows=JSON.stringify(mgFeatherGeometry.bufferWindows);
+    cv.dataset.bufferCells=JSON.stringify(mgFeatherGeometry.bufferCells);
+    mgMotionPackets=motionPackets;
+    mgSyncMotion(progress);
+    // Endpoint text can wrap differently when the selected transfer changes.
+    // Refit after the detail panel updates, without redrawing intrinsic paths.
+    if(fit){scale=fittedScale();cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';mgFeatherGeometry.scale=scale;}
+    // The detailed view can choose a new scalar at a frame boundary. Mark its
+    // physical endpoints immediately, even while paused on that first frame.
+    const tracked=motionPackets.find(packet=>packet.key===mgMotionLink?.selectedKey());
+    motionPackets.forEach(packet=>{packet.focused=packet===tracked;});
+    if(tracked){
+      ctx.save();ctx.strokeStyle=tracked.color;ctx.lineWidth=2;ctx.setLineDash([4,3]);
+      const endpoints=[tracked.points[0],tracked.points[tracked.points.length-1]];
+      endpoints.forEach((point,index)=>{
+        ctx.save();
+        if(index===1&&tracked.phase==='preview-write'&&tracked.valid){
+          ctx.beginPath();ctx.rect(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height);ctx.clip();
+        }
+        ctx.strokeRect(point[0]-10,point[1]-10,20,20);
+        ctx.restore();
+      });
+      if(tracked.clipBounds){ctx.beginPath();ctx.rect(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height);ctx.clip();}
+      ctx.setLineDash([]);ctx.beginPath();ctx.arc(tracked.x,tracked.y,10,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    cv.dataset.motionPackets=JSON.stringify(motionPackets);
+    mgBufferLink?.refresh();
+  }
+  // Keep callable aliases for saved tutorial snippets, not separate tabs.
+  function mgDrawNest(frame){mgDrawFeather(frame);}
+  function mgDrawBirrd(){mgDrawFeather();}
 
   // ---------- Buffer Visualization ----------
-  function mgDrawBuffer(){const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');
-    const AH=mgHW.AH,AW=mgHW.AW,tS=mgHW.sram_mb*1024*1024;
-    const lays={streaming:{order:0,a0:1,a1:1,a2:1},stationary:{order:0,a0:1,a1:1,a2:1},output:{order:0,a0:1,a1:1,a2:1}};
-    mgInstructions.forEach(ins=>{if(ins.type==='SetIVNLayout')lays.streaming={order:ins.params.order,a0:Math.max(1,ins.params.M_L0),a1:Math.max(1,ins.params.M_L1),a2:Math.max(1,ins.params.J_L1)};
-      else if(ins.type==='SetWVNLayout')lays.stationary={order:ins.params.order,a0:Math.max(1,ins.params.N_L0),a1:Math.max(1,ins.params.N_L1),a2:Math.max(1,ins.params.K_L1)};
-      else if(ins.type==='SetOVNLayout')lays.output={order:ins.params.order,a0:Math.max(1,ins.params.P_L0),a1:Math.max(1,ins.params.P_L1),a2:Math.max(1,ins.params.Q_L1)};});
-    const bts=[{k:'streaming',t:'Input (IVN)',op:'I',fc:'#BBDEFB',ec:'#1565C0',pf:'IVN',vb:AH,fr:mgHW.frac_stream},
-      {k:'stationary',t:'Weight (WVN)',op:'W',fc:'#C8E6C9',ec:'#2E7D32',pf:'WVN',vb:AH,fr:mgHW.frac_stationary},
-      {k:'output',t:'Output (OVN)',op:'O',fc:'#FFCDD2',ec:'#C62828',pf:'OVN',vb:AH*4,fr:mgHW.frac_output}];
-    /* Compute max columns needed across all 3 buffers to determine minimum cell size */
-    let maxCols=AW;
-    bts.forEach(bt=>{const lp=lays[bt.k];const tv=lp.a0*lp.a1*lp.a2;maxCols=Math.max(maxCols,Math.min(AW,tv));});
-    /* Guarantee minimum cell width of 50px so text is readable even at 16x16 */
-    const minCellW=50;
-    const panelGap=15;
-    const minPanelW=maxCols*(minCellW+4)+20;
-    const desiredW=Math.max(ct.clientWidth, 3*(minPanelW+panelGap)+30);
-    /* Compute max rows to size height */
-    let maxRows=1;
-    bts.forEach(bt=>{const lp=lays[bt.k];const tv=lp.a0*lp.a1*lp.a2;const nc=Math.max(1,Math.min(AW,tv));maxRows=Math.max(maxRows,Math.min(16,mgCD(tv,nc)));});
-    const minCellH=40;
-    const pSY=65;
-    const desiredH=Math.max(ct.clientHeight, pSY+maxRows*(minCellH+4)+80);
-    cv.width=desiredW;cv.height=desiredH;
-    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-    const pW=Math.floor(W/3)-20;
-    bts.forEach((bt,bi)=>{const px=15+bi*(pW+panelGap),lp=lays[bt.k],{a0,a1,a2,order}=lp,tV=a0*a1*a2,cap=Math.max(1,Math.floor(tS*bt.fr/Math.max(1,bt.vb)));
-      const nC=Math.max(1,Math.min(AW,tV)),nR=Math.min(16,Math.max(1,mgCD(tV,nC)));
-      const cW=Math.max(minCellW, Math.min(pW/nC-4,70));
-      const cH=Math.max(minCellH, Math.min((H-pSY-80)/nR-4,50));
-      /* Title: buffer name */
-      ctx.fillStyle=bt.ec;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
-      ctx.fillText(bt.t,px+pW/2,pSY-46);
-      /* Line 2: Order permutation */
-      const ps=MG_ORDER_PERMS[order]?MG_ORDER_PERMS[order][bt.op]:'?';
-      ctx.font='10px sans-serif';ctx.fillStyle='#666';
-      ctx.fillText(`Order ${order}: ${ps}`,px+pW/2,pSY-32);
-      /* Line 3: VNs and capacity */
-      ctx.fillText(`VNs=${tV}, cap=${cap}`,px+pW/2,pSY-18);
-      const dn=bt.op==='W'?{nL0:a0,nL1:a1,kL1:a2}:bt.op==='I'?{mL0:a0,mL1:a1,jL1:a2}:{pL0:a0,pL1:a1,qL1:a2};
-      const iN=bt.op==='W'?['kL1','nL0','nL1']:bt.op==='I'?['jL1','mL0','mL1']:['pL0','pL1','qL1'];
-      const a2l={};for(let d0=0;d0<dn[iN[0]];d0++)for(let d1=0;d1<dn[iN[1]];d1++)for(let d2=0;d2<dn[iN[2]];d2++){
-        const ix={};ix[iN[0]]=d0;ix[iN[1]]=d1;ix[iN[2]]=d2;const pm=MG_PERM_TABLE[order][bt.op];
-        const L=ix[pm[0]]*(dn[pm[1]]*dn[pm[2]])+ix[pm[1]]*dn[pm[2]]+ix[pm[2]];
-        if(bt.op==='W')a2l[L]=`${bt.pf}\nk=${ix.kL1},n=${ix.nL0*a1+ix.nL1}`;
-        else if(bt.op==='I')a2l[L]=`${bt.pf}\nm=${ix.mL0*a1+ix.mL1},j=${ix.jL1}`;
-        else a2l[L]=`${bt.pf}\np=${ix.pL0*a1+ix.pL1},q=${ix.qL1}`;}
-      ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';for(let c=0;c<nC;c++)ctx.fillText(c,px+c*(cW+3)+cW/2,pSY-2);
-      for(let r=0;r<nR;r++){ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(r,px-4,pSY+r*(cH+3)+cH/2+4);
-        for(let c=0;c<nC;c++){const L=r*nC+c,x=px+c*(cW+3),y=pSY+r*(cH+3),vld=L<tV,oc=L>=cap;
-          ctx.fillStyle=oc&&vld?'#FFCDD2':vld?bt.fc:'#F5F5F5';ctx.strokeStyle=vld?bt.ec:'#CCC';ctx.lineWidth=vld?1:.5;mgRR(ctx,x,y,cW,cH,3);ctx.fill();ctx.stroke();
-          if(vld){const lb=a2l[L]||`addr ${L}`;ctx.fillStyle='#333';
-            const fCell=Math.max(7,Math.min(10,Math.round(cW*0.16)));
-            const fLH=fCell+3; /* line height */
-            ctx.font=`${fCell}px sans-serif`;ctx.textAlign='center';
-            const lns=lb.split('\n');lns.forEach((l,li)=>ctx.fillText(l,x+cW/2,y+cH/2-(lns.length-1)*fLH/2+li*fLH+2));}}}});}
+  function mgDrawBuffer(){
+    const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');
+    const buffers=[{operand:'I',title:'Input (IVN)',color:MG_DATA_COLORS.input,fill:MG_DATA_FILLS.input},
+      {operand:'W',title:'Weight (WVN)',color:MG_DATA_COLORS.weight,fill:MG_DATA_FILLS.weight},
+      {operand:'O',title:'Output (OVN)',color:MG_DATA_COLORS.result,fill:MG_DATA_FILLS.result}];
+    const windows=Object.fromEntries(buffers.map(buffer=>[buffer.operand,mgBufferLink.windowFor(buffer.operand)]));
+    const layouts=Object.fromEntries(buffers.map(buffer=>[buffer.operand,mgBufferLink.getLayout(buffer.operand)]));
+    const heights=Object.fromEntries(buffers.map(buffer=>[buffer.operand,
+      FeatherBufferView.height(layouts[buffer.operand],windows[buffer.operand])]));
+    cv.width=Math.max(ct.clientWidth,3*(mgHW.AW*54+78)+40);
+    cv.height=Math.max(600,ct.clientHeight,...Object.values(heights).map(height=>height+48));
+    const ctx=cv.getContext('2d'),panelWidth=Math.floor(cv.width/3)-20,cells={};
+    ctx.clearRect(0,0,cv.width,cv.height);
+    buffers.forEach((buffer,index)=>{
+      const region={operand:buffer.operand,x:15+index*(panelWidth+15),y:12,width:panelWidth-2,height:heights[buffer.operand]};
+      ctx.fillStyle=buffer.fill;ctx.strokeStyle=buffer.color;ctx.lineWidth=1.5;
+      mgRR(ctx,region.x,region.y,region.width,region.height,5);ctx.fill();ctx.stroke();
+      ctx.fillStyle=buffer.color;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(buffer.title,region.x+region.width/2,region.y+17);
+      cells[buffer.operand]=mgBufferLink.drawBuffer(ctx,buffer.operand,region,windows[buffer.operand]);
+      ctx.font='10px sans-serif';
+      ctx.fillText('Order '+(layouts[buffer.operand].order??'—')+' · same VN rows / scalar lanes as FEATHER',
+        region.x+region.width/2,region.y+region.height+18);
+    });
+    cv.dataset.bufferWindows=JSON.stringify(windows);
+    cv.dataset.bufferCells=JSON.stringify(cells);
+  }
 
   // ---------- Animation Engine ----------
-  function mgGenerateAnimation(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}
+  function mgGenerateAnimation(){mgStopAnim();if(!mgInstructions.length){mgToast('No instructions','warning');return;}
     const errs=mgValSeq();if(errs.length>0&&!confirm(`${errs.length} error(s). Generate anyway?`))return;
-    const AH=mgHW.AH,AW=mgHW.AW;let nWV=1,nIV=AH,nOR=AH;const esP=[];
-    mgInstructions.forEach(ins=>{if(ins.type==='SetWVNLayout')nWV=Math.max(1,ins.params.N_L1*ins.params.K_L1);
-      else if(ins.type==='SetIVNLayout')nIV=Math.max(AH,ins.params.M_L1*ins.params.J_L1);
-      else if(ins.type==='SetOVNLayout')nOR=Math.max(1,ins.params.P_L1);
-      else if(ins.type==='ExecuteStreaming')esP.push({T:ins.params.T,vn_size:ins.params.vn_size,s_m:ins.params.s_m,m_0:ins.params.m_0});});
-    const nMap=mgInstructions.filter(i=>i.type==='ExecuteMapping').length,iters=Math.max(1,nMap);
-    let all=[];
-    let prevEmStart=0, prevWvnPreloaded=0;
-    for(let it=0;it<iters;it++){const ep=esP[it]||null;let iI=nIV,iV=AH,iS=1,iM=0;
-      if(ep){iI=Math.max(AH,ep.T);iV=ep.vn_size+1;iS=ep.s_m;iM=ep.m_0;}
-      /* Inter-EM pipelining: compute how many WVN rows were pre-loaded during previous EM */
-      let wvnPreloaded=0;
-      if(it>0&&all.length>0){
-        const prevRemaining=AH-prevWvnPreloaded;
-        const prevInputStart=Math.max(0,(prevRemaining-1)*AH);
-        const prevStreamDur=all[all.length-1].cycle-(prevEmStart+prevInputStart)+1;
-        wvnPreloaded=Math.min(AH,Math.max(0,Math.floor(prevStreamDur/AH)));
-      }
-      const fs=mgGenFrames(AH,AW,iI,iV,iS,iM,wvnPreloaded);
+    const AH=mgHW.AH,AW=mgHW.AW;
+    const snapshots=mgBufferLink.getProgram().snapshots.filter(snapshot=>snapshot.em&&snapshot.es);
+    if(!snapshots.length){mgToast('Add an ExecuteMapping / ExecuteStreaming pair to animate buffer transfers.','warning');return;}
+    const drain=(AW===4?3:2*mgCL2(AW))+2;
+    const estimated=snapshots.reduce((sum,snapshot)=>sum+AH*AH+Math.max(AH,snapshot.es.T)+2*AH+drain,0);
+    if(!Number.isFinite(estimated)||estimated>4096){mgToast('Animation preview is limited to 4,096 illustrative steps. Shorten T or the trace.','warning',6000);return;}
+    let all=[];const iters=snapshots.length;
+    for(let it=0;it<iters;it++){
+      const snapshot=snapshots[it],ep=snapshot.es;
+      // Each teaching iteration loads its own configured weights. Do not infer
+      // a hidden prefetch: it would skip reads that this diagram must show.
+      const fs=mgGenFrames(AH,AW,Math.max(AH,ep.T),ep.vn_size+1,ep.s_m,ep.m_0,0);
+      fs.forEach(f=>{f.iteration=it;f.snapshotIndex=snapshot.index;});
+      // Flush the displayed BIRRD pipeline before changing mapping iterations.
+      const tail=fs[fs.length-1];
+      for(let step=1;step<=drain;step++)fs.push({...tail,cycle:tail.cycle+step,
+        phase:'BIRRD pipeline → output buffer',aOR:-1,aWR:[],aIR:[],
+        pp:Object.fromEntries(Object.keys(tail.pp).map(key=>[key,'weights_ready']))});
       if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}
-      /* Annotate previous EM frames with WVN prefetch info */
-      if(it>0&&wvnPreloaded>0&&all.length){
-        const prevRemaining=AH-prevWvnPreloaded;
-        const prevISC=prevEmStart+Math.max(0,(prevRemaining-1)*AH);
-        for(const f of all){if(f.cycle>=prevISC){
-          const cip=f.cycle-prevISC;const pr=Math.floor(cip/AH);
-          if(pr<wvnPreloaded){const pe=cip%AH;f.phase+=` | WVN(next)\u2192R${pr}[${pe}]`;}}}
-      }
-      prevEmStart=fs.length?fs[0].cycle:0;
-      prevWvnPreloaded=wvnPreloaded;
       all=all.concat(fs);}
-    mgAnimFrames=all;mgCurrentFrame=0;mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
+    mgAnimFrames=all;mgCurrentFrame=0;mgFrameProgress=1;mgMotionLink?.reset();mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
 
   function mgGenFrames(AH,AW,nI,vS,s_m,m_0,wvnPre){
     vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);
@@ -1093,7 +1385,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       const iIS=cy>=iSC&&cy<iSC+nI;const iII=iIS?cy-iSC:-1;
       for(let r=0;r<AH;r++){const ii=cy-iSC-r;if(ii>=0&&ii<nI&&!rIQ[r].some(q=>q[0]===ii))rIQ[r].push([ii,cy]);}
       const aIR=[],rII={};for(let r=0;r<AH;r++)if(rIQ[r].length>0){aIR.push(r);rII[r]=rIQ[r][0][0];}
-      const pp=[];if(iWL)pp.push(`W[${wE}]\u2192R${lR}`);if(iIS)pp.push(`IVN[${m_0+iII*s_m}]\u2192R0`);
+      const pp=[];if(iWL)pp.push(`Weight lane ${wE}\u2192R${lR}`);if(iIS)pp.push('Stream scalar\u2192R0');
       const cR=[];for(const r of aIR)if(pWC[`${r},0`]>=AH&&rIQ[r].length>0)cR.push(r);
       if(cR.length)pp.push(`MAC@R[${cR}]`);if(vS<AH&&(iIS||cR.length))pp.push(`vn=${vS}`);
       const fr={cycle:cy,phase:pp.length?pp.join(' | '):'Idle',pp:{},pWI:{},pMC:{},pPS:{},pWA:{},pLE:{},rI:{},aOR:-1,aWR:iWL?[lR]:[],aIR:[...aIR]};
@@ -1104,26 +1396,104 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
         else if(r===lR&&iWL)fr.pp[k]='loading_weights';else if(wL>=AH)fr.pp[k]='weights_ready';else if(wL>0)fr.pp[k]='loading_weights';else fr.pp[k]='idle';
         if(!fr.pMC[k])fr.pMC[k]=pMC[k];}
       for(const r of cR)if(pMC[`${r},0`]>0&&pMC[`${r},0`]%AH===0&&rIQ[r].length>0)rIQ[r].shift();
-      for(const r of aIR){const inp=rII[r],ivn=m_0+inp*s_m;fr.rI[r]=`IVN[${ivn}]`;}
+      for(const r of aIR){const count=Math.max(0,pMC[`${r},0`]-1);fr.rI[r]=`dot ${Math.floor(count/AH)}, lane ${count%AH}`;}
       for(let r=0;r<AH;r++)if(rDC[r]>rDO[r]&&!pO.includes(r))pO.push(r);
       if(pO.length){let oR=null;for(let t=0;t<AH;t++){if(pO.includes(nOR)){oR=nOR;break;}nOR=(nOR+1)%AH;}
-        if(oR!==null){fr.aOR=oR;rDO[oR]++;pO=pO.filter(r=>r!==oR);nOR=(oR+1)%AH;for(let c=0;c<AW;c++)fr.pp[`${oR},${c}`]='outputting';}}
+        if(oR!==null){fr.aOR=oR;rDO[oR]++;fr.outputDot=rDO[oR]-1;pO=pO.filter(r=>r!==oR);nOR=(oR+1)%AH;for(let c=0;c<AW;c++)fr.pp[`${oR},${c}`]='outputting';}}
       fs.push(fr);
       const awD=cy>=tWC,aiD=cy>=iSC+nI+AH-1,aoD=Object.keys(rDC).every(r=>rDC[r]===rDO[r]);if(awD&&aiD&&aoD&&!pO.length)break;}return fs;}
 
   // ---------- Animation Playback ----------
-  function mgStepAnim(d){if(!mgAnimFrames.length)return;mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));mgUpdateAnimDisplay();}
-  function mgTogglePlay(){mgPlaying=!mgPlaying;document.getElementById('mgPlayBtn').textContent=mgPlaying?'Pause':'Play';if(mgPlaying)mgRunAnim();else if(mgTimer){clearTimeout(mgTimer);mgTimer=null;}}
-  function mgRunAnim(){if(!mgPlaying||!mgAnimFrames.length)return;mgCurrentFrame=(mgCurrentFrame+1)%mgAnimFrames.length;mgUpdateAnimDisplay();
-    const sp=parseFloat(document.getElementById('mgSpeedSlider').value)||1;mgTimer=setTimeout(mgRunAnim,Math.floor(1000/sp));}
-  function mgUpdateAnimDisplay(){if(!mgAnimFrames.length){document.getElementById('mgAnimInfo').textContent='No animation';document.getElementById('mgFrameInfo').textContent='0/0';return;}
-    const fr=mgAnimFrames[mgCurrentFrame];document.getElementById('mgAnimInfo').textContent=`Cycle ${fr.cycle}: ${fr.phase.substring(0,50)}`;
-    document.getElementById('mgFrameInfo').textContent=`${mgCurrentFrame}/${mgAnimFrames.length-1}`;if(mgActiveTab==='nest')mgDrawNest(fr);}
+  function mgSyncMotion(progress=mgReducedMotion.matches?1:mgFrameProgress){
+    mgMotionLink?.render({packets:mgMotionPackets,progress,playing:mgPlaying,
+      reduced:mgReducedMotion.matches,frame:mgCurrentFrame});
+  }
+  function mgScrubMotion(progress){
+    mgStopAnim();mgFrameProgress=Math.max(0,Math.min(1,Number(progress)||0));
+    mgUpdateAnimDisplay();
+  }
+  function mgReplayMotion(){
+    mgStopAnim();if(!mgAnimFrames.length)mgGenerateAnimation();
+    if(!mgAnimFrames.length)return;
+    if(mgActiveTab!=='feather')mgSwitchTab('feather');
+    mgFrameProgress=mgReducedMotion.matches?1:0;
+    if(mgReducedMotion.matches){mgUpdateAnimDisplay();return;}
+    mgReplayFrameIndex=mgCurrentFrame;mgPlaying=true;mgLastTick=null;
+    document.getElementById('mgPlayBtn').textContent='Pause';
+    mgUpdateAnimDisplay();mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgStopAnim(){
+    mgPlaying=false;if(mgTimer!==null){cancelAnimationFrame(mgTimer);mgTimer=null;}
+    mgReplayFrameIndex=null;
+    document.getElementById('mgPlayBtn').textContent='Play';
+    mgBufferLink?.refresh();
+    mgSyncMotion();
+  }
+  function mgInvalidateAnimation(){
+    mgStopAnim();mgAnimFrames=[];mgCurrentFrame=0;mgFrameProgress=1;mgMotionLink?.reset();mgMotionPackets=[];mgUpdateAnimDisplay();
+  }
+  function mgStepAnim(d){
+    mgStopAnim();if(!mgAnimFrames.length)return;
+    mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));
+    mgFrameProgress=1;mgUpdateAnimDisplay();
+  }
+  function mgTogglePlay(){
+    if(mgPlaying){mgStopAnim();return;}
+    if(!mgAnimFrames.length){mgToast('Generate an animation first','info');return;}
+    if(mgActiveTab!=='feather')mgSwitchTab('feather');
+    if(mgCurrentFrame===mgAnimFrames.length-1){mgCurrentFrame=0;mgFrameProgress=0;}
+    if(mgFrameProgress>=1)mgFrameProgress=0;
+    mgReplayFrameIndex=null;
+    mgPlaying=true;mgLastTick=null;document.getElementById('mgPlayBtn').textContent='Pause';
+    mgBufferLink?.prepare(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
+    mgBufferLink?.refresh();
+    mgSyncMotion();
+    mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgRunAnim(now){
+    mgTimer=null;if(!mgPlaying)return;
+    if(mgLastTick===null)mgLastTick=now;
+    const speed=Math.max(.1,Math.min(5,Number(document.getElementById('mgSpeedSlider').value)||1));
+    mgFrameProgress+=Math.min(100,now-mgLastTick)*speed/1000;mgLastTick=now;
+    if(mgFrameProgress>=1){
+      // Replay visibly reaches the destination and holds there, without
+      // advancing the shared clock into the next scalar transfer.
+      if(mgReplayFrameIndex===mgCurrentFrame){mgFrameProgress=1;mgStopAnim();mgUpdateAnimDisplay();return;}
+      mgFrameProgress=0;
+      if(mgCurrentFrame===mgAnimFrames.length-1){mgFrameProgress=1;mgStopAnim();mgUpdateAnimDisplay();return;}
+      mgCurrentFrame++;mgUpdateAnimDisplay();
+    }
+    if(!mgReducedMotion.matches)mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgFrameProgress);
+    if(mgPlaying)mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgUpdateAnimDisplay(){
+    if(!mgAnimFrames.length){
+      document.getElementById('mgAnimInfo').textContent='Generate an illustrative dataflow animation.';
+      document.getElementById('mgFrameInfo').textContent='0/0';mgDrawActive();return;
+    }
+    const fr=mgAnimFrames[mgCurrentFrame];
+    mgBufferLink?.prepare(fr,mgReducedMotion.matches?1:mgFrameProgress);
+    document.getElementById('mgAnimInfo').textContent='Preview step '+fr.cycle+': '+fr.phase+
+      (fr.aOR>=0?' · PE row '+fr.aOR+' → column buses → BIRRD':'');
+    document.getElementById('mgFrameInfo').textContent=mgCurrentFrame+'/'+(mgAnimFrames.length-1);
+    if(mgActiveTab==='feather')mgDrawFeather(fr,mgReducedMotion.matches?1:mgFrameProgress);
+    else {mgDrawBuffer();mgBufferLink?.refresh();}
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)mgStopAnim();});
+  mgReducedMotion.addEventListener('change',()=>{mgStopAnim();mgFrameProgress=1;mgDrawActive();});
 
   // ---------- Resize ----------
   let mgResizeT;window.addEventListener('resize',()=>{clearTimeout(mgResizeT);mgResizeT=setTimeout(mgDrawActive,100);});
 
   // ---------- Init ----------
+  mgMotionLink=FeatherPacketMotion.create({onSelect:()=>mgDrawActive(),onReplay:mgReplayMotion,
+    onScrub:mgScrubMotion,onPlayPause:mgTogglePlay,onRedraw:mgDrawActive});
+  mgBufferLink=FeatherBufferIntegration.create({hardware:()=>mgHW,instructions:()=>mgInstructions,
+    signature:()=>mgTraceSignature,frames:()=>mgAnimFrames,frame:()=>mgAnimFrames[mgCurrentFrame],
+    index:()=>mgCurrentFrame,progress:()=>mgReducedMotion.matches?1:mgFrameProgress,playing:()=>mgPlaying,
+    reduced:()=>mgReducedMotion.matches,birrdInputs:mgBirrdInputs,canvas:()=>document.getElementById('mgFeatherCanvas'),
+    geometry:()=>mgFeatherGeometry,playPause:mgTogglePlay,step:mgStepAnim,redraw:mgDrawActive,
+    onSelectCell:cell=>mgMotionLink?.selectAddress(cell)});
   mgResetDefault();mgUpdateLegend();setTimeout(mgDrawActive,100);
   </script>
 </body>
