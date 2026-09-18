@@ -1,6 +1,6 @@
 # FEATHER visualizers
 
-The left sidebar offers two complementary pages:
+The left sidebar offers three complementary pages:
 
 - `FEATHER.html` preserves the tutorial's original generic MINISA editor and
   documentation. Its single FEATHER tab connects NEST and BIRRD; the VN-buffer
@@ -20,6 +20,10 @@ The left sidebar offers two complementary pages:
   packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
+- `FEATHER_VS_SYSTOLIC.html` compares equal-work 16×16 arrays on connected
+  irregular GEMM chains, with simultaneous numerical animation, selectable
+  systolic dataflows, and a separately accounted layout-switching experiment.
+  See [COMPARISON.md](COMPARISON.md) for equations, assumptions, and tests.
 
 The Qwen page's browser ISA execution is a control preview, not a connection to
 an FPGA. Its programming panel documents how to run the exported instruction
