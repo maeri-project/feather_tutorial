@@ -10,8 +10,9 @@ The left sidebar offers three complementary pages:
   or output buffer in the architecture (or its **Inspect** button) to open a
   live scalar-layout inspector without leaving the diagram.
 - `QWEN3_MINISA_VISUALIZER.html` is the detailed FP16 Qwen3 explorer. It embeds
-  the nine original full-layer prefill operators plus all 22 recorded ACT
-  prefill/decode workloads. All 31 choices are available in **Full-workload
+  the nine original full-layer prefill operators, all 22 recorded ACT
+  prefill/decode workloads, and nine improved StaB-128 programs. All 40 choices
+  are available in **Full-workload
   demonstrations**, with synchronized N/M/K tile navigation, animation,
   physical-buffer layouts, and instruction views. ACT cases preserve their
   recorded partition shapes and original instruction downloads; they are not
@@ -30,6 +31,14 @@ an FPGA. Its programming panel documents how to run the exported instruction
 image using the maintained FEATHER_GEMM RTL runner. Workload values in the
 animation are deterministic teaching samples, not Qwen model tensors; animation
 steps are not measured RTL cycles.
+
+The improved catalog includes full decode PV/QK/q-projection and six aligned
+q-projection partitions. It regenerates from the tracked ACT layout/partition
+request in FEATHER_GEMM. Each case supplies its own ISA profile and buffer depths:
+improved programs use StaB/StrB/OB=128/64/64, while original cases retain 64/64/64.
+The before/after table distinguishes predicted baselines from hash-matched
+recorded RTL measurements. Select a partition to see its global B/C column
+offset in the parent tensor; downloaded instructions remain partition-local.
 
 ## Entire-array animation
 
@@ -176,7 +185,7 @@ python3 tools/build_qwen_page_test.py
 ```
 
 Tests cover the original editor and unified 4/8/16-wide tutorial, the nine
-original Qwen operators and all 22 ACT workload selections, programmed BIRRD
+original Qwen operators and all 31 ACT workload selections, programmed BIRRD
 connectivity, VN addresses, ISA import/export, scalar and row-staggered array
 arithmetic, simultaneous input/bus/network/output packets, moving pixels,
 playback isolation, reduced motion, and desktop/mobile layouts. The numeric

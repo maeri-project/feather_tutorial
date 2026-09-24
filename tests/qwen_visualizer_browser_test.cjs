@@ -585,7 +585,8 @@ async function main() {
         equal(data.operators.length, 9, "nine operators embedded");
         equal(await page.locator("#operator option").evaluateAll(nodes => nodes.filter(node => /^\d+$/.test(node.value)).map(node => node.textContent)),
             data.operators.map(op => `${op.name} · prefill · ${op.shape.M} × ${op.shape.K} × ${op.shape.N}`), "all nine original operator options with explicit phase and shape");
-        equal(await page.locator('#operator option[value^="act:"]').count(), 22, "all ACT workloads are also available in the full-operator selector");
+        equal(await page.locator('#operator option[value^="act:"]').count(), 31, "all recorded and improved ACT workloads are available in the full-operator selector");
+        equal(await page.locator("#operator option").count(), 40, "nine original and 31 ACT workload demonstrations are selectable");
         equal(await page.locator("#operator-table tbody tr").count(), 9, "nine table rows");
         checkBirrd(data);
         groups.push("independent RTL wiring, command decoding and symbolic BIRRD dependencies");
