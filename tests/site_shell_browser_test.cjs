@@ -30,8 +30,25 @@ async function main() {
         await page.goto(pathToFileURL(path.join(root, "index.html")).href);
         await page.locator('.sidebar a[href="QWEN3_MINISA_VISUALIZER.html"]').click();
         await page.waitForFunction(() => window.FeatherFullWorkloads);
-        check(await page.locator("#operator option").count() === 31, "sidebar opens all original and ACT workloads");
-        check(await page.locator('#operator option[value^="act:"]').count() === 22, "all recorded ACT cases remain selectable");
+        check(await page.locator("#operator option").count() === 40, "sidebar opens all original and ACT workloads");
+        check(await page.locator('#operator option[value^="act:"]').count() === 31, "all recorded and improved ACT cases remain selectable");
+        const optimized = await page.locator("#case-data").evaluate(node => JSON.parse(node.textContent)
+            .act_cases.cases.filter(item => item.catalog_group === "optimized_full" || item.catalog_group === "optimized_six")
+            .map(item => ({id: item.id, group: item.catalog_group, nStart: item.partition_origin.n_start})));
+        check(optimized.filter(item => item.group === "optimized_full").length === 3, "three improved full programs are embedded");
+        check(optimized.filter(item => item.group === "optimized_six").length === 6, "six aligned q-projection partitions are embedded");
+        for (const item of optimized) {
+            await page.locator("#operator").selectOption(`act:${item.id}`);
+            const selected = await page.evaluate(() => {
+                const state = window.FeatherFullWorkloads.inspect(), trace = state.teaching.trace;
+                return {caseId: state.caseId, depths: trace.case.hardware.buffer_depths, n: trace.origins.n};
+            });
+            check(selected.caseId === item.id, `${item.id}: sidebar page initializes the improved animation`);
+            check(selected.depths.D_StaB === 128 && selected.depths.D_StrB === 64 && selected.depths.D_OB === 64,
+                `${item.id}: the animation retains its per-program physical depths`);
+            check(selected.n === item.nStart, `${item.id}: the initial tile retains its global partition column`);
+        }
+        await page.locator("#operator").selectOption("0");
         check(await page.locator(".sidebar .active").count() === 1, "one active page");
         check(await page.locator('.sidebar .active').getAttribute("aria-current") === "page", "current page announced");
         check(await page.locator("main").count() === 1, "one main landmark");
@@ -76,7 +93,7 @@ async function main() {
         }
         await page.locator('.sidebar a[href="QWEN3_MINISA_VISUALIZER.html"]').click();
         await page.waitForFunction(() => window.FeatherFullWorkloads);
-        check(await page.locator("#operator option").count() === 31, "comparison sidebar returns to a fully initialized Qwen Explorer");
+        check(await page.locator("#operator option").count() === 40, "comparison sidebar returns to a fully initialized Qwen Explorer");
         check(await page.locator(".sidebar .active").getAttribute("href") === "QWEN3_MINISA_VISUALIZER.html", "return navigation restores Qwen active-page state");
         check(await page.locator("html").getAttribute("data-theme") === "light", "comparison theme selection persists back into Qwen");
         await page.setViewportSize({width: 390, height: 844});
