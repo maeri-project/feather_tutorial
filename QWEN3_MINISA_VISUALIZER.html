@@ -1864,10 +1864,10 @@
             const {trace, frame, group, lane, progress} = info, canvas = $("canvas"), ctx = canvas.getContext("2d");
             const commits = currentCommitted(info), selected = selectedOutput(group), selectedPort = state.col % group.em.G_r;
             state.tokens = []; state.residentWeights = []; state.rowValues = [];
-            // Draw in logical coordinates with at least 2x resolution,
-            // increasing the backing store to match larger or HiDPI displays.
-            const scale = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
+            // Preserve logical coordinates and bound zoomed phone canvas memory.
+            const requested = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
                 (canvas.clientWidth || geom.width) / geom.width));
+            const scale = global.FeatherMobile?.canvasScale(geom.width, geom.height, requested) ?? requested;
             const width = geom.width * scale, height = geom.height * scale;
             if (canvas.width !== width || canvas.height !== height) {
                 canvas.width = width; canvas.height = height;

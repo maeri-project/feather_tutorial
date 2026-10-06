@@ -1,6 +1,11 @@
 /* Phone-only controls use the existing playback and hit-testing code. */
 document.addEventListener('DOMContentLoaded', () => {
   const phone = matchMedia('(max-width: 900px)');
+  window.FeatherMobile = {canvasScale(width, height, requested) {
+    if (!phone.matches) return requested;
+    const limit = Math.sqrt(8_000_000 / (width * height));
+    return Math.min(requested, limit >= 1 ? Math.floor(limit) : limit);
+  }};
   const selector = '#rc-canvas-reuse, #rc-canvas-outputs, #comparison-sa, #comparison-feather, #comparison-bridge, .act-teach-canvas, #full-act-array, #act-array, #nest, #topology';
   const viewers = new Map();
   const zooms = [1, 1.5, 2, 3, 4, 6, 8];

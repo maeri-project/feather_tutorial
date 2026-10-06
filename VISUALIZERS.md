@@ -57,6 +57,8 @@ The Qwen, mapping, and comparison diagrams offer **Play**, **−**, **Fit**, and
 **+** beside each drawing. Zoom locally and swipe to reach individual PEs or
 buffer cells. Canvas hit testing continues to use the model's logical
 coordinates. Comparison PE operands are available on tap as well as hover.
+Zoomed phone canvases cap their backing stores near eight million pixels each
+while retaining the same logical coordinates and full zoom range.
 The generic FEATHER editor retains its **Fit width / Fit diagram / Actual size**
 selector and provides **Play / Step** beside the diagram. Its instruction
 editor and buffer inspector fit the phone viewport.
@@ -146,8 +148,8 @@ and invalid/unmapped addresses are reported instead of silently wrapped.
 The architecture defaults to **Fit width** for readable detail; **Fit diagram**
 shows the whole architecture, and **Actual size** preserves its logical size.
 **Legend** beside **Expand** opens an overlay. Hardware, trace editing,
-instruction details, and file operations expand when needed. Both visualization
-canvases render at least two pixels per displayed pixel and adapt to denser screens.
+instruction details, and file operations expand when needed. Default views
+supersample for dense screens; zoomed phone views use the memory limit above.
 
 ### Follow moving elements
 

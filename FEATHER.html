@@ -998,7 +998,8 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const displayWidth=width*scale,displayHeight=height*scale;
     // Supersample at least 2x, and match denser displays without changing
     // the logical coordinates used by animation paths and buffer hit targets.
-    const density=Math.max(2,window.devicePixelRatio||1);
+    const requested=Math.max(2,window.devicePixelRatio||1);
+    const density=window.FeatherMobile?.canvasScale(displayWidth,displayHeight,requested)??requested;
     const pixelWidth=Math.ceil(displayWidth*density),pixelHeight=Math.ceil(displayHeight*density);
     cv.style.width=displayWidth+'px';cv.style.height=displayHeight+'px';
     if(cv.width!==pixelWidth)cv.width=pixelWidth;

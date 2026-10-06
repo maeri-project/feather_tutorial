@@ -199,10 +199,10 @@ def prepare_tutorial_catalog(source):
             script = replace_one(script, r'        \$\("zoom"\)\.addEventListener.*?(?=        \$\("buffer"\)\.addEventListener)', '')
             script = replace_one(script,
                 r'            ctx.clearRect\(0, 0, canvas.width, canvas.height\); ctx.fillStyle = "#fafcfc"; ctx.fillRect\(0, 0, canvas.width, canvas.height\);',
-                '''            // Draw in logical coordinates with at least 2x resolution,
-            // increasing the backing store to match larger or HiDPI displays.
-            const scale = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
+                '''            // Preserve logical coordinates and bound zoomed phone canvas memory.
+            const requested = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
                 (canvas.clientWidth || geom.width) / geom.width));
+            const scale = global.FeatherMobile?.canvasScale(geom.width, geom.height, requested) ?? requested;
             const width = geom.width * scale, height = geom.height * scale;
             if (canvas.width !== width || canvas.height !== height) {
                 canvas.width = width; canvas.height = height;

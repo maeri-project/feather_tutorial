@@ -20,7 +20,8 @@
     }
     function draw(key) {
         const canvas=$(`canvas-${key}`),ctx=canvas.getContext("2d"),r=record(key),s=stage();
-        const {w,h,x,y,pitch}=geometry,scale=Math.max(2,Math.ceil(devicePixelRatio*canvas.clientWidth/w));
+        const {w,h,x,y,pitch}=geometry,requested=Math.max(2,Math.ceil(devicePixelRatio*canvas.clientWidth/w));
+        const scale=window.FeatherMobile?.canvasScale(w,h,requested)??requested;
         if(canvas.width!==w*scale||canvas.height!==h*scale){canvas.width=w*scale;canvas.height=h*scale;}
         ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,w,h);
         const dark=document.documentElement.dataset.theme==="dark";

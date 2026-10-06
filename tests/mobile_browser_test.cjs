@@ -42,6 +42,14 @@ function check(value, message) { assert.ok(value, message); checks++; }
     const rect=await drawing.boundingBox();
     await page.touchscreen.tap(rect.x+x/width*rect.width,rect.y+y/height*rect.height);
   }
+  async function maxZoom(id) {
+    const plus=view(id).getByRole("button",{name:"Zoom in",exact:true});
+    while(await plus.isEnabled()) await plus.tap();
+    await page.waitForTimeout(100);
+    check(await page.locator(`#${id}`).evaluate(c=>c.width*c.height<=8_010_000),`${id}: maximum phone zoom bounds canvas memory`);
+    await fits(`${id}: maximum zoom`);
+    await view(id).getByRole("button",{name:"Fit diagram width",exact:true}).tap();
+  }
   try {
     const files = (await fs.readdir(root)).filter(file=>file.endsWith(".html")).sort();
     check(files.length>=10,"inventory includes every published tutorial HTML");
@@ -88,6 +96,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     check(!(await page.evaluate(()=>ReconfigurableCompute.inspect())).playing,"near-diagram pause controls the original clock");
     await view("rc-canvas-reuse").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
     await view("rc-canvas-reuse").screenshot({path:path.join(output,"mapping-phone.png")});
+    await maxZoom("rc-canvas-reuse");await maxZoom("rc-canvas-outputs");
 
     await load("FEATHER_VS_SYSTOLIC.html");await page.waitForFunction(()=>window.FeatherComparisonView);
     await zoom("comparison-feather");await tapDrawing("comparison-feather",112+2*25+10,126+3*25+10,640,660);
@@ -97,12 +106,14 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await view("comparison-feather").getByRole("button",{name:"Pause diagram",exact:true}).tap();
     await page.locator("#comparison-baseline").selectOption("ws");
     check(await page.locator("#comparison-baseline").inputValue()==="ws","phone can change systolic dataflow");
+    await maxZoom("comparison-sa");await maxZoom("comparison-feather");
     await zoom("comparison-bridge",4);await fits("layout bridge");
     await page.locator("#comparison-compatible").check();
     await page.locator("#comparison-layout-element").selectOption("0");
     await view("comparison-bridge").getByRole("button",{name:"Play diagram",exact:true}).tap();
     await page.waitForTimeout(200);
     await page.screenshot({path:path.join(output,"comparison-phone.png"),animations:"disabled"});
+    await maxZoom("comparison-bridge");
 
     await load("QWEN3_MINISA_VISUALIZER.html");await page.waitForFunction(()=>window.FeatherFullWorkloads);
     const cases=await page.locator("#operator option").evaluateAll(nodes=>nodes.map(n=>({value:n.value,text:n.textContent})));
@@ -124,6 +135,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await page.locator("#full-act-trace-toggle").tap();await targets("Qwen expanded trace");await fits("Qwen expanded trace");
     await view("full-teach-canvas").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
     await view("full-teach-canvas").screenshot({path:path.join(output,"qwen-phone.png")});
+    await maxZoom("full-teach-canvas");
 
     await load("FEATHER.html");await page.locator("#mgMobilePlay").tap();
     await page.waitForFunction(()=>document.getElementById("mgPlayBtn").textContent==="Pause");
@@ -131,6 +143,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     check((await page.locator("#mgPlayBtn").innerText())==="Play","generic editor starts and pauses from the diagram");
     await page.locator("#mgDiagramScale").selectOption("actual");
     check(await page.locator("#mg-tab-feather").evaluate(e=>e.scrollWidth>e.clientWidth),"generic diagram retains readable native zoom");
+    check(await page.locator("#mgFeatherCanvas").evaluate(c=>c.width*c.height<=8_010_000),"generic phone canvas memory is bounded");
     await page.locator("#mgInspectBuffer").selectOption("I");
     check(await page.locator(".mg-buffer-popup").isVisible(),"buffer inspector opens by touch control");
     await page.locator(".mg-buffer-cell").first().tap();await targets("buffer inspector");await fits("buffer inspector");

@@ -102,7 +102,8 @@
             canvas.style.aspectRatio = `${size.width} / ${height}`;
         }
         const display = canvas.getBoundingClientRect();
-        const scale = Math.max(2, (window.devicePixelRatio || 1) * display.width / size.width);
+        const requested = Math.max(2, (window.devicePixelRatio || 1) * display.width / size.width);
+        const scale = window.FeatherMobile?.canvasScale(size.width, size.height, requested) ?? requested;
         const width = Math.ceil(size.width * scale), pixelHeight = Math.ceil(size.height * scale);
         if (canvas.width !== width || canvas.height !== pixelHeight) {
             canvas.width = width; canvas.height = pixelHeight;
