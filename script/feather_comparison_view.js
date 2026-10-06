@@ -20,7 +20,7 @@
         cycle: 0, fraction: 0, playing: false, speed: 4, request: null, lastTime: 0,
         chain: null, boundaryIndex: 0, bridgeProgress: 0, bridgePlaying: false,
         bridgeRequest: null, bridgeStart: 0, boards: {}, bridge: {}, hover: null,
-        bridgeElement: null, bridgeBoundary: null
+        bridgeElement: null, bridgeBoundary: null, inspected: {}
     };
 
     function escape(text) {
@@ -181,6 +181,10 @@
             const x = grid.x + col * grid.step, y = grid.y + row * grid.step;
             const fill = active ? colors.partial : pe.mapped ? (palette.dark ? "#143e35" : "#c8e5d8") : palette.card;
             roundedRect(ctx, x, y, grid.size, grid.size, 3, fill, active ? "#9a76cb" : palette.line);
+            if (state.inspected[kind] === row * 16 + col) {
+                ctx.strokeStyle = palette.text; ctx.lineWidth = 2;
+                ctx.strokeRect(x - 2, y - 2, grid.size + 4, grid.size + 4);
+            }
             if (active) label(ctx, "×+", x + grid.size / 2, y + grid.size / 2, 8, "#fff", "center", 600);
             else if (pe.mapped) label(ctx, "·", x + grid.size / 2, y + grid.size / 2, 10, palette.muted, "center");
             if (feather) {
@@ -254,6 +258,7 @@
             `GEMM ${layerIndex + 1} boundary: ${loc.phase}. These are editable hypothetical layout/configuration cycles; no MACs are issued.` :
             `GEMM ${layerIndex + 1}: ${number(run.macs)} useful MACs. ${number(macs.length)} now, ${partials.length} partial transfers, ${network.length} network-stage events, ${writes.length} writes. ${feather ? "Purple links use the column buses and BIRRD." : "PE coordinates depend on the chosen stationary mapping."}`;
         state.boards[kind] = {location: loc, snapshot, tokens, layerIndex};
+        updatePEInspector(kind);
     }
 
     function matrixValue(matrix, row, col, columns) {
@@ -501,8 +506,35 @@
         state.bridgeElement = byId("layout-element").value === "" ? null : Number(byId("layout-element").value);
         renderBridge();
     });
+    function updatePEInspector(kind) {
+        const id = kind === "systolic" ? "sa" : "feather";
+        const output = byId(`${id}-pe`), index = state.inspected[kind];
+        if (!output || index === undefined) return;
+        const pe = state.boards[kind].snapshot.pe[index];
+        output.hidden = false;
+        output.textContent = `PE[${Math.floor(index / 16)},${index % 16}] · ${pe.active ? "active" : pe.mapped ? "mapped / idle" : "unmapped"} · m=${pe.m ?? "—"}, k=${pe.k ?? "—"}, n=${pe.n ?? "—"} · A=${pe.a ?? "—"}, B=${pe.b ?? "—"} · partial=${pe.value ?? "—"}`;
+    }
     for (const kind of ["systolic", "feather"]) {
         const canvas = byId(kind === "systolic" ? "sa" : "feather");
+        const output = document.createElement("p");
+        output.id = `${canvas.id}-pe`; output.className = "mobile-pe-readout"; output.hidden = true;
+        canvas.after(output); canvas.tabIndex = 0;
+        canvas.setAttribute("aria-describedby", output.id);
+        const inspect = (row, col) => {
+            state.inspected[kind] = clamp(row, 0, 15) * 16 + clamp(col, 0, 15);
+            drawBoard(kind);
+        };
+        canvas.addEventListener("click", event => {
+            const {x, y} = canvasPoint(kind === "systolic" ? "sa" : "feather", event);
+            const row = Math.floor((y - grid.y) / grid.step), col = Math.floor((x - grid.x) / grid.step);
+            if (row >= 0 && row < 16 && col >= 0 && col < 16) inspect(row, col);
+        });
+        canvas.addEventListener("keydown", event => {
+            const move = {ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[event.key];
+            if (!move) return;
+            event.preventDefault(); const index = state.inspected[kind] ?? 0;
+            inspect(Math.floor(index / 16) + move[0], index % 16 + move[1]);
+        });
         canvas.addEventListener("mousemove", event => {
             const {x, y} = canvasPoint(kind === "systolic" ? "sa" : "feather", event);
             const row = Math.floor((y - grid.y) / grid.step), col = Math.floor((x - grid.x) / grid.step);

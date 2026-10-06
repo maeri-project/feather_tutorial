@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>FEATHER - RAIC Tutorial</title>
   <meta name="description" content="FEATHER reconfigurable AI accelerator documentation and interactive MINISA visualizer.">
 
@@ -218,6 +218,8 @@
       .mg-inspect-control { margin-left:0; }
     }
   </style>
+  <link rel="stylesheet" href="script/mobile.css">
+  <script src="script/mobile.js" defer></script>
 </head>
 
 <body>
@@ -423,6 +425,10 @@
                 </div>
                 <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
                   <div class="mg-view-nav">
+                    <div class="mg-mobile-playback">
+                      <button class="mg-btn" id="mgMobilePlay" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgTogglePlay()">Play</button>
+                      <button class="mg-btn" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgStepAnim(1)">Step</button>
+                    </div>
                     <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
                       <option value="width">Fit width</option><option value="fit">Fit diagram</option><option value="actual">Actual size</option>
                     </select>

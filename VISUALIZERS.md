@@ -46,6 +46,29 @@ The before/after table distinguishes predicted baselines from hash-matched
 recorded RTL measurements. Select a partition to see its global B/C column
 offset in the parent tensor; downloaded instructions remain partition-local.
 
+## Phone interaction
+
+All ten tutorial HTML pages load the shared `script/mobile.css` and
+`script/mobile.js`. Navigation uses a dismissible drawer at phone widths;
+controls have 44px touch targets and fields use 16px text. Documentation tables
+and code blocks scroll locally, and the page index remains available on phones.
+
+The Qwen, mapping, and comparison diagrams offer **Play**, **−**, **Fit**, and
+**+** beside each drawing. Zoom locally and swipe to reach individual PEs or
+buffer cells. Canvas hit testing continues to use the model's logical
+coordinates. Comparison PE operands are available on tap as well as hover.
+The generic FEATHER editor retains its **Fit width / Fit diagram / Actual size**
+selector and provides **Play / Step** beside the diagram. Its instruction
+editor and buffer inspector fit the phone viewport.
+
+Run `tests/mobile_browser_test.cjs` with the Playwright environment below.
+It discovers every top-level HTML page and checks 320px, 390px and 844px
+landscape layouts, drawer dismissal, touch targets, diagram zoom, touch
+selection, playback, workload changes, buffers and instruction editing.
+Chromium additionally verifies a real touch swipe; set `MOBILE_BROWSER=webkit`
+to run the same layout and tap checks in WebKit. These are browser emulations,
+not tests on physical phones.
+
 ## Entire-array animation
 
 The Qwen page defaults to **Entire array · overlapping pipeline** for the

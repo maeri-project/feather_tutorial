@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const STORAGE_KEY = 'tutorial_site_theme';
 
   // Check for saved theme preference or system preference
-  const savedTheme = localStorage.getItem(STORAGE_KEY);
+  let savedTheme;
+  try { savedTheme = localStorage.getItem(STORAGE_KEY); } catch (_) { /* Storage can be disabled in private browsing. */ }
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   if (savedTheme) {
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
     htmlElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
+    try { localStorage.setItem(STORAGE_KEY, newTheme); } catch (_) { /* The current page still keeps the chosen theme. */ }
   });
 
   // --- Mobile Menu ---
@@ -27,24 +28,69 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileCloseBtn = document.getElementById('mobile-close-btn');
   const sidebar = document.querySelector('.sidebar');
 
-  function toggleMenu() {
-    if (window.innerWidth > 768) {
-      document.body.classList.toggle('sidebar-hidden');
+  const phoneLayout = matchMedia('(max-width: 900px)');
+  const main = document.querySelector('.main-content');
+  const backdrop = document.createElement('button');
+  backdrop.className = 'navigation-backdrop';
+  backdrop.type = 'button';
+  backdrop.setAttribute('aria-label', 'Close navigation');
+  backdrop.tabIndex = -1;
+  backdrop.hidden = true;
+  document.body.append(backdrop);
+  sidebar.id ||= 'tutorial-navigation';
+  mobileMenuBtn?.setAttribute('aria-controls', sidebar.id);
+  let previousOverflow = null;
+
+  function setMenu(open, returnFocus = false) {
+    sidebar.classList.toggle('open', open);
+    backdrop.hidden = !open;
+    main.inert = open;
+    sidebar.inert = phoneLayout.matches && !open;
+    mobileMenuBtn?.setAttribute('aria-expanded', String(open));
+    if (open) {
+      previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      mobileCloseBtn?.focus({preventScroll: true});
     } else {
-      sidebar.classList.toggle('open');
+      if (previousOverflow !== null) document.body.style.overflow = previousOverflow;
+      previousOverflow = null;
+      if (returnFocus) mobileMenuBtn?.focus({preventScroll: true});
     }
   }
-
-  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMenu);
-  if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', toggleMenu);
+  function syncNavigation() {
+    setMenu(false);
+    if (!phoneLayout.matches) {
+      sidebar.inert = document.body.classList.contains('sidebar-hidden');
+      mobileMenuBtn?.setAttribute('aria-expanded', String(!sidebar.inert));
+    }
+  }
+  mobileMenuBtn?.addEventListener('click', () => {
+    if (phoneLayout.matches) setMenu(!sidebar.classList.contains('open'));
+    else {
+      document.body.classList.toggle('sidebar-hidden');
+      syncNavigation();
+    }
+  });
+  mobileCloseBtn?.addEventListener('click', () => setMenu(false, true));
+  backdrop.addEventListener('click', () => setMenu(false, true));
+  phoneLayout.addEventListener('change', syncNavigation);
+  document.addEventListener('keydown', event => {
+    if (!phoneLayout.matches || !sidebar.classList.contains('open')) return;
+    if (event.key === 'Escape') { event.preventDefault(); setMenu(false, true); }
+    if (event.key === 'Tab') {
+      const items = [...sidebar.querySelectorAll('a[href], button')].filter(el => el.getClientRects().length);
+      const first = items[0], last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+  });
+  syncNavigation();
 
   // Close menu when clicking a link on mobile
   const navLinks = document.querySelectorAll('.nav-links a');
   navLinks.forEach(link => {
     link.addEventListener('click', () => {
-      if (window.innerWidth <= 768) {
-        sidebar.classList.remove('open');
-      }
+      if (phoneLayout.matches) setMenu(false);
     });
   });
 

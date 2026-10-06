@@ -258,8 +258,10 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         const mobileBoxes = await Promise.all(["sa", "feather"].map(id => page.locator(`#comparison-${id}`).boundingBox()));
         check(mobileBoxes[1].y >= mobileBoxes[0].y + mobileBoxes[0].height, "mobile arrays stack vertically rather than shrink into illegible columns");
         await checkResolution();
-        check(await page.locator(".comparison-bridge-scroll").evaluate(node => node.scrollWidth > node.clientWidth),
-            "mobile layout preserves readable buffer labels in a horizontally scrollable visualization");
+        const bridgeViewer = page.locator('.mobile-diagram[data-diagram="comparison-bridge"]');
+        await bridgeViewer.getByRole("button", {name:"Zoom in", exact:true}).click();
+        check(await bridgeViewer.locator(".mobile-diagram-scroll").evaluate(node => node.scrollWidth > node.clientWidth),
+            "mobile zoom preserves readable buffer labels in a locally scrollable visualization");
         await page.screenshot({path: path.join(output, "mobile.png")});
 
         equal(errors, [], "comparison page has no browser exceptions");

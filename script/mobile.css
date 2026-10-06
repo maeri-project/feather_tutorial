@@ -1,0 +1,133 @@
+/* Shared phone/touch layer. Keep diagram coordinates in their owning models. */
+.navigation-backdrop[hidden], .mobile-diagram-tools, .mobile-page-index, .mg-mobile-playback { display:none; }
+.navigation-backdrop { position:fixed;inset:0;z-index:95;border:0;background:#0008; }
+.mobile-diagram { min-width:0;max-width:100%; }
+.mobile-diagram-scroll { max-width:100%; }
+.mobile-pe-readout { font-size:.85rem;overflow-wrap:anywhere;margin:10px 0!important; }
+@media (max-width:900px), (pointer:coarse) {
+  /* 44px hit areas; 16px fields avoid focus zoom on phone browsers. */
+  body button, body select, body summary, body input:not([type=checkbox]):not([type=radio]):not([type=hidden]), .main-content select { min-height:44px; }
+  body button, body select { min-width:44px; }
+  body input:not([type=range]), body select, body textarea { font-size:16px!important; }
+  body button, body summary { touch-action:manipulation; }
+  body summary { padding:10px 8px;line-height:1.5; }
+  body input[type=checkbox], body input[type=radio] { min-width:24px;min-height:24px;flex-shrink:0; }
+  body label:has(input[type=checkbox]), body label:has(input[type=radio]) { min-height:44px; }
+  body input[type=range] { height:44px;min-width:80px;touch-action:pan-y; }
+  body input[type=range]::-webkit-slider-thumb { min-width:26px;min-height:26px; }
+  body input[type=range]::-moz-range-thumb { width:26px;height:26px; }
+  body button:focus-visible, body summary:focus-visible, body a:focus-visible { outline:3px solid var(--primary-color);outline-offset:2px; }
+  .nav-links a { min-height:44px; }
+  .mg-isa-item { min-height:44px;flex-wrap:wrap; }
+  .mg-buffer-popup button, .mg-buffer-popup input { min-height:44px; }
+  .mg-buffer-cell { min-width:88px;font-size:12px; }
+  .mg-buffer-cell-address { font-size:11px; }
+}
+@media (max-width:900px) {
+  :root { --sidebar-width:0px;--header-height:60px; }
+  html { -webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--header-height) + env(safe-area-inset-top) + 12px); }
+  body { overflow-wrap:break-word; }
+  .sidebar { width:min(320px,calc(100vw - 48px));transform:translateX(-100%);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior:contain; }
+  .sidebar.open, body.sidebar-hidden .sidebar.open { transform:translateX(0);box-shadow:20px 0 50px #0005; }
+  #mobile-close-btn { display:flex; }
+  .sidebar-header { padding:0 14px; }
+  .sidebar-nav { padding:20px 14px; }
+  .main-content { margin-left:0; }
+  .top-bar { padding:env(safe-area-inset-top) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left));height:calc(var(--header-height) + env(safe-area-inset-top));gap:8px; }
+  #mobile-menu-btn { display:flex;margin:0;flex:none; }
+  .top-actions { gap:0;flex:none; }
+  .icon-btn { width:44px;height:44px;flex-shrink:0; }
+  .header-title, .qwen-site .header-title { font-size:.9rem;line-height:1.25;text-align:center;min-width:0; }
+  .icon-btn .sun-icon, .icon-btn .moon-icon { flex-shrink:0; }
+  [data-theme=dark] .sun-icon, [data-theme=light] .moon-icon { display:block; }
+  [data-theme=dark] .moon-icon, [data-theme=light] .sun-icon { display:none; }
+  .content-wrapper { padding:24px max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left));flex-direction:column; }
+  .doc-content { padding-right:0; }
+  .doc-content h1, .hero-section h1 { font-size:clamp(1.85rem,7vw,2.5rem);overflow-wrap:anywhere; }
+  .subtitle { font-size:1.15rem;margin-bottom:24px; }
+  .text-block p { font-size:1rem; }
+  section { padding-bottom:32px;margin-bottom:32px;scroll-margin-top:80px; }
+  .on-this-page { display:none; }
+  .mobile-page-index { display:block;margin-bottom:20px;border:1px solid var(--border-color);border-radius:8px; }
+  .mobile-page-index summary { font-weight:600; }
+  .mobile-page-index ul { list-style:none;padding:0 12px 12px; }
+  .mobile-page-index a { display:block;padding:10px 4px;min-height:44px;color:var(--primary-color); }
+  .resources-grid,.organizers-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px; }
+  .resource-card,.organizer-card,.keynote-card { padding:20px;min-width:0; }
+  .keynote-header { flex-direction:column;align-items:center;text-align:center; }
+  .timeline { padding-left:20px; }
+  .timeline-item::before { left:-27px; }
+  .figure-placeholder { padding:16px; }
+  .site-footer { padding:24px 16px max(24px,env(safe-area-inset-bottom)); }
+  pre { max-width:100%;font-size:.8rem; }
+  select { max-width:100%;text-overflow:ellipsis; }
+  /* WebKit's native closed select can paint long options outside its box. */
+  .main-content select, .mg-buffer-popup select {
+    appearance:none;overflow:hidden;white-space:nowrap;padding-right:32px!important;
+    background-image:linear-gradient(45deg,transparent 50%,var(--text-muted) 50%),linear-gradient(135deg,var(--text-muted) 50%,transparent 50%);
+    background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;
+    background-size:5px 5px;background-repeat:no-repeat;
+  }
+  .mobile-table-scroll { max-width:100%;overflow:auto; }
+  .mobile-diagram-tools { display:flex;align-items:center;gap:6px;padding:8px 0;flex-wrap:wrap; }
+  .mobile-diagram-tools button { border:1px solid var(--border-color);border-radius:7px;background:var(--bg-card);color:var(--text-main);padding:8px 10px;font:600 14px/1.3 system-ui; }
+  .mobile-diagram-tools output { font-size:12px;color:var(--text-muted);margin-left:auto; }
+  .mobile-diagram-scroll { width:100%;max-height:65svh;overflow:auto;touch-action:pan-x pan-y pinch-zoom;border:1px solid var(--border-color);border-radius:8px; }
+  .mobile-diagram-scroll > :is(canvas,svg) { width:var(--mobile-diagram-width,100%)!important;min-width:0!important;max-width:none!important;height:auto!important;margin:0!important; }
+  .mobile-diagram:focus-within { scroll-margin-top:80px; }
+  /* Qwen: full-width workload controls and a touchable drawing viewport. */
+  .qwen-app .selection { grid-template-columns:minmax(0,1fr);gap:12px; }
+  .qwen-app .selection strong { font-size:18px; }
+  .qwen-app .wrap { padding:0 12px; }
+  .qwen-app .card { padding:14px; }
+  .qwen-app .act-teach-playback,.qwen-app .motion-controls { gap:8px; }
+  .qwen-app .act-teach-playback input[type=range] { flex-basis:100%; }
+  .qwen-app .act-toolbar,.qwen-app .act-teach-controls { gap:10px; }
+  .qwen-app .act-toolbar > label,.qwen-app .act-teach-controls > label { max-width:100%;min-width:0; }
+  .qwen-app .act-teach-viewport,.qwen-app .nest-viewport { overflow:visible; }
+  .qwen-app .act-teach-canvas { aspect-ratio:1120 / 1220; }
+  .qwen-app .act-teach-buffer-detail tr { height:44px; }
+  .qwen-app .act-teach-packet { font-size:12px; }
+  .qwen-app .tabs { overflow-x:auto; }
+  .qwen-app .tabs button { flex-shrink:0; }
+  /* The generic editor's native scale selector preserves its own geometry. */
+  .mg-app { flex-direction:column-reverse;height:auto; }
+  .mg-left { width:100%;min-width:0;max-height:none;overflow:visible; }
+  .mg-right { flex:none;height:80svh;min-height:420px; }
+  .mg-view-nav { gap:8px;padding:8px; }
+  .mg-view-nav label { min-width:0; }
+  .mg-mobile-playback { display:flex;gap:8px; }
+  .mg-view-actions { margin:4px; }
+  .mg-row { flex-wrap:wrap; }
+  .mg-workload-row { display:grid;grid-template-columns:auto 1fr; }
+  .mg-workload-row input { width:100%!important; }
+  .mg-btn-row { gap:8px; }
+  .mg-modal-overlay { padding:8px; }
+  .mg-modal { min-width:0;width:100%;max-width:520px;max-height:90dvh;padding:14px;overscroll-behavior:contain; }
+  .mg-modal .mg-param-grid { grid-template-columns:minmax(0,1fr) minmax(80px,1fr);gap:6px 10px; }
+  .mg-modal .mg-param-grid input { width:100%;min-width:0; }
+  .mg-modal-btns { position:sticky;bottom:-14px;padding:12px 0;background:var(--bg-card);flex-wrap:wrap; }
+  .mg-toast { left:8px;right:8px;max-width:none; }
+  .mg-app.mg-expanded { inset:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overflow-y:auto;border-radius:0;overscroll-behavior:contain;flex-direction:column; }
+  .mg-expanded .mg-left { max-height:none;flex:none; }
+  .mg-expanded .mg-right { flex:none;height:80dvh;min-height:320px;order:-1; }
+  .mg-buffer-popup { right:8px;bottom:max(8px,env(safe-area-inset-bottom));width:calc(100vw - 16px);max-height:70dvh; }
+  .mg-buffer-heading { padding:6px 8px; }
+  .mg-buffer-grid-scroll { max-height:40dvh; }
+  .mg-buffer-popup[data-dock=left] { left:8px; }
+  #mgBufferPopupDock { display:none; }
+  /* Side-by-side diagrams stack, with local zoom instead of tiny labels. */
+  .rc-arrays,.comparison-array-grid { grid-template-columns:minmax(0,1fr); }
+  .rc-content,.comparison-content { padding:24px 12px 40px; }
+  .rc-card,.comparison-card { padding:12px; }
+  .rc-controls,.rc-playback,.comparison-play-buttons { gap:8px; }
+  .rc-card-head { flex-wrap:wrap; }
+  .rc-page .rc-scrubber { min-width:0;flex-basis:100%;margin-left:0; }
+  .rc-page label { flex-wrap:wrap; }
+  .comparison-section-heading,.comparison-array-heading { flex-wrap:wrap; }
+  .comparison-controls,.comparison-layout-controls { align-items:stretch; }
+  .comparison-field { min-width:0;flex-basis:100%;max-width:none; }
+  .comparison-bridge-scroll { overflow:visible; }
+  .comparison-page .comparison-bridge-scroll canvas { min-width:0; }
+}
+@media (prefers-reduced-motion:reduce) { .sidebar,body { transition:none; } }

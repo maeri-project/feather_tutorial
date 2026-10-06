@@ -74,7 +74,9 @@ class PagePackagingTest(unittest.TestCase):
         result = PACKAGER.build(SOURCE, self.shell)
         source_scripts = re.findall(r'<script\b[^>]*>.*?</script>', SOURCE, re.S)
         result_scripts = re.findall(r'<script\b[^>]*>.*?</script>', result, re.S)
-        self.assertEqual(result_scripts[:-1], source_scripts)
+        self.assertEqual(result_scripts[0], '<script src="script/mobile.js" defer></script>')
+        self.assertEqual(result_scripts[1:-1], source_scripts)
+        self.assertIn('<link rel="stylesheet" href="script/mobile.css">', result)
         self.assertEqual(result_scripts[-1], '<script src="script.js"></script>')
         for identifier in ('main', 'motion-play', 'nest', 'case-data'):
             self.assertEqual(result.count(f'id="{identifier}"'), 1)
