@@ -1,60 +1,87 @@
-# Reconfigurable compute: Qwen3 on FEATHER 16×16
+# Reconfigurable compute in a Qwen3 inference graph
 
-`RECONFIGURABLE_COMPUTE.html` compares two compiler-validated WO-S spatial
-mapping policies for one complete Qwen3-0.6B query projection. It uses the same
-16×16 array, 16 PE-local weights, and StaB/StrB/OB depths 128/64/64 throughout.
-Prefill is M×K×N = 768×1024×2048; decode is 1×1024×2048.
+`RECONFIGURABLE_COMPUTE.html` explains mapping selection through three connected
+checkpoints of the recorded Qwen3-0.6B workload. It starts with the preceding
+GEMM instead of imposing an unexplained fixed mapping:
 
-| Policy | Maximum tile M×K×N | Gr / Gc | Prefill cycles | Decode cycles |
-|---|---|---|---:|---:|
-| A: reuse across tokens | 32×32×32 | 8 / 2 | 31,865,858 | 879,234 |
-| B: cover more outputs | 16×32×64 | 8 / 4 | 33,438,722 | 506,178 |
+1. Final prefill block's `down_proj`: G[768,3072] × W_down[3072,1024] →
+   ΔH[768,1024]. Its compiler prefers A, four token replicas.
+2. Residual addition and final RMSNorm produce Z. `logits_to_keep=1` selects
+   Z[767,:]. The language-model head multiplies Z_last[1,1024] by
+   W_vocab[1024,151936]. The incoming A mapping has redundant token replicas;
+   this workload prefers B, two replicas and twice as many output channels.
+3. Sampling, embedding and block-1 RMSNorm produce X_next[1,1024]. Decode
+   `q_proj` multiplies it by W_q[1024,2048]. B remains appropriate. The
+   vocabulary weights are replaced by query weights; only the spatial policy
+   carries over.
 
-M clips to the available rows. Both policies use sr=1, sc=16, W/O orders 2/0;
-the legal I order is 2 for prefill and 0 for decode. Thus the fixed baseline
-fixes spatial mapping, not every instruction or layout field. A and B are
-supported examples, not an exhaustive proof about every fixed mapping.
-Reconfiguration selects A for prefill and B for decode: 4.7% fewer cycles than
-B in prefill and 42.4% fewer than A in decode (1.05× / 1.74×).
+The graph is symbolic tensor lineage, not a numerical simulation of the whole
+model. Residual/norm, row selection, sampling, embedding and layout repacking
+are explicit boundaries, excluded from the GEMM costs. It does not imply an
+automatic output-to-input SRAM swap. The local extractor records last-position
+logits; links to the model configuration and Transformers implementation are
+provided on the page.
 
-The page leads with **keep one mapping versus switch with the workload**.
-Selecting a fixed A or B policy preserves it across both phase tabs. The
-switching policy selects A for prefill and B for decode. Matched cases show
-equal time; changing the fixed baseline does not silently change the workload.
-A guided replay begins at prefill, advances to decode, then replays the
-finish-time comparison. Purple PE outlines mark the 64 additional decode
-owners with useful work after switching from A to B. The visible causal chain
-connects PE ownership to output coverage, mapping count, and program cycles.
+## Mapping and layout evidence
 
-Finish-time bars use a shared cycle scale and exported program totals. They
-show elapsed modeled time, not inferred output completion or a cycle-accurate
-execution waveform. At 506,178 decode cycles the switching policy is finished
-while fixed A still needs 373,056 cycles. Scrubbing is reversible. The separate
-PE input-animation clock never runs simultaneously with the finish-time clock.
-Neither animation autoplays; manual phase changes cancel the guided replay.
+All candidates use the same 16×16 array, 16 PE-local weights, and per-bank
+StaB/StrB/OB depths 128/64/64. All use the deployed WO-S execution path. A/B
+change spatial replication, input assignment and tiling within that path.
 
-Predictions use `serialized_minisa_v2` including dispatch, operand transfers,
-PE preload, streaming, gaps/drain, and stores. Operand layouts are assumed
-already packed; conversion, memory stalls, host launch, and non-GEMM operations
-are excluded. These are not new RTL measurements or complete inference times.
+| Candidate | Maximum tile M×K×N | Gr/Gc | Token replicas |
+|---|---|---|---:|
+| C | 32×32×16 | 8/1 | 8 |
+| A: token parallel | 32×32×32 | 8/2 | 4 |
+| B: channel parallel | 16×32×64 | 8/4 | 2 |
 
-The animation shows the first M/N/K tile. At PE (r,c), n=r+16(c mod Gc),
-kg=floor(c/8), and m=dot·(8/Gc)+floor((c mod 8)/Gc). Sixteen stationary weights
-W[16kg:16kg+16,n] meet a row-skewed input stream. A scalar reaches row r at
-dot·16+lane+r. The two K halves contribute to the same logical output through
-BIRRD. The display illustrates local compute; it does not animate BIRRD or
-pretend its animation steps are the scheduler's total cycles. Values are
-deterministic small integers, not Qwen model parameters.
+M clips to the actual input rows. A fourth illustrated proposal, Kt=32/Nt=128,
+needs 4096 stationary scalars where only 2048 fit. This rejection is conditional
+on Kt=32, not a claim that every wider tile is impossible.
 
-The diagram shows useful PE ownership separately from instantaneous active
-MACs. Invalid token replicas are gray but still have physically loaded weights.
-The resident slot inspector includes actual symbolic tensor identities and
-sample dot-product arithmetic. Mouse, keyboard, and native selectors select a
-PE. Nothing autoplays; reduced motion removes fractional packet movement.
+The generator runs `brute_force_layer_search(best_only=True)` for each
+checkpoint. The preferred explanatory candidate must match the winning tile,
+EM fields and full-program cost. Search statistics and the three legal
+candidate costs are exported. This is bounded search, not global optimality or
+a graph-wide layout-conversion optimizer.
 
-## Regenerate and verify
+To compare all policies legally under the compiler's default packed operand
+image regions, down_proj uses two disjoint N=512 programs and lm_head uses two
+disjoint N=75968 programs. All candidates use these same partitions, with cycle
+costs summed serially; startup/dispatch costs are retained for each program.
+These two-program shapes are teaching comparison partitions, not claims about
+an existing ACT partition deployment. Decode q_proj uses one N=2048 program.
 
-Use a FEATHER_GEMM environment with its NumPy/pandas dependencies:
+The output includes each layout's extents, outer-to-inner permutation and all
+logical-vector/physical-address pairs. The browser independently calculates
+bank = L mod 16 and scalar row = 16 floor(L/16) + lane. W and I vectors span
+K; O vectors span N. Invalid token replicas have no valid I/O address.
+
+For example, at the head's PE (0,2), A holds W_vocab[0:16,0] for absent token
+row 1; B holds W_vocab[0:16,32] for Z_last row 0 = Z's original row 767.
+The visible inspector follows those weight/input sources into a local dot,
+the partner PE for the other K half, and the physical OB destination. The
+layout window follows the same selected PE in both mappings. Eight bank cells
+per display row wrap the 16 physical banks; they do not denote different SRAM
+row ranges. Sample values are deterministic synthetic operands.
+
+## Timing and animation
+
+Cycle values use `serialized_minisa_v2` including operand loads, PE preload,
+streaming, gaps/drain, dispatch and stores. Operands start in their required
+layouts; boundary work, repacking, memory stalls and host launch are excluded.
+No new RTL measurements or end-to-end inference speedups are claimed.
+
+The PE animation shows the first tile with a row-skewed input stream. A scalar
+arrives at row r on teaching step dot×16+lane+r. Weights persist across input
+dots; BIRRD combines the two K groups and later tiles accumulate the remaining
+K range. Playback omits setup and pipeline gaps and is not the program clock.
+Nothing autoplays. Keyboard and mouse select the same PE in both diagrams.
+Numerical samples stay expandable; workload, dataflow, selected-PE identities,
+physical layout and candidate rationale remain visible.
+
+## Reproduce and verify
+
+Use the FEATHER_GEMM environment with its NumPy/pandas dependencies:
 
 ```sh
 python tools/build_reconfigurable_compute.py --source-root ../FEATHER_GEMM
@@ -65,16 +92,11 @@ PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers \
 node tests/reconfigurable_compute_browser_test.cjs
 ```
 
-The exporter checks instruction encoding, bank/layout legality, SRAM and HBM
-limits, and unique useful tile MAC ownership. It stores source hashes, model
-revision, hardware, mappings and complete cycle components in the data asset.
-The independent JS test exhaustively verifies all four animated tiles against
-direct GEMM, checks column forwarding and stationary weights, and reconciles
-the costs. It also verifies equal-work comparisons, matching-policy ties,
-recovered PEs, and finish-time endpoints on the shared scale. Browser tests
-cover both fixed policies, phase replay and interruption, reversible timing,
-clock isolation, high-DPI hit targets, keyboard inspection, theme changes,
-mobile overflow, and reduced motion. Numerical inspection, detailed cost
-tables, and evidence are collapsed by default so the performance result leads.
-
-The page is static, works locally, and needs no compiler or API at runtime.
+The exporter checks ISA encoding, layouts, bank conflicts, SRAM capacity, packed
+HBM regions, exact MAC ownership and winner agreement. The JS test verifies all
+nine animated tiles against independent GEMM, forwarding and weight stationarity,
+plus every exported scalar address against the Python layout implementation.
+Browser checks cover graph traversal, predecessor rationale, shapes, candidate
+selection, masked PE assignments, layout choices, keyboard hit testing, playback,
+mobile layouts, themes and reduced motion. The site has no compiler/API runtime
+dependency.

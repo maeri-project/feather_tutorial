@@ -37,96 +37,63 @@
       <div class="content-wrapper rc-content">
         <article class="doc-content rc-page">
           <div class="rc-intro">
-            <div class="rc-eyebrow">Reconfigurable compute / Qwen3-0.6B / FEATHER 16×16</div>
-            <h1>Switch the dataflow.<br><span>Finish the same work sooner.</span></h1>
-            <p>Prefill needs weight reuse across many tokens. Decode needs more output channels in parallel. FEATHER changes weight placement and column input streams to match each phase.</p>
+            <div class="rc-eyebrow">Qwen3-0.6B / 28 transformer blocks / FEATHER 16×16</div>
+            <h1>A mapping comes from the previous layer.<br><span>Should the next layer keep it?</span></h1>
+            <p>Follow the final prefill MLP into the language-model head, then the next decode token. See which tensors are computed, why the mapper selects each spatial dataflow, and what changes inside the same PEs.</p>
           </div>
-          <section class="rc-experiment" aria-labelledby="rc-experiment-title">
-            <h2 id="rc-experiment-title" class="rc-sr-only">Keep one mapping versus switch with the workload</h2>
-            <div class="rc-controls">
-              <div class="rc-tabs" role="group" aria-label="Qwen3 phase">
-                <button id="rc-prefill" type="button" aria-pressed="false"><small>01 / PREFILL</small>768 input tokens</button>
-                <span aria-hidden="true">→</span>
-                <button id="rc-decode" type="button" aria-pressed="true"><small>02 / DECODE</small>1 input token</button>
-              </div>
-              <label class="rc-baseline-label">Keep this mapping fixed<select id="rc-baseline"><option value="reuse">A · Prefill-oriented</option><option value="outputs">B · Decode-oriented</option></select></label>
-              <button id="rc-story" type="button">Replay prefill → decode</button>
+          <section aria-labelledby="rc-chain-title">
+            <h2 id="rc-chain-title">Start with the inference graph</h2>
+            <div class="rc-graph-prefix">Embedding → transformer blocks 1–27 → block 28 RMSNorm + attention → residual add + RMSNorm → gate/up projections → SiLU(gate) × up</div>
+            <div class="rc-chain" aria-label="Inference checkpoints">
+              <button id="rc-stage-down" type="button" aria-pressed="true"><small>1 / PREFILL · BLOCK 28</small><strong>down_proj</strong><span>768 token rows → prefer A</span></button>
+              <div class="rc-bridge"><b>→</b><span>Residual add<br>final RMSNorm<br>select last token</span></div>
+              <button id="rc-stage-head" type="button" aria-pressed="false"><small>2 / END OF PREFILL</small><strong>lm_head</strong><span>1 token row → prefer B</span></button>
+              <div class="rc-bridge"><b>→</b><span>Sample token<br>embedding<br>block 1 RMSNorm</span></div>
+              <button id="rc-stage-decode" type="button" aria-pressed="false"><small>3 / NEXT DECODE TOKEN</small><strong>q_proj</strong><span>1 token row → keep B</span></button>
             </div>
-            <div class="rc-policy-paths" aria-label="Policies across phases">
-              <div><span>Fixed mapping</span><strong id="rc-fixed-path">A → A</strong></div>
-              <div><span>Switch with the workload</span><strong>A <b>→</b> B</strong></div>
-              <span class="rc-chip">Same 256 PEs · same buffer capacities</span>
-            </div>
-            <div class="rc-result" id="rc-result">
-              <div class="rc-result-number"><strong id="rc-gain">42.4%</strong><span id="rc-gain-label">fewer predicted decode cycles</span></div>
-              <div class="rc-result-copy"><h2 id="rc-result-title">Switch A → B when decode begins.</h2><p id="rc-takeaway" aria-live="polite"></p><button id="rc-next-phase" type="button">See prefill first</button></div>
-            </div>
-            <div class="rc-race" aria-label="Predicted finish times for identical work">
-              <div class="rc-race-heading"><div><div class="rc-eyebrow">Identical work / one shared time scale</div><p id="rc-shape"></p></div><button id="rc-race-play" type="button">Replay finish times</button></div>
-              <div class="rc-race-row"><div class="rc-race-name"><strong>Fixed mapping</strong><span id="rc-race-policy-fixed"></span></div><div class="rc-race-track"><div id="rc-race-total-fixed" class="rc-race-total"><div id="rc-race-fill-fixed" class="rc-race-fill"></div></div><div id="rc-race-penalty" class="rc-race-penalty"></div></div><div class="rc-race-value"><strong id="rc-race-cycles-fixed"></strong><span id="rc-race-status-fixed"></span></div></div>
-              <div class="rc-race-row rc-race-adaptive"><div class="rc-race-name"><strong>Switch by phase</strong><span id="rc-race-policy-adaptive"></span></div><div class="rc-race-track"><div id="rc-race-total-adaptive" class="rc-race-total"><div id="rc-race-fill-adaptive" class="rc-race-fill"></div></div></div><div class="rc-race-value"><strong id="rc-race-cycles-adaptive"></strong><span id="rc-race-status-adaptive"></span></div></div>
-              <div class="rc-race-footer"><strong id="rc-race-saved"></strong><label for="rc-race-scrub">Shared predicted cycle <output id="rc-race-clock"></output></label></div>
-              <input id="rc-race-scrub" type="range" min="0" max="879234" value="879234" step="1" aria-label="Shared predicted cycle">
-              <p class="rc-note">Compiler-predicted totals for one complete query projection, including loads, mapping setup, compute and stores. These bars are separate from the PE teaching animation below.</p>
-            </div>
+            <p id="rc-context" class="rc-context" aria-live="polite"></p>
+            <button id="rc-next-stage" class="rc-next-stage" type="button">Next: send the last row to lm_head →</button>
           </section>
-          <section class="rc-mechanism" aria-labelledby="rc-array-title">
-            <div class="rc-section-heading"><div><div class="rc-eyebrow">Why switching wins</div><h2 id="rc-array-title">Give unused token replicas a useful job.</h2></div><button id="rc-play" type="button">Animate column inputs</button></div>
-            <div class="rc-cause-chain" id="rc-cause-chain"></div>
+          <section aria-labelledby="rc-workload-title">
+            <div class="rc-section-heading"><div><div class="rc-eyebrow">Selected operation</div><h2 id="rc-workload-title"></h2></div><span class="rc-chip">FP16 operands · FP32 accumulation</span></div>
+            <div id="rc-equation" class="rc-matrices" aria-label="Full matrix multiplication"></div>
+            <p id="rc-shard-note" class="rc-note"></p>
+            <div class="rc-boundary" id="rc-boundary"></div>
+          </section>
+          <section aria-labelledby="rc-selection-title">
+            <h2 id="rc-selection-title">Why these mappings?</h2>
+            <p id="rc-choice-reason" class="rc-lead"></p>
+            <div class="rc-candidate-scroll"><table class="rc-candidates"><thead><tr><th scope="col">Candidate spatial mapping</th><th scope="col">Tile M×K×N</th><th scope="col">Work assigned across 16 columns</th><th scope="col">Predicted cycles<br>selected operation</th></tr></thead><tbody id="rc-candidates"></tbody></table></div>
+            <p id="rc-search-note" class="rc-note"></p>
+          </section>
+          <section aria-labelledby="rc-array-title">
+            <div class="rc-section-heading"><div><div class="rc-eyebrow">Same operation / two concrete mappings</div><h2 id="rc-array-title">What is stored and what flows?</h2></div><div class="rc-controls"><button id="rc-weights" type="button" aria-pressed="true">Resident weights</button><button id="rc-play" type="button">Stream inputs</button></div></div>
+            <p class="rc-lead">Both use <strong>WO-S: weights stay in each PE, inputs flow down its column, and outputs accumulate</strong>. They differ in weight replication, input-token assignment, tile shape, and buffer layout. Each PE holds a 16-element weight vector along K.</p>
+            <div class="rc-playback"><button id="rc-step" type="button">Step input</button><button id="rc-reset" type="button">Reset</button><label>Speed<select id="rc-speed"><option value="2">2 steps/s</option><option value="6" selected>6 steps/s</option><option value="16">16 steps/s</option></select></label><label class="rc-scrubber">Input propagation <output id="rc-step-label"></output><input id="rc-scrub" type="range" min="0" max="31" value="15"></label></div>
             <div class="rc-arrays">
-              <div class="rc-card" id="rc-card-fixed">
-                <div class="rc-card-head"><div><div class="rc-eyebrow">Keep one mapping</div><h3 id="rc-name-fixed">A · Reuse across tokens</h3></div><span id="rc-badge-fixed" class="rc-winner"></span></div>
-                <p id="rc-description-fixed" class="rc-card-description"></p>
-                <canvas id="rc-canvas-fixed" width="1200" height="1184" tabindex="0" role="img" aria-label="Fixed mapping, 16 by 16 PE array. Use arrow keys to select a PE." aria-describedby="rc-canvas-help"></canvas>
-                <div id="rc-metrics-fixed" class="rc-metrics"></div>
-              </div>
-              <div class="rc-card" id="rc-card-adaptive" data-selected="true">
-                <div class="rc-card-head"><div><div class="rc-eyebrow">Switch with the workload</div><h3 id="rc-name-adaptive">B · Cover more outputs</h3></div><span id="rc-badge-adaptive" class="rc-winner"></span></div>
-                <p id="rc-description-adaptive" class="rc-card-description"></p>
-                <canvas id="rc-canvas-adaptive" width="1200" height="1184" tabindex="0" role="img" aria-label="Mapping selected for this phase, 16 by 16 PE array. Use arrow keys to select a PE." aria-describedby="rc-canvas-help"></canvas>
-                <div id="rc-metrics-adaptive" class="rc-metrics"></div>
-              </div>
+              <div class="rc-card" id="rc-card-reuse"><div class="rc-card-head"><div><small>A / TOKEN PARALLEL</small><h3>Replicate for four tokens</h3></div><span id="rc-badge-reuse" class="rc-badge"></span></div><p id="rc-description-reuse"></p><div id="rc-specs-reuse" class="rc-specs"></div><canvas id="rc-canvas-reuse" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping A stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-reuse" class="rc-schedule"></div></div>
+              <div class="rc-card" id="rc-card-outputs"><div class="rc-card-head"><div><small>B / CHANNEL PARALLEL</small><h3>Place more distinct weights</h3></div><span id="rc-badge-outputs" class="rc-badge"></span></div><p id="rc-description-outputs"></p><div id="rc-specs-outputs" class="rc-specs"></div><canvas id="rc-canvas-outputs" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping B stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-outputs" class="rc-schedule"></div></div>
             </div>
-            <div class="rc-legend" aria-label="Diagram legend"><span><i></i>Weights for K[0:16)</span><span><i class="rc-other"></i>Weights for K[16:32)</span><span><i class="rc-recovered"></i>PE recovered by switching</span><span><i class="rc-input"></i>Input moving down a column</span><span><i class="rc-idle"></i>No valid token</span></div>
-            <div class="rc-playback">
-              <button id="rc-step" type="button">Step inputs</button><button id="rc-reset" type="button">Reset inputs</button>
-              <label>Speed<select id="rc-speed"><option value="2">2 steps/s</option><option value="6" selected>6 steps/s</option><option value="16">16 steps/s</option></select></label>
-              <div class="rc-timeline"><label for="rc-scrub">Input propagation <output id="rc-step-label"></output></label><input id="rc-scrub" type="range" min="0" max="31" value="15" step="1"></div>
-            </div>
-            <p id="rc-canvas-help" class="rc-note">Each cell holds 16 stationary weights; its number is output channel n. Blue inputs travel down the PE column. Purple outlines identify PEs that gain useful work when the mapping changes. Click a PE to inspect its weights.</p>
-            <details id="rc-inspector"><summary>Inspect a PE and its 16 resident weights</summary><div class="rc-details-body rc-inspector">
-              <div><div class="rc-eyebrow">Inside one PE</div><h3 id="rc-pe-title"></h3><p id="rc-pe-owner"></p>
-                <div class="rc-pe-controls">
-                  <label>Array<select id="rc-inspect-panel"><option value="adaptive">Switching</option><option value="fixed">Fixed</option></select></label>
-                  <label>Row<select id="rc-inspect-row" aria-label="Inspect PE row"></select></label>
-                  <label>Column<select id="rc-inspect-col" aria-label="Inspect PE column"></select></label>
-                </div><p id="rc-pe-stream"></p>
-              </div>
-              <div><div class="rc-eyebrow">16 resident weights · slot k within this K half</div><div id="rc-weight-slots" class="rc-slots"></div><div id="rc-equation" class="rc-equation"></div></div>
-            </div></details>
-            <p class="rc-note">PE playback illustrates the first tile with deterministic sample values. BIRRD adds the two K halves; subsequent K tiles accumulate into the output. Useful PE ownership is distinct from sustained utilization over the full program.</p>
+            <p class="rc-note">Cell label n identifies the resident weight column. Green and amber identify the two K halves. Blue packets are input scalars. Gray cells hold weights but have no valid token in this workload. The first M/N/K tile is shown; animation steps omit instruction and preload gaps.</p>
           </section>
-          <section class="rc-performance" aria-labelledby="rc-performance-title">
-            <h2 id="rc-performance-title">Reuse for prefill. Output parallelism for decode.</h2>
-            <p>Switching selects the faster of these two spatial mappings for each phase. Both use the same 16×16 array, 16 weights per PE, and 128/64/64 buffer depths per bank.</p>
-            <details><summary>Compare all fixed and switching policies</summary><div class="rc-details-body">
-              <div class="rc-table-scroll" tabindex="0" role="region" aria-label="Predicted program cycles by mapping policy"><table><thead><tr><th scope="col">Mapping policy</th><th scope="col">Prefill · M=768<br>Predicted cycles</th><th scope="col">Decode · M=1<br>Predicted cycles</th></tr></thead><tbody id="rc-performance-rows"></tbody></table></div>
-              <p id="rc-savings" class="rc-note"></p>
-            </div></details>
-            <details><summary>Where the saved cycles come from</summary><div class="rc-details-body">
-              <p><strong>Prefill:</strong> A uses each weight tile for 32 tokens; B uses it for 16. Both assign work to all 256 PEs, but B transfers twice as many weight bytes. A reduces combined input and weight transfer cost.</p>
-              <p><strong>Decode:</strong> A assigns useful work to 64 PEs; B assigns it to 128. Covering twice as many outputs per mapping reduces mapping invocations from 2,048 to 1,024 and halves PE preload cycles. Both read the same full 4 MiB weight matrix.</p>
-              <div class="rc-table-scroll"><table><thead><tr><th scope="col">Predicted cycles · selected phase</th><th scope="col">Fixed mapping</th><th scope="col">Switch by phase</th></tr></thead><tbody id="rc-components"></tbody></table></div>
-            </div></details>
-            <details><summary>Mapping parameters, evidence, and model boundaries</summary><div class="rc-details-body">
-              <p>One complete <code>q_proj</code> invocation: prefill <code>768×1024×2048</code>, decode <code>1×1024×2048</code> (M×K×N), batch 1, Qwen3-0.6B. These are matrix costs, not end-to-end token latency.</p>
-              <p>A fixes <code>Gr=8, Gc=2</code> with a maximum <code>32×32×32</code> tile. B fixes <code>Gr=8, Gc=4</code> with a maximum <code>16×32×64</code> tile. Both use <code>sr=1, sc=16</code>, two K groups, W/O orders 2/0, and WO-S execution. The M tile clips to the available tokens; input layout becomes 2 for prefill and 0 for decode. “Fixed” here means a fixed spatial mapping policy, not an identical binary for different shapes.</p>
-              <p>At PE row r and column c: <code>n = r + 16(c mod Gc)</code>, <code>K half = floor(c/8)</code>, <code>m = dot·(8/Gc) + floor((c mod 8)/Gc)</code>. Each PE holds <code>W[K half·16 : K half·16+16, n]</code> and receives <code>I[m, k]</code> down its column.</p>
-              <p>The exported records pass compiler checks for encodings, buffer capacity, memory-bank conflicts, and exact tile MAC coverage. Performance uses <code>serialized_minisa_v2</code>, including operand loads, PE preload, streaming, gaps/drain, instruction dispatch, and stores. Operands start in their required layouts. Layout conversion, external-memory stalls, host launch, and non-GEMM operations are excluded. These four comparisons are predictions; no new RTL measurements are claimed.</p>
-              <p>The result compares these two supported mappings and does not establish a universal advantage over every fixed mapping. Reconfiguration and weight setup instructions are included in each program; retaining weights across separate phase programs is not assumed.</p>
-              <p><a href="script/reconfigurable_compute_data.js">Exported mappings and cycle components</a> · <a href="https://github.com/maeri-project/feather_tutorial/blob/main/tools/build_reconfigurable_compute.py">Reproduction script</a> · <a href="https://arxiv.org/abs/2405.13170">FEATHER architecture paper</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B/blob/c1899de289a04d12100db370d81485cdf75e47ca/config.json">Qwen3 model configuration</a></p>
-            </div></details>
+          <section class="rc-pe-detail" aria-labelledby="rc-pe-title">
+            <div class="rc-section-heading"><div><div class="rc-eyebrow">Compare the exact same physical PE</div><h2 id="rc-pe-title"></h2></div><div class="rc-controls"><label>PE row<select id="rc-row"></select></label><label>PE column<select id="rc-col"></select></label></div></div>
+            <p id="rc-pe-change" class="rc-context"></p>
+            <div class="rc-arrays"><div id="rc-pe-reuse" class="rc-card"></div><div id="rc-pe-outputs" class="rc-card"></div></div>
           </section>
+          <section aria-labelledby="rc-layout-title">
+            <div class="rc-section-heading"><div><div class="rc-eyebrow">Tensor identity → physical storage</div><h2 id="rc-layout-title">The layouts feeding those PEs</h2></div><label>Buffer<select id="rc-operand"><option value="W">Stationary weights</option><option value="I">Streaming inputs</option><option value="O">Accumulated output</option></select></label></div>
+            <p class="rc-lead">A layout defines how 16-element vectors occupy 16 SRAM banks. The window below follows the selected PE; its vector is outlined. Layout order and tile extent together determine the address.</p>
+            <div class="rc-arrays"><div id="rc-layout-reuse" class="rc-card"></div><div id="rc-layout-outputs" class="rc-card"></div></div>
+            <p class="rc-note">For vector index L: bank = L mod 16; scalar row = 16⌊L/16⌋ + lane. Weight/input vectors run along K; output vectors run along N. Buffer depths are StaB/StrB/OB = 128/64/64 scalar rows per bank.</p>
+          </section>
+          <details><summary>Exact commands, numerical samples, and model boundaries</summary><div class="rc-details-body">
+            <div id="rc-commands"></div>
+            <p>The inference graph follows the recorded <code>logits_to_keep=1</code> workload. Residual addition, normalization, row selection, sampling, embedding and boundary repacking are shown as graph context; their execution costs are excluded from the GEMM predictions. The display does not assume an automatic output-buffer-to-input-buffer handoff.</p>
+            <p>Each operation loads its own weights. The preceding operation supplies the mapping to consider retaining. The mapper performs a bounded tile/layout search, not a proof of global optimality or a graph-wide layout-cost optimization. The selected A/B descriptors match its winner; eight-replica and wider candidates make the alternatives explicit.</p>
+            <p>Predictions use <code>serialized_minisa_v2</code>, including operand loads, PE preload, stream, gaps/drain, dispatch and stores. No new RTL measurements are claimed. Values in the PE inspector are synthetic teaching samples; tensor names and graph dependencies are symbolic, not a full numerical inference replay.</p>
+            <p><a href="script/reconfigurable_compute_data.js">Exported mappings, searches and physical addresses</a> · <a href="https://github.com/maeri-project/feather_tutorial/blob/main/tools/build_reconfigurable_compute.py">Reproduce the comparison</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B/blob/c1899de289a04d12100db370d81485cdf75e47ca/config.json">Qwen3 configuration</a> · <a href="https://github.com/huggingface/transformers/blob/v4.57.6/src/transformers/models/qwen3/modeling_qwen3.py">Qwen3 layer and last-position logits implementation</a></p>
+          </div></details>
           <p class="rc-footer-link"><a href="QWEN3_MINISA_VISUALIZER.html">Explore complete Qwen3 MINISA programs →</a></p>
           <noscript>This interactive page needs JavaScript to show the PE arrays and compiler predictions.</noscript>
         </article>

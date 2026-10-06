@@ -29,29 +29,22 @@
     function frame(record, step) {
         return Array.from({length: SIZE * SIZE}, (_, i) => at(record, Math.floor(i / SIZE), i % SIZE, step));
     }
-    function comparison(data, phase, baseline) {
-        if (!data.records[phase] || !data.policies[baseline]) throw new Error("Unknown phase or fixed mapping");
-        const adaptiveKey = phase === "prefill" ? "reuse" : "outputs";
-        const fixed = data.records[phase][baseline], adaptive = data.records[phase][adaptiveKey];
-        const saved = fixed.cost.total_cycles - adaptive.cost.total_cycles;
-        const fixedFrame = frame(fixed, 15);
-        const recovered = frame(adaptive, 15).filter((cell, i) => cell.valid && !fixedFrame[i].valid).length;
-        return {fixed, adaptive, adaptiveKey, saved, recovered,
-            fractionSaved: saved / fixed.cost.total_cycles,
-            speedup: fixed.cost.total_cycles / adaptive.cost.total_cycles,
-            maxCycles: Math.max(fixed.cost.total_cycles, adaptive.cost.total_cycles)};
+    function address(layout, u, v, lane = 0) {
+        const {spec: s, dims, ranks} = layout;
+        const indices = s.operand === "W" ? {kL1:u, nL0:v % s.a0, nL1:Math.floor(v/s.a0)}
+            : s.operand === "I" ? {jL1:v, mL0:u % s.a0, mL1:Math.floor(u/s.a0)}
+            : {qL1:v, pL0:u % s.a0, pL1:Math.floor(u/s.a0)};
+        if (lane < 0 || lane >= 16 || ranks.some(key => indices[key] < 0 || indices[key] >= dims[key])) return null;
+        const linear = ranks.reduce((sum, key) => sum * dims[key] + indices[key], 0);
+        return {linear, bank:linear % 16, rowBase:16*Math.floor(linear/16), row:16*Math.floor(linear/16)+lane};
     }
-    function finishTimes(comparison, cycle) {
-        // Elapsed time bars use exported whole-program totals, not a guess at
-        // how many outputs have completed or an animation-derived cycle count.
-        const elapsed = Math.max(0, Math.min(comparison.maxCycles, cycle));
-        return Object.fromEntries(["fixed", "adaptive"].map(panel => {
-            const total = comparison[panel].cost.total_cycles;
-            return [panel, {elapsed: Math.min(elapsed, total), total,
-                done: elapsed >= total, width: Math.min(elapsed, total) / comparison.maxCycles}];
-        }));
+    function peAddresses(data, record, row, col, step) {
+        const p = at(record,row,col,step), layouts = data.layouts[record.layouts];
+        return {W:address(layouts.W,p.kg,p.n,p.lane),
+            I:p.valid ? address(layouts.I,p.m,p.kg,p.lane) : null,
+            O:p.valid ? address(layouts.O,p.m,Math.floor(p.n/16),p.n%16) : null};
     }
-    const api = {SIZE, input, weight, owner, at, end, frame, comparison, finishTimes};
+    const api = {SIZE, input, weight, owner, at, end, frame, address, peAddresses};
     if (typeof module === "object" && module.exports) module.exports = api;
     root.ReconfigurableComputeModel = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

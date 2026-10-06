@@ -1,284 +1,146 @@
 (function() {
     "use strict";
     const data = window.ReconfigurableComputeData, model = window.ReconfigurableComputeModel;
-    const $ = id => document.getElementById(`rc-${id}`);
-    const panels = ["fixed", "adaptive"], fmt = n => n.toLocaleString("en-US");
-    const state = {phase: "decode", baseline: "reuse", step: 15, playing: false, racing: false, story: false, cycle: 0, panel: "adaptive", row: 4, col: 2, speed: 6};
-    const geometry = {w: 600, h: 592, x: 64, y: 88, pitch: 28};
-    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-    let raf = 0, raceRaf = 0, storyTimer = 0, lastTime = 0, raceTime = 0, lastInspector = -1;
-    let compared = model.comparison(data, state.phase, state.baseline);
-    const record = panel => compared[panel];
-    const keyFor = panel => panel === "fixed" ? state.baseline : compared.adaptiveKey;
-    const letter = key => key === "reuse" ? "A" : "B";
-    const name = key => key === "reuse" ? "A · Reuse across tokens" : "B · Cover more outputs";
-    function text(ctx, value, x, y, color, size = 12, align = "left", weight = "500") {
-        ctx.fillStyle = color; ctx.font = `${weight} ${size}px Inter, system-ui, sans-serif`;
-        ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(value, x, y);
+    const $ = id => document.getElementById(`rc-${id}`), fmt = n => n.toLocaleString("en-US");
+    const keys = ["reuse", "outputs"], stages = Object.fromEntries(data.stages.map(s => [s.id,s]));
+    const state = {stage:"down", row:0, col:2, step:15, mode:"weights", playing:false, speed:6, operand:"W"};
+    const geometry = {w:680,h:680,x:84,y:116,pitch:32};
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let raf = 0, lastTime = 0, lastInteger = -1;
+    const stage = () => stages[state.stage], record = key => stage().records[key];
+    const letter = key => key === "reuse" ? "A" : key === "outputs" ? "B" : "C";
+    const title = key => data.policies[key].name;
+    const shape = s => [s.M,s.K,s.N].map(fmt).join(" × ");
+    function text(ctx,str,x,y,color,size=12,align="left",bold=false) {
+        ctx.fillStyle=color;ctx.font=`${bold ? 650 : 450} ${size}px system-ui, sans-serif`;
+        ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(str,x,y);
     }
-    function round(ctx, x, y, w, h, radius, fill, stroke) {
-        ctx.beginPath(); ctx.roundRect(x, y, w, h, radius);
-        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-        if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+    function box(ctx,x,y,w,h,fill,line=null,width=1) {
+        ctx.beginPath();ctx.roundRect(x,y,w,h,4);ctx.fillStyle=fill;ctx.fill();
+        if(line){ctx.strokeStyle=line;ctx.lineWidth=width;ctx.stroke();ctx.lineWidth=1;}
     }
     function draw(key) {
-        const canvas = $(`canvas-${key}`), ctx = canvas.getContext("2d"), r = record(key);
-        const {w, h, x, y, pitch} = geometry;
-        const scale = Math.max(2, Math.ceil((devicePixelRatio || 1) * canvas.clientWidth / w));
-        if (canvas.width !== w * scale || canvas.height !== h * scale) {
-            canvas.width = w * scale; canvas.height = h * scale;
+        const canvas=$(`canvas-${key}`),ctx=canvas.getContext("2d"),r=record(key),s=stage();
+        const {w,h,x,y,pitch}=geometry,scale=Math.max(2,Math.ceil(devicePixelRatio*canvas.clientWidth/w));
+        if(canvas.width!==w*scale||canvas.height!==h*scale){canvas.width=w*scale;canvas.height=h*scale;}
+        ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,w,h);
+        const dark=document.documentElement.dataset.theme==="dark";
+        const colors=dark ? {fg:"#e7eef8",muted:"#a9b8ce",green:"#173f37",gold:"#48391e",blue:"#71bbff",idle:"#252d3c",dim:"#8892a4",select:"#c1a0ff"}
+            : {fg:"#24334a",muted:"#55677e",green:"#d4efe5",gold:"#f5e8c4",blue:"#0874be",idle:"#edf0f4",dim:"#7b8594",select:"#7040c1"};
+        text(ctx,`Stationary: ${s.weight}[k, n]`,x,16,colors.fg,14,"left",true);
+        text(ctx,`Stream: ${s.input}[m, k] ↓`,x,37,colors.blue,12);
+        for(let kg=0;kg<2;kg++) {
+            box(ctx,x+kg*256,54,253,22,kg?colors.gold:colors.green);
+            text(ctx,`K half ${kg}: k=${kg*16}…${kg*16+15}`,x+kg*256+126,65,colors.fg,11,"center",true);
         }
-        ctx.setTransform(scale, 0, 0, scale, 0, 0); ctx.clearRect(0, 0, w, h);
-        const dark = document.documentElement.dataset.theme === "dark";
-        const palette = dark ? {fg: "#e5edf7", muted: "#aab8ca", green: "#143e35", gold: "#45391e", greenLine: "#409c7c", goldLine: "#bb9849", idle: "#242c39", idleText: "#738399", blue: "#70b8ff"}
-            : {fg: "#203047", muted: "#526278", green: "#d5eee3", gold: "#f2e6c6", greenLine: "#198067", goldLine: "#a37e23", idle: "#e9edf2", idleText: "#7b8797", blue: "#0875c1"};
-        text(ctx, "INPUT STREAMS  I[m, k]  ↓", x, 12, palette.blue, 11, "left", "700");
-        text(ctx, "PE cell = output channel n", x + pitch * 16, 12, palette.muted, 10, "right");
-        for (let half = 0; half < 2; half++) {
-            round(ctx, x + half * pitch * 8, 27, pitch * 8 - 3, 22, 5,
-                half ? palette.gold : palette.green, null);
-            text(ctx, `Weights for K[${half * 16}:${(half + 1) * 16})`, x + half * pitch * 8 + 110, 38, palette.fg, 11, "center");
+        const dot=Math.min(r.ES.T-1,Math.floor(state.step/16));
+        for(let col=0;col<16;col++) {
+            const o=model.owner(r,0,col,dot),cx=x+col*pitch+14;
+            text(ctx,`m${o.m}${o.valid?"":"×"}`,cx,89,o.valid?colors.blue:colors.dim,11,"center",true);
+            text(ctx,`c${col}`,cx,106,colors.muted,9,"center");
         }
-        const topDot = Math.min(r.ES.T - 1, Math.floor(state.step / 16));
-        for (let col = 0; col < 16; col++) {
-            const o = model.owner(r, 0, col, topDot), cx = x + col * pitch + pitch / 2;
-            text(ctx, o.valid ? `m${o.m}` : "—", cx, 63, o.valid ? palette.blue : palette.idleText, 10, "center", "600");
-            ctx.strokeStyle = o.valid ? palette.blue : palette.idleText;
-            ctx.globalAlpha = .5; ctx.beginPath(); ctx.moveTo(cx, 73); ctx.lineTo(cx, y - 3); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(cx - 3, y - 7); ctx.lineTo(cx, y - 3); ctx.lineTo(cx + 3, y - 7); ctx.stroke(); ctx.globalAlpha = 1;
-        }
-        text(ctx, "row", x - 21, y - 12, palette.muted, 10, "center");
-        const frames = model.frame(r, state.step);
-        for (const cell of frames) {
-            const px = x + cell.col * pitch, py = y + cell.row * pitch;
-            const isSelected = state.panel === key && state.row === cell.row && state.col === cell.col;
-            const half = cell.kg === 1;
-            const recovered = key === "adaptive" && cell.valid && !model.owner(compared.fixed, cell.row, cell.col, cell.dot).valid;
-            if (cell.row === 0 && cell.col && cell.col % r.EM.G_c === 0) {
-                ctx.strokeStyle = palette.muted; ctx.globalAlpha = cell.col === 8 ? .65 : .17;
-                ctx.beginPath(); ctx.moveTo(px - 2, y - 2); ctx.lineTo(px - 2, y + 16 * pitch - 1); ctx.stroke(); ctx.globalAlpha = 1;
+        const frames=model.frame(r,state.step);
+        for(const cell of frames) {
+            const px=x+cell.col*pitch,py=y+cell.row*pitch,selected=cell.row===state.row&&cell.col===state.col;
+            box(ctx,px+1,py+1,28,28,!cell.valid?colors.idle:cell.kg?colors.gold:colors.green,selected?colors.select:null,2.8);
+            text(ctx,`n${cell.n}`,px+15,py+14,cell.valid?colors.fg:colors.dim,11,"center",true);
+            if(cell.col===0)text(ctx,`r${cell.row}`,x-16,py+15,colors.muted,10,"right");
+            if(cell.row===0&&cell.col&&cell.col%r.EM.G_c===0) {
+                ctx.globalAlpha=.35;ctx.strokeStyle=colors.muted;ctx.beginPath();ctx.moveTo(px-1,y);ctx.lineTo(px-1,y+512);ctx.stroke();ctx.globalAlpha=1;
             }
-            ctx.lineWidth = isSelected ? 2.5 : recovered ? 1.8 : .65;
-            round(ctx, px + 1, py + 1, pitch - 4, pitch - 4, 3,
-                !cell.valid ? palette.idle : half ? palette.gold : palette.green,
-                isSelected ? palette.blue : recovered ? (dark ? "#bc99ff" : "#7544c5") : cell.valid ? half ? palette.goldLine : palette.greenLine : null);
-            ctx.lineWidth = 1;
-            text(ctx, cell.n, px + 12, py + 12, cell.valid ? palette.fg : palette.idleText, 10, "center", cell.active ? "700" : "400");
-            if (cell.active) {
-                // A scalar advances one PE row per teaching step. The selected
-                // PE's k and m are exposed in the inspector; weights never move.
-                const sub = reducedMotion.matches ? 0 : state.step % 1;
-                ctx.fillStyle = palette.blue;
-                ctx.beginPath(); ctx.arc(px + 23, py + 2 + sub * 23, 2.6, 0, Math.PI * 2); ctx.fill();
-                ctx.fillRect(px + 5, py + 21, 15 * (cell.lane + 1) / 16, 1.8);
+            if(state.mode==="stream"&&cell.active) {
+                const sub=reduced.matches?0:state.step%1;
+                ctx.fillStyle=colors.blue;ctx.beginPath();ctx.arc(px+27,py+2+25*sub,3,0,Math.PI*2);ctx.fill();
             }
-            if (cell.col === 0) text(ctx, cell.row, x - 14, py + 13, palette.muted, 10, "center");
         }
-        for (let col = 0; col < 16; col++) text(ctx, col, x + col * pitch + 12, y + pitch * 16 + 11, palette.muted, 9, "center");
-        text(ctx, "col", x - 14, y + pitch * 16 + 11, palette.muted, 9, "center");
-        const caption = key === "adaptive" && compared.recovered > 0
-            ? `+${compared.recovered} PE owners gain useful work by changing their weights`
-            : r.mappedPEs < 256 ? `${256 - r.mappedPEs} PE owners have no valid input token` : "All 256 PE owners have useful work";
-        text(ctx, caption, x, 577, key === "adaptive" && compared.recovered ? (dark ? "#bc99ff" : "#7544c5") : palette.muted, 11);
+        text(ctx,`${r.EM.G_r/r.EM.G_c} token replicas × ${r.EM.G_c} output groups × 2 K halves`,x,645,colors.fg,12,"left",true);
+        text(ctx,`Each column forwards one input to 16 rows holding different n weights.`,x,665,colors.muted,11);
     }
-    function inspector() {
-        const r = record(state.panel), o = model.at(r, state.row, state.col, state.step);
-        $("pe-title").textContent = `${state.panel === "fixed" ? "Fixed" : "Switching"} · mapping ${letter(keyFor(state.panel))} · PE (${state.row}, ${state.col})`;
-        $("pe-owner").textContent = `Resident W[${o.kStart}:${o.kStart + 16}, ${o.n}] · partial result for O[${o.m}, ${o.n}].`;
-        $("pe-stream").textContent = o.valid
-            ? `Column ${state.col} forwards I[m, k] through all 16 PE rows. This PE uses token m=${o.m}; the next row reuses the same input with a different weight vector.`
-            : `Token m=${o.m} does not exist in this decode tile. The weight slots are occupied, but this PE has no useful dot product.`;
-        $("weight-slots").replaceChildren(...Array.from({length: 16}, (_, i) => {
-            const slot = document.createElement("div"); slot.className = "rc-slot";
-            slot.dataset.active = o.active && o.lane === i;
-            const label = document.createElement("small"); label.textContent = `k${o.kStart + i}`;
-            slot.append(label, String(model.weight(o.kStart + i, o.n))); return slot;
-        }));
-        $("equation").textContent = o.active
-            ? `I[${o.m}, ${o.k}] × W[${o.k}, ${o.n}] = ${o.input} × ${o.weight} = ${o.input * o.weight}. Local sum through k=${o.k}: ${o.sum}.`
-            : !o.valid ? "No useful input: this PE contributes no valid output."
-            : state.step < state.row ? "Waiting for the first input scalar to reach this PE."
-            : `Local dot complete: ${o.sum}. BIRRD adds the matching partial from column ${(state.col + 8) % 16}.`;
-    }
-    function metrics(panel) {
-        const r = record(panel), key = keyFor(panel);
-        $(`name-${panel}`).textContent = name(key);
-        $(`description-${panel}`).textContent = key === "reuse"
-            ? state.phase === "prefill" ? "Four weight replicas serve four input tokens in parallel. Reuse each loaded weight tile across 32 tokens."
-                : "Keep four weight replicas, but only one token exists. Three replicas have no token to process."
-            : state.phase === "prefill" ? "Two weight replicas serve two tokens in parallel. Each weight tile covers only 16 tokens, doubling weight traffic."
-                : "Two replicas leave room for twice as many distinct weights. Cover 64 output channels per mapping.";
-        $(`metrics-${panel}`).innerHTML = `<div><strong>${r.mappedPEs}<small> / 256 · ${100 * r.mappedPEs / 256}%</small></strong><span>Useful PE owners per dot</span></div><div><strong>${state.phase === "prefill" ? r.tile.M : r.tile.N}</strong><span>${state.phase === "prefill" ? "Tokens per weight tile" : "Output channels per mapping"}</span></div>`;
-        $(`badge-${panel}`).textContent = panel === "fixed" ? `Keep ${letter(key)}` : state.phase === "decode" ? "A → B" : "Use A for prefill";
-    }
-    function render(full = false) {
-        for (const panel of panels) draw(panel);
-        const step = Math.floor(state.step), max = model.end(record("adaptive"));
-        $("scrub").value = step;
-        $("step-label").textContent = `${step} / ${max}`;
-        if (full || lastInspector !== step) { inspector(); lastInspector = step; }
-    }
-    function stop() {
-        state.playing = false; cancelAnimationFrame(raf); raf = 0; lastTime = 0;
-        $("play").textContent = "Animate column inputs";
-    }
-    function stopRace() {
-        state.racing = false; cancelAnimationFrame(raceRaf); raceRaf = 0; raceTime = 0;
-        $("race-play").textContent = "Replay finish times";
-    }
-    function stopStory() {
-        clearTimeout(storyTimer); state.story = false;
-        $("story").textContent = "Replay prefill → decode";
-    }
-    function tick(time) {
-        if (!state.playing) return;
-        if (lastTime) state.step = Math.min(model.end(record("adaptive")), state.step + Math.min(.2, (time - lastTime) / 1000) * state.speed);
-        lastTime = time; render();
-        if (state.step >= model.end(record("adaptive"))) stop();
-        else raf = requestAnimationFrame(tick);
-    }
-    function renderRace() {
-        const results = model.finishTimes(compared, state.cycle);
-        for (const panel of panels) {
-            const r = results[panel];
-            $(`race-total-${panel}`).style.width = `${100 * r.total / compared.maxCycles}%`;
-            $(`race-fill-${panel}`).style.width = `${100 * r.elapsed / r.total}%`;
-            $(`race-cycles-${panel}`).textContent = `${fmt(r.total)} cycles`;
-            $(`race-policy-${panel}`).textContent = `Mapping ${letter(keyFor(panel))}`;
-            $(`race-status-${panel}`).textContent = r.done ? "Finished" : `${fmt(Math.ceil(r.total - r.elapsed))} cycles left`;
-            $(`race-total-${panel}`).dataset.done = r.done;
+    function context() {
+        const s=stage(),prev=s.previous?stages[s.previous]:null;
+        for(const item of data.stages)$(`stage-${item.id}`).setAttribute("aria-pressed",item.id===s.id);
+        $("context").textContent=s.id==="down"
+            ? "The final MLP still processes all 768 prompt tokens. Its mapper chooses A: four token replicas reuse each weight tile across 32 rows. This is the predecessor that establishes A before the next GEMM."
+            : s.id==="head" ? "The preceding down_proj selected A for 768 token rows. After residual addition and normalization, logits_to_keep=1 selects only the final row. Retaining A leaves three token replicas unused; the head selects B instead."
+            : "The language-model head already selected B. Sampling creates a token; embedding and normalization create this q_proj input. With one input row, q_proj also prefers B, so the spatial mapping can stay the same while its weights change.";
+        $("workload-title").textContent=s.title;
+        $("next-stage").textContent=s.id==="down"?"Next: send the last row to lm_head →":s.id==="head"?"Next: start one-token decode →":"Return to the prefill down_proj";
+        $("equation").innerHTML=[
+            [s.input,s.inputName,`${fmt(s.shape.M)} × ${fmt(s.shape.K)}`,`M: ${s.axes.M} · K: ${s.axes.K}`,"input"],
+            [s.weight,s.weightName,`${fmt(s.shape.K)} × ${fmt(s.shape.N)}`,`K: ${s.axes.K} · N: ${s.axes.N}`,"weight"],
+            [s.output,s.outputName,`${fmt(s.shape.M)} × ${fmt(s.shape.N)}`,`M: ${s.axes.M} · N: ${s.axes.N}`,"output"]
+        ].map(([symbol,name,dims,axes,kind],i)=>`${i?`<b class="rc-math-sign">${i===1?"×":"="}</b>`:""}<div class="rc-matrix rc-${kind}"><small>${name}</small><strong>${symbol}</strong><code>${dims}</code><span>${axes}</span></div>`).join("");
+        $("shard-note").textContent=s.programs>1
+            ? `Complete operation shown. The comparison uses ${s.programs} sequential, disjoint N=${fmt(s.programN)} programs for every candidate to fit the compiler's operand-image regions. The animation shows the first tile of the first program.`
+            : "One complete projection. The animation shows its first tile; the dimensions above describe the whole operation.";
+        $("boundary").innerHTML=s.id==="head"
+            ? `<strong>The M dimension changes at the boundary</strong><div>ΔH[768,1024] + residual → RMSNorm → Z[768,1024] → <b>take Z[767,:]</b> → Z_last[1,1024]</div><small>The selected row is packed for the head's input layout. This is an explicit transform between GEMMs.</small>`
+            : s.id==="down" ? `<strong>The input comes from the preceding MLP branches</strong><div>G = SiLU(gate_proj(H)) ⊙ up_proj(H), with G shaped [768,3072].</div><small>The output ΔH is a residual update, not the final normalized hidden state.</small>`
+            : `<strong>A new token creates a new activation tensor</strong><div>logits → sample token → embedding → RMSNorm → X_next[1,1024]</div><small>q_proj loads W_q; the previous vocabulary weights are replaced. B is a reusable spatial mapping, not reused tensor data.</small>`;
+        const chosen=s.records[s.preferred],loser=s.records[s.preferred==="reuse"?"outputs":"reuse"];
+        $("choice-reason").textContent=s.preferred==="reuse"
+            ? `A wins for this workload because it reuses a weight tile over 32 tokens. B handles 16 tokens per tile and reloads more weights. A takes ${fmt(chosen.cost.total_cycles)} predicted cycles versus ${fmt(loser.cost.total_cycles)} for B.`
+            : `B wins because one token needs output-channel coverage, not extra token replicas. B covers 64 channels per tile instead of A's 32. ${prev?`The predecessor preferred ${letter(prev.preferred)}; `:""}${s.id==="head"?"this is where A → B becomes useful.":"B remains appropriate here."}`;
+        $("candidates").innerHTML=["replicate8","reuse","outputs"].map(key=>{
+            const r=s.records[key],rep=8/r.EM.G_c;
+            return `<tr${key===s.preferred?' class="rc-chosen"':""}><th scope="row">${title(key)}${key===s.preferred?'<span>Selected by mapper</span>':prev&&key===prev.preferred?'<span>Preferred by preceding GEMM</span>':""}</th><td>${shape(r.tile)}</td><td>2 K halves × ${rep} tokens × ${r.EM.G_c} output groups</td><td>${fmt(r.cost.total_cycles)}</td></tr>`;
+        }).join("")+`<tr class="rc-rejected"><th scope="row">One replica · 128 channels</th><td>… × 32 × 128</td><td>4,096 weight scalars &gt; 2,048 available in StaB</td><td>Does not fit</td></tr>`;
+        const stats=s.search.stats;
+        $("search-note").textContent=`The compiler considered ${stats.tile_proposals} tile proposals, searched ${stats.tiles_searched} and pruned ${stats.tiles_pruned} by its latency bound. The three displayed legal candidates explain the tradeoff; A/B's winning tile and EM parameters match the bounded search result. Cycles exclude inter-operation transformations and layout repacking.`;
+        for(const key of keys) {
+            const r=record(key),rep=8/r.EM.G_c;
+            $(`card-${key}`).dataset.preferred=key===s.preferred;
+            $(`badge-${key}`).textContent=key===s.preferred?"Selected here":prev&&prev.preferred===key?"From previous GEMM":"Alternative";
+            $(`description-${key}`).textContent=key==="reuse"?"Two output groups per K half. Copy their weight vectors four times, giving four token rows parallel work.":"Four output groups per K half. Copy their weight vectors twice, covering twice as many channels.";
+            $(`specs-${key}`).innerHTML=`<span>Tile <b>${shape(r.tile)}</b></span><span>Gr=${r.EM.G_r} · Gc=${r.EM.G_c} · T=${r.ES.T}</span><span>W/I/O layout orders <b>${r.orders.W}/${r.orders.I}/${r.orders.O}</b></span>`;
+            $(`schedule-${key}`).innerHTML=`<strong>${r.mappedPEs}/256 useful PE owners</strong><span>Input dot 0 uses token rows ${Array.from({length:rep},(_,i)=>i).join(", ")}${s.shape.M===1?"; only row 0 exists":""}.</span><span>${r.ES.T} dot group${r.ES.T===1?"":"s"}: column c's token row advances by ${r.ES.s_m}. Weights stay resident across those groups.</span>`;
         }
-        $("race-penalty").hidden = compared.saved === 0;
-        $("race-penalty").style.left = `${100 * compared.adaptive.cost.total_cycles / compared.maxCycles}%`;
-        $("race-penalty").style.width = `${100 * compared.saved / compared.maxCycles}%`;
-        $("race-clock").textContent = fmt(Math.floor(state.cycle));
-        $("race-scrub").value = Math.floor(state.cycle);
-        $("race-saved").textContent = results.adaptive.done && !results.fixed.done
-            ? `Switching finished. Fixed still needs ${fmt(Math.ceil(results.fixed.total - results.fixed.elapsed))} cycles.`
-            : compared.saved ? `${fmt(compared.saved)} cycles saved · ${compared.speedup.toFixed(2)}× faster`
-            : "Same mapping in this phase → same finish time";
+        $("commands").innerHTML=keys.map(key=>`<h3>${title(key)}</h3><pre>${JSON.stringify({ExecuteMapping:record(key).EM,ExecuteStreaming:record(key).ES},null,2)}</pre>`).join("");
     }
-    function raceTick(time) {
-        if (!state.racing) return;
-        if (raceTime) state.cycle = Math.min(compared.maxCycles, state.cycle + Math.min(200, time - raceTime) * compared.maxCycles / 5000);
-        raceTime = time; renderRace();
-        if (state.cycle >= compared.maxCycles) stopRace();
-        else raceRaf = requestAnimationFrame(raceTick);
+    const addressLabel=a=>a?`bank ${a.bank}, scalar rows ${a.rowBase}–${a.rowBase+15}`:"No valid logical vector";
+    function detail() {
+        const s=stage();$("pe-title").textContent=`PE (${state.row}, ${state.col}) · same location, two assignments`;
+        const a=model.at(record("reuse"),state.row,state.col,state.step),b=model.at(record("outputs"),state.row,state.col,state.step);
+        $("pe-change").textContent=`A holds ${s.weight}[${a.kStart}:${a.kStart+16}, ${a.n}] for token row ${a.m}. B holds ${s.weight}[${b.kStart}:${b.kStart+16}, ${b.n}] for token row ${b.m}. ${!a.valid&&b.valid?"This PE gains a valid token and computes a different output channel when remapped.":"Follow the weight identity and token assignment, not just the PE color."}`;
+        for(const key of keys) {
+            const r=record(key),o=model.at(r,state.row,state.col,state.step),addr=model.peAddresses(data,r,state.row,state.col,state.step);
+            const sampleOpen=$(`pe-${key}`).querySelector("details")?.open;
+            const inputName=s.id==="head"&&o.valid?`Z[767, ${o.kStart}:${o.kStart+16}] ≡ Z_last[0, ${o.kStart}:${o.kStart+16}]`:`${s.input}[${o.m}, ${o.kStart}:${o.kStart+16}]`;
+            const pair=(state.col+8)%16;
+            $(`pe-${key}`).innerHTML=`<h3>${title(key)}</h3><div class="rc-data-path"><div class="rc-weight"><small>STATIONARY / 16 LOCAL SLOTS</small><strong>${s.weight}[k=${o.kStart}…${o.kStart+15}, n=${o.n}]</strong><span>StaB ${addressLabel(addr.W)} → PE (${state.row}, ${state.col})</span></div><b>×</b><div class="rc-input"><small>STREAMED DOWN COLUMN ${state.col}</small><strong>${inputName}</strong><span>${o.valid?`StrB ${addressLabel(addr.I)} → top of column ${state.col} → PE row ${state.row}`:`Token row ${o.m} is outside M=${r.tile.M}; no useful input is supplied.`}</span></div><b>↓</b><div class="rc-output"><small>LOCAL DOT → BIRRD → ACCUMULATION</small><strong>${o.valid?`${s.output}[${o.m}, ${o.n}] += Σₖ ${s.input}[${o.m},k] × ${s.weight}[k,${o.n}]`:"No valid output contribution"}</strong><span>${o.valid?`Pair with PE (${state.row}, ${pair}) for the other K half. OB bank ${addr.O.bank}, scalar row ${addr.O.row}; later K tiles accumulate here.`:"The resident weights have no matching token in this mapping."}</span></div></div><details><summary>16 weight values and current MAC sample</summary><div class="rc-sample-slots">${Array.from({length:16},(_,i)=>`<span data-active="${o.active&&i===o.lane}"><small>k${o.kStart+i}</small>${model.weight(o.kStart+i,o.n)}</span>`).join("")}</div><p class="rc-note">${o.active?`Input ${model.input(o.m,o.k)} × weight ${model.weight(o.k,o.n)} at k=${o.k}; partial dot sum ${o.sum}.`:"No useful MAC at this teaching step."}</p></details>`;
+            $(`pe-${key}`).querySelector("details").open=!!sampleOpen;
+            layout(key,addr);
+        }
     }
-    function startRace() {
-        stop(); stopStory(); stopRace(); state.cycle = 0; state.racing = true;
-        $("race-play").textContent = "Pause timing"; renderRace(); raceRaf = requestAnimationFrame(raceTick);
+    function layout(key,addresses) {
+        const r=record(key),op=state.operand,l=data.layouts[r.layouts][op],a=addresses[op];
+        const rowBase=a?a.rowBase:0;
+        const vectors=new Map(l.vectors.filter(v=>v.rowBase===rowBase).map(v=>[v.bank,v]));
+        const logicalLabel=v=>!v?"empty":op==="W"?`k${v.logical[0]} / n${v.logical[1]}`:op==="I"?`m${v.logical[0]} / k${v.logical[1]}`:`m${v.logical[0]} / n${v.logical[1]}`;
+        const namedRanks={nL0:"n mod 16",nL1:"⌊n/16⌋",kL1:"K group",mL0:`m mod ${l.spec.a0}`,mL1:`⌊m/${l.spec.a0}⌋`,jL1:"K group",pL0:`m mod ${l.spec.a0}`,pL1:`⌊m/${l.spec.a0}⌋`,qL1:"N group"};
+        const footprints=data.layouts[r.layouts];
+        $(`layout-${key}`).innerHTML=`<h3>${title(key)} · ${op} order ${l.spec.order_id}</h3><p class="rc-layout-ranks">Outer → inner: <b>${l.ranks.map(rank=>namedRanks[rank]).join(" → ")}</b></p><p class="rc-note">Rank sizes (outer → inner): ${l.ranks.map(rank=>l.dims[rank]).join(" × ")}.<br>Tile storage W/I/O: ${["W","I","O"].map(x=>`${fmt(footprints[x].bytes)} B`).join(" / ")}</p><div class="rc-bank-window"><span>Scalar rows ${rowBase}–${rowBase+15} · 16 banks, wrapped into two display rows</span><div class="rc-banks">${Array.from({length:16},(_,bank)=>{const v=vectors.get(bank);return `<div data-selected="${!!a&&bank===a.bank}" title="Bank ${bank}, rows ${rowBase}–${rowBase+15}: ${logicalLabel(v)}"><small>b${bank}</small><strong>${logicalLabel(v)}</strong></div>`;}).join("")}</div></div><p class="rc-layout-address">${a?`Selected vector L=${a.linear} → bank ${a.bank}, base row ${a.rowBase}; current scalar row ${a.row}.`:"This selected PE has no valid vector in this buffer."}</p><p class="rc-note">${op==="W"?"k is a K-group index and n is an output column; each cell holds W[16k:16k+16, n].":op==="I"?"m is a token row and k is a K-group index; each cell holds I[m, 16k:16k+16].":"m is a token row and n is an N-group index; each cell holds O[m, 16n:16n+16]."}</p>`;
     }
-    function causeChain() {
-        const a = compared.fixed, b = compared.adaptive;
-        const blocks = state.phase === "decode"
-            ? [["Useful PE owners", a.mappedPEs, b.mappedPEs], ["Outputs per mapping", a.tile.N, b.tile.N], ["Mapping invocations", a.cost.mapping_count, b.cost.mapping_count]]
-            : [["Tokens per weight tile", a.tile.M, b.tile.M], ["Weight traffic (MiB)", a.cost.bytes_w / 1048576, b.cost.bytes_w / 1048576], ["Predicted cycles saved", "", compared.saved]];
-        $("cause-chain").innerHTML = blocks.map(([label, fixed, adaptive]) => `<div><span>${label}</span><strong>${fixed === "" ? "" : `${fmt(fixed)} <b>→</b> `}<em>${fmt(adaptive)}</em></strong></div>`).join('<span class="rc-cause-arrow" aria-hidden="true">→</span>');
+    function render(full=false) {
+        keys.forEach(draw);$("scrub").value=Math.floor(state.step);$("step-label").textContent=`${Math.floor(state.step)} / ${model.end(record("reuse"))}`;
+        if(full||lastInteger!==Math.floor(state.step)){detail();lastInteger=Math.floor(state.step);}
     }
-    function phase(phase, fromStory = false) {
-        stop(); stopRace(); if (!fromStory) stopStory();
-        state.phase = phase; state.step = 15;
-        compared = model.comparison(data, phase, state.baseline); state.cycle = compared.maxCycles;
-        $("prefill").setAttribute("aria-pressed", phase === "prefill");
-        $("decode").setAttribute("aria-pressed", phase === "decode");
-        $("fixed-path").textContent = `${letter(state.baseline)} → ${letter(state.baseline)}`;
-        $("shape").textContent = `Qwen3 q_proj · ${phase === "prefill" ? "768" : "1"} × 1,024 × 2,048 (M × K × N)`;
-        $("result").dataset.equal = compared.saved === 0;
-        $("gain").textContent = compared.saved ? `${(100 * compared.fractionSaved).toFixed(1)}%` : "Same";
-        $("gain-label").textContent = compared.saved ? `fewer predicted ${phase} cycles` : `predicted ${phase} time`;
-        $("result-title").textContent = compared.saved
-            ? phase === "decode" ? "Switch A → B when decode begins." : "Choose A before processing the prompt."
-            : phase === "prefill" ? "A fits prefill. Decode changes the problem." : "B fits decode. Prefill needs more weight reuse.";
-        $("takeaway").textContent = compared.saved
-            ? phase === "decode" ? "Replacing unused weight replicas with different output weights gives 64 more PEs useful work. Twice the output coverage means half as many mappings."
-                : "Use each weight tile for twice as many tokens. Halving weight traffic saves cycles even though both arrays already have 256 useful PE owners."
-            : phase === "prefill" ? "Both policies use A here. Advance to one-token decode: the fixed array keeps redundant replicas, while FEATHER remaps them."
-                : "Both policies use B here. Keeping B for the prompt doubles weight traffic; switching uses A during prefill.";
-        $("next-phase").textContent = phase === "prefill" ? "Advance to decode →" : "← See prefill";
-        $("array-title").textContent = phase === "decode" ? "Give unused token replicas a useful job." : "Reuse every loaded weight across more tokens.";
-        $("scrub").max = model.end(record("adaptive"));
-        $("race-scrub").max = compared.maxCycles;
-        for (const panel of panels) metrics(panel);
-        causeChain(); components(); renderRace(); render(true);
-    }
-    function performance() {
-        const pre = data.records.prefill, dec = data.records.decode;
-        const rows = [
-            ["Keep A for both phases", pre.reuse, dec.reuse, false],
-            ["Keep B for both phases", pre.outputs, dec.outputs, false],
-            ["Reconfigure: A → B", pre.reuse, dec.outputs, true],
-        ];
-        $("performance-rows").innerHTML = rows.map(([name, a, b, adaptive]) => {
-            return `<tr${adaptive ? ' class="rc-adaptive"' : ""}><th scope="row">${name}</th>${[a, b].map((r, i) => {
-                const maximum = i ? dec.reuse.cost.total_cycles : pre.outputs.cost.total_cycles;
-                return `<td>${fmt(r.cost.total_cycles)}<div class="rc-costbar"><i style="width:${100 * r.cost.total_cycles / maximum}%"></i></div><small>${fmt(r.cost.mapping_count)} mapping invocations</small></td>`;
-            }).join("")}</tr>`;
-        }).join("");
-        const decodeSaving = 100 * (1 - dec.outputs.cost.total_cycles / dec.reuse.cost.total_cycles);
-        const prefillSaving = 100 * (1 - pre.reuse.cost.total_cycles / pre.outputs.cost.total_cycles);
-        $("savings").textContent = `Switching avoids the slower choice in each phase: ${prefillSaving.toFixed(1)}% fewer prefill cycles than keeping B, and ${decodeSaving.toFixed(1)}% fewer decode cycles than keeping A. Bar lengths compare policies within each phase; the two phases have different amounts of work.`;
-    }
-    function components() {
-        const fields = [["load_w_cycles", "Weight transfer"], ["load_in_cycles", "Input transfer"],
-            ["weight_preload_cycles", "PE weight preload"], ["stream_cycles", "Streaming"],
-            ["gap_cycles", "Inter-dot gaps"], ["drain_cycles", "Pipeline drain"], ["prime_cycles", "Prime"],
-            ["dispatch_cycles", "Instruction dispatch"], ["store_cycles", "Output store"], ["total_cycles", "Total"]];
-        $("components").innerHTML = fields.map(([key, label]) => `<tr><th scope="row">${label}</th>${panels.map(k => `<td>${fmt(record(k).cost[key])}</td>`).join("")}</tr>`).join("");
-    }
-    function selectPE(key, row, col) {
-        state.panel = key; state.row = row; state.col = col;
-        $("inspect-panel").value = key; $("inspector").open = true; $("inspect-row").value = row; $("inspect-col").value = col;
-        render(true);
-    }
-    for (const axis of ["row", "col"]) {
-        for (let i = 0; i < 16; i++) $("inspect-" + axis).add(new Option(String(i), i));
-        $("inspect-" + axis).value = state[axis];
-        $("inspect-" + axis).addEventListener("change", e => { state[axis] = Number(e.target.value); render(true); });
-    }
-    $("inspect-panel").addEventListener("change", e => { state.panel = e.target.value; render(true); });
-    $("prefill").addEventListener("click", () => phase("prefill"));
-    $("decode").addEventListener("click", () => phase("decode"));
-    $("play").addEventListener("click", () => {
-        if (state.playing) { stop(); return; }
-        stopRace(); stopStory();
-        if (state.step >= model.end(record("adaptive"))) state.step = 0;
-        state.playing = true; $("play").textContent = "Pause inputs"; raf = requestAnimationFrame(tick);
-    });
-    $("reset").addEventListener("click", () => { stop(); stopRace(); stopStory(); state.step = 0; render(true); });
-    $("step").addEventListener("click", () => { stop(); stopRace(); stopStory(); state.step = Math.min(model.end(record("adaptive")), Math.floor(state.step) + 1); render(true); });
-    $("scrub").addEventListener("input", e => { stop(); stopRace(); stopStory(); state.step = Number(e.target.value); render(true); });
-    $("speed").addEventListener("change", e => { state.speed = Number(e.target.value); });
-    for (const key of panels) {
-        const canvas = $(`canvas-${key}`);
-        canvas.addEventListener("click", e => {
-            const rect = canvas.getBoundingClientRect();
-            const col = Math.floor(((e.clientX - rect.left) * geometry.w / rect.width - geometry.x) / geometry.pitch);
-            const row = Math.floor(((e.clientY - rect.top) * geometry.h / rect.height - geometry.y) / geometry.pitch);
-            if (row >= 0 && row < 16 && col >= 0 && col < 16) selectPE(key, row, col);
-        });
-        canvas.addEventListener("keydown", e => {
-            const move = {ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1]}[e.key];
-            if (move) { e.preventDefault(); selectPE(key, Math.max(0, Math.min(15, state.row + move[0])), Math.max(0, Math.min(15, state.col + move[1]))); }
-        });
-        new ResizeObserver(() => render(true)).observe(canvas);
-    }
-    new MutationObserver(() => render(true)).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
-    document.addEventListener("visibilitychange", () => { if (document.hidden) { stop(); stopRace(); stopStory(); } });
-    // No autoplay. A reduced-motion preference keeps deliberate playback
-    // discrete by removing fractional packet movement between steps.
-    reducedMotion.addEventListener("change", () => { stop(); stopRace(); stopStory(); render(true); });
-    $("baseline").addEventListener("change", e => { state.baseline = e.target.value; phase(state.phase); });
-    $("next-phase").addEventListener("click", () => phase(state.phase === "decode" ? "prefill" : "decode"));
-    $("race-play").addEventListener("click", () => state.racing ? stopRace() : startRace());
-    $("race-scrub").addEventListener("input", e => { stop(); stopRace(); stopStory(); state.cycle = Number(e.target.value); renderRace(); });
-    $("story").addEventListener("click", () => {
-        if (state.story) { stopStory(); return; }
-        stop(); stopRace(); stopStory(); state.story = true;
-        $("story").textContent = "Pause phase replay";
-        phase("prefill", true);
-        storyTimer = setTimeout(() => { phase("decode", true); startRace(); }, 2400);
-    });
-    performance(); phase("decode");
-    window.ReconfigurableCompute = {inspect: () => ({...state, savedCycles: compared.saved, recoveredPEs: compared.recovered}), selectPhase: phase};
+    function stop(){state.playing=false;cancelAnimationFrame(raf);lastTime=0;$("play").textContent="Stream inputs";}
+    function tick(t){if(!state.playing)return;if(lastTime)state.step=Math.min(model.end(record("reuse")),state.step+Math.min(.2,(t-lastTime)/1000)*state.speed);lastTime=t;render();if(state.step>=model.end(record("reuse")))stop();else raf=requestAnimationFrame(tick);}
+    function selectStage(id){stop();state.stage=id;state.step=15;state.mode="weights";$("weights").setAttribute("aria-pressed","true");$("scrub").max=model.end(record("reuse"));context();render(true);}
+    function choose(row,col){state.row=row;state.col=col;$("row").value=row;$("col").value=col;render(true);}
+    $("next-stage").addEventListener("click",()=>selectStage(state.stage==="down"?"head":state.stage==="head"?"decode":"down"));
+    for(const id of Object.keys(stages))$(`stage-${id}`).addEventListener("click",()=>selectStage(id));
+    for(const field of ["row","col"]){for(let i=0;i<16;i++)$(field).add(new Option(i,i));$(field).value=state[field];$(field).addEventListener("change",()=>choose(Number($("row").value),Number($("col").value)));}
+    $("operand").addEventListener("change",e=>{state.operand=e.target.value;detail();});
+    $("weights").addEventListener("click",()=>{stop();state.mode="weights";$("weights").setAttribute("aria-pressed","true");render();});
+    $("play").addEventListener("click",()=>{if(state.playing){stop();return;}state.mode="stream";$("weights").setAttribute("aria-pressed","false");if(state.step>=model.end(record("reuse")))state.step=0;state.playing=true;$("play").textContent="Pause inputs";raf=requestAnimationFrame(tick);});
+    $("step").addEventListener("click",()=>{stop();state.mode="stream";$("weights").setAttribute("aria-pressed","false");state.step=Math.min(model.end(record("reuse")),Math.floor(state.step)+1);render(true);});
+    $("reset").addEventListener("click",()=>{stop();state.step=0;render(true);});
+    $("speed").addEventListener("change",e=>{state.speed=Number(e.target.value);});
+    $("scrub").addEventListener("input",e=>{stop();state.step=Number(e.target.value);state.mode="stream";$("weights").setAttribute("aria-pressed","false");render(true);});
+    for(const key of keys){const canvas=$(`canvas-${key}`);canvas.addEventListener("click",e=>{const rect=canvas.getBoundingClientRect(),col=Math.floor(((e.clientX-rect.left)*680/rect.width-geometry.x)/32),row=Math.floor(((e.clientY-rect.top)*680/rect.height-geometry.y)/32);if(row>=0&&row<16&&col>=0&&col<16)choose(row,col);});canvas.addEventListener("keydown",e=>{const move={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];if(move){e.preventDefault();choose(Math.max(0,Math.min(15,state.row+move[0])),Math.max(0,Math.min(15,state.col+move[1])));}});new ResizeObserver(()=>render()).observe(canvas);}
+    new MutationObserver(()=>render()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+    document.addEventListener("visibilitychange",()=>{if(document.hidden)stop();});reduced.addEventListener("change",()=>{stop();render();});
+    selectStage("down");window.ReconfigurableCompute={inspect:()=>({...state}),selectStage};
 })();

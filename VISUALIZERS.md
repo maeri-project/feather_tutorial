@@ -21,10 +21,11 @@ The left sidebar offers three complementary pages:
   packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
-- `RECONFIGURABLE_COMPUTE.html` illustrates Qwen3 prefill/decode weight placement
-  and column input streams on the same 16×16 hardware. It compares two fixed
-  spatial mappings with changing mappings between phases, using compiler-validated
-  descriptors and serialized program predictions. See
+- `RECONFIGURABLE_COMPUTE.html` follows the final prefill MLP into the language-model
+  head, then the next decode query projection. It explains why the preceding
+  workload prefers a mapping and why the next workload may change it. Exact
+  tensor shapes, compiler candidate selection, PE-resident vectors, input streams,
+  and bank/scalar-row layouts are visible together. See
   [RECONFIGURABLE_COMPUTE.md](RECONFIGURABLE_COMPUTE.md) for scope and reproduction.
 - `FEATHER_VS_SYSTOLIC.html` compares equal-work 16×16 arrays on connected
   irregular GEMM chains, with simultaneous numerical animation, selectable

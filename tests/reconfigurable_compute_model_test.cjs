@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 const data = require("../script/reconfigurable_compute_data.js");
 const model = require("../script/reconfigurable_compute_model.js");
 let macs = 0;
-for (const [phase, records] of Object.entries(data.records)) {
+for (const stage of data.stages) {
+    const phase=stage.id, records=stage.records;
     for (const [policy, record] of Object.entries(records)) {
         const seen = new Set(), sums = Array(record.tile.M * record.tile.N).fill(0);
         let count = 0;
@@ -43,35 +44,34 @@ for (const [phase, records] of Object.entries(data.records)) {
         macs += count;
     }
 }
-const {prefill: p, decode: d} = data.records;
-assert.equal(p.reuse.mappedPEs, 256); assert.equal(p.outputs.mappedPEs, 256);
-assert.equal(d.reuse.mappedPEs, 64); assert.equal(d.outputs.mappedPEs, 128);
-assert.equal(p.outputs.cost.bytes_w, 2 * p.reuse.cost.bytes_w);
-assert.equal(d.outputs.cost.bytes_w, d.reuse.cost.bytes_w);
-assert.equal(d.reuse.cost.mapping_count, 2 * d.outputs.cost.mapping_count);
-assert.ok(p.reuse.cost.total_cycles < p.outputs.cost.total_cycles);
-assert.ok(d.outputs.cost.total_cycles < d.reuse.cost.total_cycles);
-console.log(`PASS: four mappings, ${macs.toLocaleString()} unique MACs, independent GEMM outputs, forwarding and cost accounting.`);
-
-for (const phase of ["prefill", "decode"]) for (const baseline of ["reuse", "outputs"]) {
-    const c = model.comparison(data, phase, baseline);
-    const matching = (phase === "prefill" && baseline === "reuse") || (phase === "decode" && baseline === "outputs");
-    assert.equal(c.saved === 0, matching, "A matching fixed policy ties switching");
-    assert.equal(c.recovered, phase === "decode" && baseline === "reuse" ? 64 : 0);
-    assert.equal(c.saved, matching ? 0 : phase === "prefill" ? 1572864 : 373056);
-    assert.equal(c.fixed.shape.M * c.fixed.shape.K * c.fixed.shape.N,
-        c.adaptive.shape.M * c.adaptive.shape.K * c.adaptive.shape.N, "Race compares identical work");
-    const atStart = model.finishTimes(c, -1);
-    assert.equal(atStart.fixed.elapsed, 0); assert.equal(atStart.adaptive.elapsed, 0);
-    const atFinish = model.finishTimes(c, c.adaptive.cost.total_cycles);
-    assert.equal(atFinish.adaptive.done, true);
-    assert.equal(atFinish.fixed.done, matching);
-    assert.equal(atFinish.fixed.total - atFinish.fixed.elapsed, c.saved);
-    assert.equal(atFinish.adaptive.width, c.adaptive.cost.total_cycles / c.maxCycles,
-        "Finish bars share a clock and scale; the faster bar is shorter");
-    const atEnd = model.finishTimes(c, c.maxCycles + 1);
-    assert.ok(atEnd.fixed.done && atEnd.adaptive.done);
-    assert.equal(atEnd.fixed.elapsed, c.fixed.cost.total_cycles);
-    assert.equal(atEnd.adaptive.elapsed, c.adaptive.cost.total_cycles);
+for(const stage of data.stages) {
+    const chosen=stage.records[stage.preferred];
+    assert.equal(chosen.cost.total_cycles,stage.search.cyclesPerProgram*stage.programs);
+    assert.equal(stage.programN*stage.programs,stage.shape.N,"N shards exactly cover the full operation");
+    assert.ok(Object.values(stage.records).every(r=>r.cost.total_cycles>=chosen.cost.total_cycles));
+    assert.deepEqual([chosen.tile.M,chosen.tile.K,chosen.tile.N],stage.search.tile);
 }
-console.log("PASS: fixed-versus-switching comparisons, equal-work accounting, recovered PEs, common finish-time scale, and ties.");
+assert.equal(data.stages[0].preferred,"reuse");
+assert.equal(data.stages[1].previous,"down");
+assert.equal(data.stages[1].preferred,"outputs");
+assert.equal(data.stages[1].rowOffset,767);
+assert.equal(data.stages[2].previous,"head");
+assert.equal(data.stages[2].preferred,"outputs");
+let addresses=0;
+for(const layouts of Object.values(data.layouts)) for(const l of Object.values(layouts)) {
+    const unique=new Set();
+    for(const v of l.vectors) for(let lane=0;lane<16;lane++) {
+        const a=model.address(l,...v.logical,lane);
+        assert.deepEqual(a,{linear:v.linear,bank:v.bank,rowBase:v.rowBase,row:v.rowBase+lane},"JS agrees with exported Python layout for every scalar");
+        const key=a.bank+"/"+a.row;assert.ok(!unique.has(key));unique.add(key);addresses++;
+        assert.ok(a.row < (l.spec.operand==="W"?128:64),"Fits physical buffer depth");
+    }
+}
+const head=data.stages[1];
+const a=model.at(head.records.reuse,0,2,15),b=model.at(head.records.outputs,0,2,15);
+assert.deepEqual([a.m,a.n,a.valid],[1,0,false]);
+assert.deepEqual([b.m,b.n,b.valid],[0,32,true]);
+const aa=model.peAddresses(data,head.records.reuse,0,2,15),bb=model.peAddresses(data,head.records.outputs,0,2,15);
+assert.equal(aa.I,null);assert.equal(aa.O,null);
+assert.equal(bb.W.bank,2);assert.equal(bb.I.bank,0);assert.equal(bb.O.bank,2);
+console.log(`PASS: nine mappings, ${macs.toLocaleString()} exact tile MACs, compiler winners, graph lineage and ${addresses.toLocaleString()} Python-checked scalar addresses.`);
