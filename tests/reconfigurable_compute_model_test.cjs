@@ -52,3 +52,26 @@ assert.equal(d.reuse.cost.mapping_count, 2 * d.outputs.cost.mapping_count);
 assert.ok(p.reuse.cost.total_cycles < p.outputs.cost.total_cycles);
 assert.ok(d.outputs.cost.total_cycles < d.reuse.cost.total_cycles);
 console.log(`PASS: four mappings, ${macs.toLocaleString()} unique MACs, independent GEMM outputs, forwarding and cost accounting.`);
+
+for (const phase of ["prefill", "decode"]) for (const baseline of ["reuse", "outputs"]) {
+    const c = model.comparison(data, phase, baseline);
+    const matching = (phase === "prefill" && baseline === "reuse") || (phase === "decode" && baseline === "outputs");
+    assert.equal(c.saved === 0, matching, "A matching fixed policy ties switching");
+    assert.equal(c.recovered, phase === "decode" && baseline === "reuse" ? 64 : 0);
+    assert.equal(c.saved, matching ? 0 : phase === "prefill" ? 1572864 : 373056);
+    assert.equal(c.fixed.shape.M * c.fixed.shape.K * c.fixed.shape.N,
+        c.adaptive.shape.M * c.adaptive.shape.K * c.adaptive.shape.N, "Race compares identical work");
+    const atStart = model.finishTimes(c, -1);
+    assert.equal(atStart.fixed.elapsed, 0); assert.equal(atStart.adaptive.elapsed, 0);
+    const atFinish = model.finishTimes(c, c.adaptive.cost.total_cycles);
+    assert.equal(atFinish.adaptive.done, true);
+    assert.equal(atFinish.fixed.done, matching);
+    assert.equal(atFinish.fixed.total - atFinish.fixed.elapsed, c.saved);
+    assert.equal(atFinish.adaptive.width, c.adaptive.cost.total_cycles / c.maxCycles,
+        "Finish bars share a clock and scale; the faster bar is shorter");
+    const atEnd = model.finishTimes(c, c.maxCycles + 1);
+    assert.ok(atEnd.fixed.done && atEnd.adaptive.done);
+    assert.equal(atEnd.fixed.elapsed, c.fixed.cost.total_cycles);
+    assert.equal(atEnd.adaptive.elapsed, c.adaptive.cost.total_cycles);
+}
+console.log("PASS: fixed-versus-switching comparisons, equal-work accounting, recovered PEs, common finish-time scale, and ties.");

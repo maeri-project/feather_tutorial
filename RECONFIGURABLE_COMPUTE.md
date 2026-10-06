@@ -17,6 +17,22 @@ supported examples, not an exhaustive proof about every fixed mapping.
 Reconfiguration selects A for prefill and B for decode: 4.7% fewer cycles than
 B in prefill and 42.4% fewer than A in decode (1.05× / 1.74×).
 
+The page leads with **keep one mapping versus switch with the workload**.
+Selecting a fixed A or B policy preserves it across both phase tabs. The
+switching policy selects A for prefill and B for decode. Matched cases show
+equal time; changing the fixed baseline does not silently change the workload.
+A guided replay begins at prefill, advances to decode, then replays the
+finish-time comparison. Purple PE outlines mark the 64 additional decode
+owners with useful work after switching from A to B. The visible causal chain
+connects PE ownership to output coverage, mapping count, and program cycles.
+
+Finish-time bars use a shared cycle scale and exported program totals. They
+show elapsed modeled time, not inferred output completion or a cycle-accurate
+execution waveform. At 506,178 decode cycles the switching policy is finished
+while fixed A still needs 373,056 cycles. Scrubbing is reversible. The separate
+PE input-animation clock never runs simultaneously with the finish-time clock.
+Neither animation autoplays; manual phase changes cancel the guided replay.
+
 Predictions use `serialized_minisa_v2` including dispatch, operand transfers,
 PE preload, streaming, gaps/drain, and stores. Operand layouts are assumed
 already packed; conversion, memory stalls, host launch, and non-GEMM operations
@@ -54,7 +70,11 @@ limits, and unique useful tile MAC ownership. It stores source hashes, model
 revision, hardware, mappings and complete cycle components in the data asset.
 The independent JS test exhaustively verifies all four animated tiles against
 direct GEMM, checks column forwarding and stationary weights, and reconciles
-the costs. Browser tests cover phase changes, playback, high-DPI hit targets,
-keyboard inspection, theme changes, mobile overflow, and reduced motion.
+the costs. It also verifies equal-work comparisons, matching-policy ties,
+recovered PEs, and finish-time endpoints on the shared scale. Browser tests
+cover both fixed policies, phase replay and interruption, reversible timing,
+clock isolation, high-DPI hit targets, keyboard inspection, theme changes,
+mobile overflow, and reduced motion. Numerical inspection, detailed cost
+tables, and evidence are collapsed by default so the performance result leads.
 
 The page is static, works locally, and needs no compiler or API at runtime.

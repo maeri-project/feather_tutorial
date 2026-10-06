@@ -29,7 +29,29 @@
     function frame(record, step) {
         return Array.from({length: SIZE * SIZE}, (_, i) => at(record, Math.floor(i / SIZE), i % SIZE, step));
     }
-    const api = {SIZE, input, weight, owner, at, end, frame};
+    function comparison(data, phase, baseline) {
+        if (!data.records[phase] || !data.policies[baseline]) throw new Error("Unknown phase or fixed mapping");
+        const adaptiveKey = phase === "prefill" ? "reuse" : "outputs";
+        const fixed = data.records[phase][baseline], adaptive = data.records[phase][adaptiveKey];
+        const saved = fixed.cost.total_cycles - adaptive.cost.total_cycles;
+        const fixedFrame = frame(fixed, 15);
+        const recovered = frame(adaptive, 15).filter((cell, i) => cell.valid && !fixedFrame[i].valid).length;
+        return {fixed, adaptive, adaptiveKey, saved, recovered,
+            fractionSaved: saved / fixed.cost.total_cycles,
+            speedup: fixed.cost.total_cycles / adaptive.cost.total_cycles,
+            maxCycles: Math.max(fixed.cost.total_cycles, adaptive.cost.total_cycles)};
+    }
+    function finishTimes(comparison, cycle) {
+        // Elapsed time bars use exported whole-program totals, not a guess at
+        // how many outputs have completed or an animation-derived cycle count.
+        const elapsed = Math.max(0, Math.min(comparison.maxCycles, cycle));
+        return Object.fromEntries(["fixed", "adaptive"].map(panel => {
+            const total = comparison[panel].cost.total_cycles;
+            return [panel, {elapsed: Math.min(elapsed, total), total,
+                done: elapsed >= total, width: Math.min(elapsed, total) / comparison.maxCycles}];
+        }));
+    }
+    const api = {SIZE, input, weight, owner, at, end, frame, comparison, finishTimes};
     if (typeof module === "object" && module.exports) module.exports = api;
     root.ReconfigurableComputeModel = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
