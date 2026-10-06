@@ -76,8 +76,10 @@ arrives at row r on teaching step dot×16+lane+r. Weights persist across input
 dots; BIRRD combines the two K groups and later tiles accumulate the remaining
 K range. Playback omits setup and pipeline gaps and is not the program clock.
 Nothing autoplays. Keyboard and mouse select the same PE in both diagrams.
-Numerical samples stay expandable; workload, dataflow, selected-PE identities,
-physical layout and candidate rationale remain visible.
+The default view keeps the inference flow, one-line mapping rationale, tensor
+shapes, PE assignments and physical layouts visible. Layer setup, candidate
+comparisons, address calculations, commands and numerical samples expand on
+demand. The diagrams use a compact color legend in place of explanatory prose.
 
 ## Reproduce and verify
 
