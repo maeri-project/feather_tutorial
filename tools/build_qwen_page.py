@@ -2,12 +2,14 @@
 """Package the generated FP16 explorer in the tutorial website's native shell.
 
 This is a build-time importer, not a runtime dependency on FEATHER_GEMM. The
-generated page embeds its compiler metadata and JavaScript, and shares only the
-tutorial's styles.css and script.js. Never use the output as the input.
+generated page combines upgraded ACT mappings with recorded prefill cases,
+embeds its compiler metadata and JavaScript, and shares only the tutorial's
+styles.css and script.js. Never use the output as the input.
 """
 
 import argparse
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +17,264 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '<meta name="generator" content="feather-tutorial-qwen-packager-v1">'
 SCOPE = ".qwen-app"
+
+
+def prepare_tutorial_catalog(source):
+    """Package upgraded ACT programs and recorded prefill cases for the tutorial.
+
+    The standalone source still carries its historical workbench. Remove that
+    workbench and its data here while preserving each retained packed program.
+    """
+    payload = re.search(r'(<script id="case-data"[^>]*>)(.*?)(</script>)', source, re.S)
+    data = json.loads(payload[2])
+    if "act_cases" not in data:
+        return source
+    bundle = data["act_cases"]
+    upgraded_groups = ("optimized_full", "optimized_six")
+    upgraded = [case for case in bundle["cases"] if case.get("catalog_group") in upgraded_groups]
+    prefill = [case for case in bundle["cases"]
+               if case["phase"] == "prefill" and case.get("catalog_group") not in upgraded_groups]
+    if not upgraded:
+        raise ValueError("The tutorial requires upgraded ACT mappings")
+    # Preserve the upgraded default while restoring prefill's own programs,
+    # hardware profiles and ISA widths without relabeling them as StaB128.
+    bundle["cases"] = upgraded + prefill
+    design_ids = {variant["design_id"] for case in bundle["cases"]
+                  for variant in case["effective_designs"]}
+    bundle["designs"] = [design for design in bundle["designs"] if design["id"] in design_ids]
+    bundle.pop("comparisons", None)
+    bundle["totals"] = {
+        "cases": len(bundle["cases"]), "original_cases": len(prefill),
+        "optimized_cases": len(upgraded),
+        **{f"{phase}_cases": sum(case["phase"] == phase for case in bundle["cases"])
+           for phase in ("prefill", "decode")},
+        "instructions": sum(case["program"]["num_instructions"] for case in bundle["cases"]),
+        "current_predicted_cycles": sum(case["schedule_cost"]["total_cycles"] for case in bundle["cases"]),
+        "recorded_predicted_cycles": sum(case["recorded_schedule_cost"]["total_cycles"] for case in bundle["cases"]),
+    }
+    bundle["assumptions"] = [note.replace("Original ACT cases", "Recorded prefill cases")
+                             for note in bundle["assumptions"]]
+    first = bundle["cases"][0]
+    bundle["hardware"] = first["hardware"]
+    data = {"schema_version": data["schema_version"], "hardware": first["hardware"],
+            "isa": first["isa"], "birrd": data["birrd"], "act_cases": bundle}
+    encoded = json.dumps(data, separators=(",", ":")).replace("<", "\\u003c")
+    source = source[:payload.start(2)] + encoded + source[payload.end(2):]
+
+    def replace_one(text, pattern, replacement):
+        result, count = re.subn(pattern, lambda _: replacement, text, flags=re.S)
+        if count != 1:
+            raise ValueError(f"Standalone explorer structure changed: {pattern}")
+        return result
+
+    source = replace_one(source, r'<div id="full-operator-legacy">.*?(?=<div id="full-operator-act")', "")
+    # The full-workload view already contains the same animation and exact
+    # inspector, plus matrix previews and tile traversal. Mount only that view.
+    source = replace_one(source,
+        r'    <section id="act-workspace".*?(?=    <div class="section-heading" id="full-operator-examples">)', '')
+    source = replace_one(source,
+        r'<div class="section-heading" id="full-operator-examples"><div>.*?</div><span id="full-workload-count" class="pill"></span></div>',
+        '<div class="section-heading" id="full-operator-examples"><span id="full-workload-count" class="pill"></span></div>')
+    source = replace_one(source, r'    <p id="full-workload-context"[^>]*></p>\n', '')
+    source = replace_one(source, r'    <footer>.*?</footer>\n', '')
+    source = source.replace('<div id="full-operator-act" hidden>', '<div id="full-operator-act">')
+    source = source.replace(', #full-operator-legacy[hidden]', '').replace(', #full-operator-legacy', '')
+    removed_scripts = (
+        "Canvas helpers and BIRRD topology adapted", "Whole-tile numerical teaching model",
+        "Unified FEATHER view:", "Concurrent row-skewed teaching pipeline.",
+        "Mapper-driven adapter for the tutorial canvas helpers.",
+    )
+
+    def adapt_script(match):
+        script = match[0]
+        if any(marker in script[:180] for marker in removed_scripts):
+            return ""
+        if "Executable MINISA programs" in script[:100]:
+            script = replace_one(script, r'    function generate\(.*?(?=    function hex\()', "")
+            return script.replace("{assemble, decode, generate, validate, hex}", "{assemble, decode, hex}")
+        if "Numerical teaching frames for the unified" in script[:100]:
+            script = replace_one(script, r'    function build\(.*?(?=    const api =)', "")
+            return script.replace("{build, sample, runNetwork, toFP16, fromFP16}", "{sample, runNetwork, toFP16, fromFP16}")
+        if "Exact ACT bundle explorer" in script[:100]:
+            script = replace_one(script, r'          <section id="act-optimization-summary".*?</section>\n', '')
+            script = replace_one(script, r'        if \(bundle\.comparisons\?\.length\) \{.*?(?=        \$\("act-case"\)\.addEventListener)', '')
+            script = replace_one(script, r'<label>ACT test case <select id="act-case"></select></label>', '')
+            script = replace_one(script, r'            <button id="act-animate-example".*?</button>\n', '')
+            script = script.replace('scopedId("act-case")', 'scopedId("act-case-summary")')
+            script = script.replace('$("act-case").value = item.id; ', '')
+            script = replace_one(script,
+                r'        const groupLabels =.*?(?=            const row = document.createElement\("tr"\), name =)',
+                '        for (const item of bundle.cases) {\n')
+            script = script.replace('$("act-case").append(...groups.values()); ', '')
+            script = replace_one(script,
+                r'        \$\("act-case"\)\.addEventListener.*?(?=        \$\("act-design"\)\.addEventListener)', '')
+            extra_sections = {}
+            for section, title in (
+                ("catalog", "All ACT cases: exact shapes and mapping choices"),
+                ("provenance", "Provenance and model boundaries"),
+            ):
+                pattern = rf'<details><summary>{re.escape(title)}</summary>(.*?)</details>'
+                match = re.search(pattern, script, re.S)
+                if match is None:
+                    raise ValueError(f"Standalone explorer is missing the ACT {section} details")
+                extra_sections[section] = (pattern,
+                    f'<section class="act-mapping-section" aria-labelledby="act-{section}-title">'
+                    f'<h3 id="act-{section}-title">{title}</h3>{match[1]}</section>')
+            # Keep all optional reference panels together after the mapping,
+            # with the case catalog immediately following the complete trace.
+            script = replace_one(script, extra_sections["catalog"][0], '')
+            script = replace_one(script, extra_sections["provenance"][0],
+                                 '\n          '.join(markup for _, markup in extra_sections.values()))
+            for section in ("layout", "trace", "catalog", "provenance"):
+                pattern = (rf'<section class="act-mapping-section" aria-labelledby="act-{section}-title">'
+                           rf'<h3 id="act-{section}-title">(.*?)</h3>(.*?)</section>')
+                match = re.search(pattern, script, re.S)
+                if match is None:
+                    raise ValueError(f"Standalone explorer is missing the ACT {section} section")
+                title, contents = match.groups()
+                script = replace_one(script, pattern,
+                    f'<section class="act-mapping-section act-collapsible" aria-labelledby="act-{section}-title">'
+                    f'<h3 id="act-{section}-title"><button id="act-{section}-toggle" type="button" '
+                    f'class="act-section-toggle" aria-expanded="false" aria-controls="act-{section}-content">'
+                    f'<span class="act-section-indicator" aria-hidden="true">▸</span>{title}</button></h3>'
+                    f'<div id="act-{section}-content" class="act-section-content" hidden>{contents}</div></section>')
+            script = replace_one(script, r'        const currentCase =', '''        function setSectionExpanded(section, expanded) {
+            $(`act-${section}-content`).hidden = !expanded;
+            $(`act-${section}-toggle`).setAttribute("aria-expanded", String(expanded));
+        }
+        for (const section of ["layout", "trace", "catalog", "provenance"]) {
+            $(`act-${section}-toggle`).addEventListener("click", () => {
+                setSectionExpanded(section, $(`act-${section}-content`).hidden);
+            });
+        }
+
+        const currentCase =''')
+            script = script.replace('() => { jumpToTile(); $("act-trace-title").scrollIntoView',
+                                    '() => { setSectionExpanded("trace", true); jumpToTile(); $("act-trace-title").scrollIntoView')
+            script = script.replace('return {selectCase, selectTile, state, hostId, prefix};',
+                                    'return {selectCase, selectTile, setSectionExpanded, state, hostId, prefix};')
+            script = replace_one(script, r'    const initial = document.getElementById\("act-workspace"\).*?global.FeatherACTView = Object.assign\(initial \|\| \{\}, \{create\}\);',
+                                 '    global.FeatherACTView = {create};')
+        if "ACT teaching presentation:" in script[:100]:
+            script = replace_one(script, r'          <p class="act-teach-note">Continuous teaching stream:.*?</p>', '')
+            script = script.replace('Click a moving packet or buffer cell for its exact source identity.', '')
+            for detail, title in (
+                ("source", "Calculation preview: selected source → PE → BIRRD"),
+                ("output", "Calculation preview: physical destination and accumulation"),
+            ):
+                original = f'<h4>{title}</h4><pre id="${{prefix}}-{detail}"></pre>'
+                script = replace_one(script, re.escape(original),
+                    f'<h4><button id="${{prefix}}-{detail}-toggle" type="button" '
+                    f'class="act-section-toggle" aria-expanded="false" aria-controls="${{prefix}}-{detail}">'
+                    f'<span class="act-section-indicator" aria-hidden="true">▸</span>{title}</button></h4>'
+                    f'<pre id="${{prefix}}-{detail}" hidden></pre>')
+            script = script.replace('<p class="act-teach-note">These calculation previews',
+                                    '<p id="${prefix}-readout-note" class="act-teach-note" hidden>These calculation previews')
+            script = replace_one(script, r'        function option\(value, label\) \{', '''        for (const detail of ["source", "output"]) {
+            $(`${detail}-toggle`).addEventListener("click", () => {
+                const expanded = $(detail).hidden;
+                $(detail).hidden = !expanded;
+                $(`${detail}-toggle`).setAttribute("aria-expanded", String(expanded));
+                $("readout-note").hidden = $("source").hidden && $("output").hidden;
+            });
+        }
+
+        function option(value, label) {''')
+            script = replace_one(script,
+                r'          <div class="act-teach-controls">\s*<label>N tile.*?(?=          <div class="act-teach-playback">)', '')
+            script = replace_one(script, r'        function bounded\(input, max\) \{.*?\n        \}', '''        function bounded(value, max) {
+            const raw = Number(value);
+            return Number.isFinite(raw) ? Math.min(max, Math.max(0, Math.floor(raw))) : 0;
+        }''')
+            script = script.replace('                    $(axis).value = options[axis] ?? 0;\n', '')
+            script = script.replace('bounded($(axis), item.loop_counts[axis] - 1)',
+                                    'bounded(options[axis] ?? 0, item.loop_counts[axis] - 1)')
+            script = replace_one(script, r'                \$\("dot"\)\.replaceChildren.*?(?=                \$\("packet"\)\.textContent)', '')
+            script = script.replace('const trace = state.trace, tile = trace.design.tile;', 'const trace = state.trace;')
+            script = script.replace('            $("scrub").value = state.index; $("dot").value = group.index;',
+                                    '            $("scrub").value = state.index;')
+            script = script.replace(' $("row").value = row; $("col").value = col;', '')
+            script = replace_one(script, r'        const rebuildTile =.*?(?=        \$\("mode"\)\.addEventListener)', '')
+            script = replace_one(script, r'        for \(const key of \["row", "col"\]\).*?(?=        \$\("play"\)\.addEventListener)', '')
+            script = replace_one(script, r'        \$\("zoom"\)\.addEventListener.*?(?=        \$\("buffer"\)\.addEventListener)', '')
+            script = replace_one(script,
+                r'            ctx.clearRect\(0, 0, canvas.width, canvas.height\); ctx.fillStyle = "#fafcfc"; ctx.fillRect\(0, 0, canvas.width, canvas.height\);',
+                '''            // Draw in logical coordinates with at least 2x resolution,
+            // increasing the backing store to match larger or HiDPI displays.
+            const scale = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
+                (canvas.clientWidth || geom.width) / geom.width));
+            const width = geom.width * scale, height = geom.height * scale;
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width; canvas.height = height;
+            }
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            ctx.clearRect(0, 0, geom.width, geom.height);
+            ctx.fillStyle = "#fafcfc"; ctx.fillRect(0, 0, geom.width, geom.height);''')
+            script = script.replace('* canvas.width / rect.width', '* geom.width / rect.width')
+            script = script.replace('* canvas.height / rect.height', '* geom.height / rect.height')
+            script = replace_one(script, r'        reduced.addEventListener\("change", updateReducedMotion\);',
+                '''        reduced.addEventListener("change", updateReducedMotion);
+        global.addEventListener("resize", render);
+        if (global.ResizeObserver) new global.ResizeObserver(() => render()).observe($("canvas"));''')
+            script = script.replace('            else target.view?.selectCase(state.trace.case.id);',
+                                    '            else target.view?.selectCase(state.trace.case.id);\n'
+                                    '            target.view?.setSectionExpanded("trace", true);')
+            script = replace_one(script, r'    const initial = document.getElementById\("act-teaching"\).*?global.FeatherACTTeaching = Object.assign\(initial \|\| \{\}, \{create\}\);',
+                                 '    global.FeatherACTTeaching = {create};')
+        if "One full-workload catalog" in script[:100]:
+            script = replace_one(script, r'/\* One full-workload catalog.*?\*/',
+                                 '/* Full-workload catalog for upgraded ACT mappings, recorded prefill cases, and their exact packed programs. */')
+            script = script.replace('{kind: "legacy", operatorIndex: 0,', '{kind: "act",')
+            script = script.replace('        global.FeatherLegacyWorkbench.pause();\n', '')
+            script = script.replace('            teaching: () => ({instance: teaching, hostId: "full-act-teaching"}),\n', '')
+            script = script.replace('operatorIndex: null, ', '')
+            script = script.replace('$("full-operator-legacy").hidden = true; ', '')
+            script = replace_one(script,
+                r'        \$\("full-workload-context"\)\.textContent = `ACT .*?(?=        \$\("full-loop-summary"\)\.textContent)', '')
+            script = replace_one(script, r'    function legacyContext\(.*?(?=    function changeTile)',
+                '    function select(value, indices = {}) {\n'
+                '        value = String(value);\n'
+                '        if (!value.startsWith("act:")) throw new Error(`Unknown ACT workload: ${value}`);\n'
+                '        selectACT(value.slice(4), indices);\n'
+                '    }\n\n')
+            script = replace_one(script, r'    const legacy =.*?    const groups = \[legacy\];',
+                                 '    const groups = [];')
+            script = script.replace('["original", "optimized_full", "optimized_six"]', '["optimized_full", "optimized_six", "original"]')
+            script = script.replace('${data.operators.length + cases.length} workloads · prefill + decode',
+                                    '${cases.length} workloads · prefill + decode')
+            script = replace_one(script, r'    global.addEventListener\("feather-legacy-operator-change".*?\n    \}\);\n', '')
+            script = script.replace('    select("0");',
+                                    '    select(`act:${cases[0].id}`);')
+        return script
+
+    source = re.sub(r'<script>.*?</script>', adapt_script, source, flags=re.S)
+    replacements = {
+        'One FEATHER accelerator.<br>Compute, route, accumulate.': 'Map Qwen 3 0.6B to FEATHER 16x16',
+        'Explore original ACT workloads and optimized StaB128 schedules:':
+            'Explore recorded prefill workloads and upgraded StaB128 decode schedules:',
+        'Self-contained ACT case browser + animated teaching examples + ISA generator':
+            'ACT prefill and decode case browser + workload animation + exact ISA downloads',
+        'Choose N / M / K indices below ↓': 'View selected tile animation ↓',
+        'Use Previous/Next to cross K and output-tile boundaries, or choose indices in the animation below.':
+            'Use Previous/Next to cross K and output-tile boundaries.',
+        'Inspect every prefill and decode MINISA program': 'Inspect prefill and decode MINISA programs',
+        'Original ACT programs alongside StaB128 mapping upgrades and aligned Q-projection partitions.':
+            'Recorded prefill programs, upgraded StaB128 decode mappings, and aligned Q-projection partitions.',
+        'Original and optimized ACT test cases': 'Prefill and upgraded decode ACT test cases',
+        'Choose any prefill or decode case, including its K and N tails.':
+            'Choose any prefill or upgraded decode case, including its K and N tails.',
+        'This player never modifies the original ACT packed program or old examples.':
+            'This player preserves each recorded ACT packed program.',
+        'Original ACT trace does not contain': 'Recorded ACT trace does not contain',
+        'Original ACT prediction (frozen model)': 'Recorded compiler prediction (frozen model)',
+        'Inspect original ACT trace ↑': 'Inspect exact ACT trace ↓',
+        'original: "Original ACT"': 'original: "Recorded ACT · StaB64"',
+        'item.catalog_group || "original"': 'item.catalog_group',
+        'c.catalog_group || "original"': 'c.catalog_group',
+    }
+    for old, new in replacements.items():
+        source = source.replace(old, new)
+    return re.sub(r'(?m)^[ \t]+$', '', source)
 
 
 def _delimiter(text, start, wanted):
@@ -173,6 +433,13 @@ SITE_ADAPTATION = """
 [data-theme="dark"] .qwen-app .partial.second { color: #f4d397; }
 .qwen-app .program-preview { background: var(--code-bg); color: var(--code-text); }
 .qwen-app .act-details { background: var(--bg-sidebar); color: var(--text-main); }
+.qwen-app .act-collapsible { border: 0; margin: 12px 0; padding: 0; }
+.qwen-app .act-collapsible > h3 { margin: 0; }
+.qwen-app .act-section-content { margin-top: 12px; }
+.qwen-app .act-section-toggle { display: flex; align-items: center; gap: 10px; text-align: left; }
+.qwen-app .act-section-indicator { display: inline-block; }
+.qwen-app .act-section-toggle[aria-expanded="true"] .act-section-indicator { transform: rotate(90deg); }
+.qwen-app .act-teach-packet:empty { display: none; }
 .qwen-app #act-layout-table button[aria-pressed=true],
 .qwen-app #act-trace tr[data-current=true] td,
 .qwen-app #full-act-layout-table button[aria-pressed=true],
@@ -217,6 +484,8 @@ def build(source, shell):
     for required in ('id="case-data"', 'id="nest"', 'id="motion-play"'):
         if required not in source:
             raise ValueError(f"Not a supported standalone Qwen explorer: missing {required}")
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    source = prepare_tutorial_catalog(source)
     styles = re.findall(r"<style(?:\s[^>]*)?>(.*?)</style>", source, re.S | re.I)
     body_match = re.search(r"<body(?:\s[^>]*)?>(.*?)</body>", source, re.S | re.I)
     if not styles or body_match is None:
@@ -242,7 +511,6 @@ def build(source, shell):
         "Self-contained: no server, network requests or external libraries required.",
         "Compiler data and animation code are embedded. This page shares the tutorial's local style and navigation assets."
     )
-    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
     scoped = scope_css("\n".join(styles))
     return f'''<!DOCTYPE html>
 <html lang="en" data-theme="dark">
