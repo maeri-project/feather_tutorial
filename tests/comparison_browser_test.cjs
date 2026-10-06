@@ -19,7 +19,7 @@ function check(value, label) { assert.ok(value, label); assertions++; }
     const output = option("--out", await fs.mkdtemp(path.join(os.tmpdir(), "feather-comparison-browser-")));
     await fs.mkdir(output, {recursive: true});
     const browser = await chromium.launch({headless: true});
-    const context = await browser.newContext({viewport: {width: 1600, height: 1100}, reducedMotion: "no-preference"});
+    const context = await browser.newContext({viewport: {width: 1600, height: 1100}, deviceScaleFactor: 2, reducedMotion: "no-preference"});
     const page = await context.newPage(), errors = [];
     page.on("pageerror", error => errors.push(String(error)));
     await context.route(/^https?:\/\//, route => route.abort());
@@ -47,6 +47,12 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         });
         const seek = (cycle, fraction = 0) => page.evaluate(({cycle, fraction}) => FeatherComparisonView.seek(cycle, fraction), {cycle, fraction});
         const presets = await page.evaluate(() => FeatherComparisonModel.presets());
+        equal((await state()).presetId, "irregular-batch", "the default workload demonstrates a real producer-to-consumer layout change");
+        const initialBoundary = await page.evaluate(() => FeatherComparisonView.inspect().bridge.boundary);
+        equal([initialBoundary.elements, initialBoundary.changedElements], [224, 192], "default GEMM 1 to GEMM 2 rearranges 192 of 224 elements");
+        check((await page.locator("#comparison-boundary option:checked").innerText()).includes("192/224 addresses change"), "the boundary selector makes actual layout changes visible");
+        check((await state()).bridge.tokens.some(token => token.sourceBank !== token.targetBank || token.sourceRow !== token.targetRow),
+            "the default illustrated routes include elements with different source and destination addresses");
         equal(await page.locator("#comparison-preset option").count(), presets.length, "all connected workload presets are selectable");
         equal(await page.locator("#comparison-baseline option").count(), 4, "OS, WS, IS, and strongest modeled systolic choices are available");
         equal(await page.locator("main").count(), 1, "page preserves the native main landmark");
@@ -56,6 +62,19 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         equal(await page.locator("#comparison-feather").getAttribute("data-pe-count"), "256", "NEST renderer draws all 256 physical PE cells");
         const boxes = await Promise.all(["sa", "feather"].map(id => page.locator(`#comparison-${id}`).boundingBox()));
         check(boxes[1].x > boxes[0].x + boxes[0].width, "desktop arrays are genuinely side by side");
+        const checkResolution = async () => {
+            const canvases = await page.evaluate(() => ["sa", "feather", "bridge"].map(id => {
+                const canvas = document.getElementById(`comparison-${id}`), rect = canvas.getBoundingClientRect();
+                return {id, width: canvas.width, height: canvas.height, displayWidth: rect.width * devicePixelRatio, displayHeight: rect.height * devicePixelRatio};
+            }));
+            for (const canvas of canvases) {
+                check(canvas.width >= Math.floor(canvas.displayWidth) && canvas.height >= Math.floor(canvas.displayHeight),
+                    `${canvas.id}: backing pixels cover the actual display resolution`);
+            }
+        };
+        await checkResolution();
+        await page.locator("#comparison-sa").hover({position: {x: boxes[0].width * 122.5 / 640, y: boxes[0].height * 136.5 / 660}});
+        check((await page.locator("#comparison-sa").getAttribute("title")).startsWith("PE[0,0]"), "PE hit testing uses logical coordinates on a high-density canvas");
 
         for (const preset of presets) {
             await select("preset", preset.id);
@@ -64,7 +83,11 @@ function check(value, label) { assert.ok(value, label); assertions++; }
             for (const baseline of ["os", "ws", "is", "best"]) {
                 await select("baseline", baseline);
                 for (let layer = 0; layer < preset.layers.length; layer++) {
-                    await select("layer", layer); await click("peak");
+                    await select("layer", layer);
+                    await page.evaluate(() => {
+                        const value = FeatherComparisonView.inspect(), run = value.chain.layers[value.layerIndex].feather;
+                        FeatherComparisonView.seek(run.frames.find(frame => frame.macs.length === run.peakActive).cycle, .5);
+                    });
                     const snapshot = await state();
                     equal([snapshot.presetId, snapshot.baseline, snapshot.layerIndex], [preset.id, baseline, layer], "controls select the requested model, not a stale cached comparison");
                     for (const arch of ["systolic", "feather"]) {
@@ -125,6 +148,7 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         check(/mismatch/i.test(injectedMismatch.text), "an actual architecture disagreement is visibly flagged");
 
         await select("preset", "irregular-vector"); await select("baseline", "os"); await select("layer", "0");
+        check((await page.locator("#comparison-boundary option:checked").innerText()).includes("same layout"), "the single-row example accurately identifies an unchanged layout");
         for (const baseline of ["os", "ws", "is"]) {
             await select("baseline", baseline); await seek(5, .4);
             const snapshot = await state(), kinds = new Set(snapshot.systolic.tokens.map(token => token.kind));
@@ -148,15 +172,15 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         check(await pixels("feather") !== beforePixels, "FEATHER MAC and network packet motion changes rendered pixels");
         await page.locator("#comparison-arrays").screenshot({path: path.join(output, "side-by-side-overlap.png")});
 
-        await click("reset"); const start = await state(); await click("step");
-        equal((await state()).cycle, start.cycle + 1, "Step advances one shared logical cycle");
+        await click("reset");
+        equal((await state()).cycle, 0, "Reset returns the shared logical clock to zero");
         await page.locator("#comparison-scrub").evaluate(node => { node.value = "5"; node.dispatchEvent(new Event("input", {bubbles: true})); });
         equal((await state()).cycle, 5, "timeline seek renders the requested shared cycle");
         await click("play"); await page.clock.runFor(600); const playing = await state();
         check(playing.playing && playing.cycle > 5, "playback advances the shared clock");
         await click("play"); const paused = await state(); await page.clock.runFor(600);
         equal((await state()).cycle, paused.cycle, "Pause stops the logical clock");
-        await select("scope", "chain");
+        await page.evaluate(() => FeatherComparisonView.setScope("chain"));
         const drainCycle = await page.evaluate(() => FeatherComparisonView.inspect().chain.layers[0].feather.frames.find(frame =>
             !frame.macs.length && (frame.network.length || frame.writes.length)).cycle);
         await seek(drainCycle, .4);
@@ -192,6 +216,26 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         check(bridgeBefore.tokens.some((token, index) => token.x !== bridgeAfter.tokens[index].x || token.y !== bridgeAfter.tokens[index].y),
             "layout packets visibly move between producer and consumer buffers");
         await page.locator("#comparison-layout").screenshot({path: path.join(output, "layout-switching.png")});
+        await page.evaluate(() => FeatherComparisonView.seekBridge(.25));
+        const identitiesBefore = (await state()).bridge.tokens;
+        await page.evaluate(() => FeatherComparisonView.seekBridge(.85));
+        const identitiesAfter = (await state()).bridge.tokens;
+        equal(new Set(identitiesBefore.map(token => token.label)).size, identitiesBefore.length, "each illustrated layout element has a unique visible ID");
+        equal(new Set(identitiesBefore.map(token => token.color)).size, identitiesBefore.length, "the sampled layout elements have distinct colors");
+        equal(identitiesBefore.map(token => [token.id, token.label, token.color]), identitiesAfter.map(token => [token.id, token.label, token.color]),
+            "visible IDs and colors persist as output elements become consumer inputs");
+        check(identitiesBefore.some((token, index) => token.kind !== identitiesAfter[index].kind), "color stability is checked across an actual output-to-input transition");
+        await select("layout-element", "1");
+        equal((await state()).bridge.selectedIndex, 1, "element selector highlights the requested identity in the visualization");
+        check((await state()).bridge.tokens.some(token => token.index === 1), "an element outside the original sample gains its own illustrated route");
+        await page.evaluate(() => FeatherComparisonView.seekBridge(1));
+        const chosen = (await state()).bridge.tokens.find(token => token.index === 1);
+        const bridgeSize = await page.locator("#comparison-bridge").evaluate(canvas => {
+            const rect = canvas.getBoundingClientRect();
+            return {width: rect.width, height: rect.height, logicalHeight: Number(getComputedStyle(canvas).aspectRatio.split("/")[1])};
+        });
+        await page.locator("#comparison-bridge").click({position: {x: chosen.x * bridgeSize.width / 1240, y: chosen.y * bridgeSize.height / bridgeSize.logicalHeight}});
+        equal(await page.locator("#comparison-layout-element").inputValue(), "", "clicking the selected destination cell clears the highlight at high display density");
         await page.locator("#comparison-compatible").check(); bridgeModel = await boundary();
         equal([bridgeModel.saCopyCycles, bridgeModel.featherCopyCycles, bridgeModel.configCycles], [0, 0, 0],
             "layout-aware/compatible systolic baseline removes artificial layout advantage for both arrays");
@@ -203,7 +247,7 @@ function check(value, label) { assert.ok(value, label); assertions++; }
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${theme}: desktop has no horizontal overflow`);
             await page.screenshot({path: path.join(output, `${theme}.png`)});
         }
-        await select("scope", "layer"); await seek(3, .2);
+        await page.evaluate(() => FeatherComparisonView.setScope("layer")); await seek(3, .2);
         await page.emulateMedia({reducedMotion: "reduce"});
         await seek(3, .2);
         const reducedPixels = await pixels("feather"); await click("play"); await page.clock.runFor(100);
@@ -213,6 +257,9 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.body.scrollWidth <= innerWidth), "mobile layout has no horizontal document overflow");
         const mobileBoxes = await Promise.all(["sa", "feather"].map(id => page.locator(`#comparison-${id}`).boundingBox()));
         check(mobileBoxes[1].y >= mobileBoxes[0].y + mobileBoxes[0].height, "mobile arrays stack vertically rather than shrink into illegible columns");
+        await checkResolution();
+        check(await page.locator(".comparison-bridge-scroll").evaluate(node => node.scrollWidth > node.clientWidth),
+            "mobile layout preserves readable buffer labels in a horizontally scrollable visualization");
         await page.screenshot({path: path.join(output, "mobile.png")});
 
         equal(errors, [], "comparison page has no browser exceptions");

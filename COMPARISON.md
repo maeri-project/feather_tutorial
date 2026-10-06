@@ -1,7 +1,7 @@
 # FEATHER versus a systolic array
 
 Open [FEATHER_VS_SYSTOLIC.html](FEATHER_VS_SYSTOLIC.html) directly, or select
-**FEATHER vs. Systolic** in the tutorial sidebar. The page needs only local
+**Systolic Array vs. FEATHER** in the tutorial sidebar. The page needs only local
 HTML/CSS/JavaScript assets; it has no runtime compiler or network dependency.
 
 Both arrays have 16×16 physical PEs and execute the same real, non-padding

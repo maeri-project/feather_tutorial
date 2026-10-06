@@ -4,20 +4,23 @@
     const model = window.FeatherComparisonModel;
     const byId = id => document.getElementById(`comparison-${id}`);
     if (!model) {
-        byId("preset-note").textContent = "The comparison model could not be loaded. Serve this page together with its script directory.";
-        byId("preset-note").classList.add("comparison-error");
+        byId("model-error").textContent = "The comparison model could not be loaded. Serve this page together with its script directory.";
+        byId("model-error").hidden = false;
         return;
     }
 
     const colors = {input: "#004c99", weight: "#006633", partial: "#4c0099", result: "#990000"};
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const grid = {x: 112, y: 126, step: 25, size: 21};
+    const canvasSizes = {sa: {width: 640, height: 660}, feather: {width: 640, height: 660}, bridge: {width: 1240, height: 580}};
+    const elementColors = ["#245bc2", "#a63232", "#16754e", "#7845b3", "#a94d00", "#00778a", "#a02d78", "#586d16", "#494db0", "#956024", "#00695c", "#8c3e62"];
     const names = {os: "Output-stationary", ws: "Weight-stationary", is: "Input-stationary", best: "Best modeled stationary mapping"};
     const state = {
-        presetId: model.presets()[0].id, baseline: "os", scope: "layer", layerIndex: 0,
+        presetId: "irregular-batch", baseline: "os", scope: "layer", layerIndex: 0,
         cycle: 0, fraction: 0, playing: false, speed: 4, request: null, lastTime: 0,
         chain: null, boundaryIndex: 0, bridgeProgress: 0, bridgePlaying: false,
-        bridgeRequest: null, bridgeStart: 0, boards: {}, bridge: {}, hover: null
+        bridgeRequest: null, bridgeStart: 0, boards: {}, bridge: {}, hover: null,
+        bridgeElement: null, bridgeBoundary: null
     };
 
     function escape(text) {
@@ -71,12 +74,12 @@
         state.layerIndex = clamp(state.layerIndex, 0, state.chain.layers.length - 1);
         state.boundaryIndex = clamp(state.boundaryIndex, 0, Math.max(0, state.chain.boundaries.length - 1));
         state.cycle = 0; state.fraction = 0; state.bridgeProgress = 0;
-        byId("preset-note").textContent = state.chain.preset.description;
         setOptions("layer", state.chain.layers.map((layer, i) => [i, `GEMM ${i + 1} · ${shapeText(layer.shape)}`]), state.layerIndex);
-        setOptions("boundary", state.chain.boundaries.map((boundary, i) => [i, `GEMM ${i + 1} → GEMM ${i + 2}`]), state.boundaryIndex);
+        setOptions("boundary", state.chain.boundaries.map((boundary, i) => [i,
+            `GEMM ${i + 1} → GEMM ${i + 2} · ${boundary.changedElements ? `${boundary.changedElements}/${boundary.elements} addresses change` : "same layout"}`]), state.boundaryIndex);
         byId("boundary").disabled = !state.chain.boundaries.length;
         byId("layout-play").disabled = !state.chain.boundaries.length;
-        renderChain(); renderFormulas(); render(); renderBridge();
+        renderChain(); render(); renderBridge();
     }
 
     function location(kind) {
@@ -91,6 +94,27 @@
         ctx.beginPath(); ctx.roundRect(x, y, width, height, radius);
         if (fill) { ctx.fillStyle = fill; ctx.fill(); }
         if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+    function canvasContext(id, height = canvasSizes[id].height) {
+        const canvas = byId(id), size = canvasSizes[id];
+        if (size.height !== height) {
+            size.height = height;
+            canvas.style.aspectRatio = `${size.width} / ${height}`;
+        }
+        const display = canvas.getBoundingClientRect();
+        const scale = Math.max(2, (window.devicePixelRatio || 1) * display.width / size.width);
+        const width = Math.ceil(size.width * scale), pixelHeight = Math.ceil(size.height * scale);
+        if (canvas.width !== width || canvas.height !== pixelHeight) {
+            canvas.width = width; canvas.height = pixelHeight;
+        }
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(canvas.width / size.width, 0, 0, canvas.height / size.height, 0, 0);
+        ctx.clearRect(0, 0, size.width, size.height);
+        return ctx;
+    }
+    function canvasPoint(id, event) {
+        const rect = byId(id).getBoundingClientRect(), size = canvasSizes[id];
+        return {x: (event.clientX - rect.left) * size.width / rect.width, y: (event.clientY - rect.top) * size.height / rect.height};
     }
     function label(ctx, text, x, y, size, color, align = "left", weight = 400) {
         ctx.fillStyle = color; ctx.font = `${weight} ${size}px Inter, sans-serif`; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(text, x, y);
@@ -124,7 +148,7 @@
 
     function drawBoard(kind) {
         const id = kind === "systolic" ? "sa" : "feather";
-        const canvas = byId(id), ctx = canvas.getContext("2d"), palette = theme();
+        const canvas = byId(id), ctx = canvasContext(id), palette = theme();
         const loc = location(kind);
         const layerIndex = clamp(loc.layerIndex ?? state.layerIndex, 0, state.chain.layers.length - 1);
         const layer = state.chain.layers[layerIndex], run = layer[kind];
@@ -137,8 +161,7 @@
         const tokens = [], feather = kind === "feather";
         const packetFraction = motionPreference.matches ? .85 : state.fraction;
         const phase = loc.phase === "compute" ? snapshot.phase : loc.phase;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = palette.background; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = palette.background; ctx.fillRect(0, 0, canvasSizes[id].width, canvasSizes[id].height);
         roundedRect(ctx, 108, 20, 408, 37, 6, run.kind === "is" ? colors.input : colors.weight, null);
         label(ctx, run.kind === "is" ? "RESIDENT INPUT A[m,k]" : (feather || run.kind === "ws") ? "RESIDENT WEIGHTS B[k,n]" : "WEIGHT SOURCE B[k,n] · STREAMED", 312, 38, 10, "#fff", "center", 600);
         label(ctx, `GEMM ${layerIndex + 1} · ${shapeText(layer.shape)} · local cycle ${loc.localCycle ?? state.cycle}`, 312, 78, 11, palette.text, "center", 600);
@@ -277,20 +300,20 @@
         return `${visible}<details class="comparison-mapping-details"><summary>Tile + exact EM/ES choices</summary>` +
             `<div>Tile Mt×Kt×Nt = ${tile.Mt}×${tile.Kt}×${tile.Nt}; unique choices in execution order.</div>${descriptors.join("")}</details>`;
     }
+    function performanceSummary(run, layer) {
+        const dataflow = run.kind === "feather" ? "Weight-stationary (WO-S)" : `${names[run.kind]} (${run.kind.toUpperCase()})`;
+        return `<dl class="comparison-performance"><div class="comparison-performance-dataflow"><dt>Dataflow</dt><dd>${escape(dataflow)}</dd></div>` +
+            `<div><dt>Modeled cycles</dt><dd>${number(run.cycles)}</dd></div>` +
+            `<div><dt>PE utilization</dt><dd>${percent(run.utilization)}</dd></div></dl>` +
+            `<details class="comparison-performance-mapping"><summary>Mapping details</summary><div>${mappingSummary(run, layer)}</div></details>`;
+    }
     function renderChain() {
-        const strip = byId("chain-strip"); strip.replaceChildren();
         const rows = byId("chain-rows"); rows.replaceChildren();
         state.chain.layers.forEach((layer, index) => {
-            const chip = document.createElement("button"); chip.type = "button"; chip.className = "comparison-chain-chip";
-            chip.dataset.layer = index; chip.innerHTML = `<strong>GEMM ${index + 1}${index ? " ← previous C" : " · input"}</strong><span>${escape(shapeText(layer.shape))}</span>`;
-            chip.addEventListener("click", () => selectLayer(index)); strip.append(chip);
             const tr = document.createElement("tr"); tr.dataset.layer = index;
             tr.innerHTML = `<td><button type="button">GEMM ${index + 1}<br>${escape(shapeText(layer.shape))}</button></td>` +
-                `<td>${escape(layer.systolic.name)}<small>${mappingSummary(layer.systolic, layer)}</small></td>` +
-                `<td>${mappingSummary(layer.feather, layer)}</td>` +
-                `<td>${number(layer.systolic.mappedPEs)} / ${number(layer.feather.mappedPEs)}</td>` +
-                `<td>${number(layer.systolic.cycles)} / ${number(layer.feather.cycles)}</td>` +
-                `<td>${percent(layer.systolic.utilization)} / ${percent(layer.feather.utilization)}</td>`;
+                `<td>${performanceSummary(layer.systolic, layer)}</td>` +
+                `<td>${performanceSummary(layer.feather, layer)}</td>`;
             tr.querySelector("button").addEventListener("click", () => selectLayer(index)); rows.append(tr);
         });
         const sa = state.chain.totals.systolic, feather = state.chain.totals.feather;
@@ -299,10 +322,9 @@
             summary("Identical useful mathematical work", `${number(sa.macs)} MACs`, `Including hypothetical boundaries: SA ${percent(sa.utilization)}, FEATHER ${percent(feather.utilization)}. Not measured throughput.`);
     }
     function updateSelected() {
-        for (const node of document.querySelectorAll("#comparison-chain-strip [data-layer], #comparison-chain-rows [data-layer]")) {
+        for (const node of document.querySelectorAll("#comparison-chain-rows [data-layer]")) {
             const selected = Number(node.dataset.layer) === state.layerIndex;
             node.classList.toggle("is-selected", selected);
-            if (node.tagName === "BUTTON") node.setAttribute("aria-pressed", selected ? "true" : "false");
         }
     }
     function render() {
@@ -314,7 +336,7 @@
     function selectLayer(index) {
         pause(); state.layerIndex = clamp(Number(index) || 0, 0, state.chain.layers.length - 1);
         state.cycle = 0; state.fraction = 0; byId("layer").value = state.layerIndex;
-        if (state.scope === "chain") { state.scope = "layer"; byId("scope").value = "layer"; }
+        state.scope = "layer";
         state.boundaryIndex = Math.min(state.layerIndex, state.chain.boundaries.length - 1);
         byId("boundary").value = state.boundaryIndex;
         stopBridge(); state.bridgeProgress = 0; render(); renderBridge();
@@ -338,81 +360,112 @@
         state.playing = true; state.lastTime = performance.now(); byId("play").textContent = "Pause"; byId("play").setAttribute("aria-pressed", "true");
         state.request = requestAnimationFrame(tick);
     }
-    function jumpPeak() {
-        pause();
-        const layer = state.chain.layers[state.layerIndex];
-        if (state.scope !== "layer") { state.scope = "layer"; byId("scope").value = "layer"; }
-        let best = 0, bestCount = -1;
-        for (let cycle = 0; cycle <= Math.max(layer.systolic.cycles, layer.feather.cycles) - 1; cycle++) {
-            const left = model.snapshot(layer.systolic, cycle), right = model.snapshot(layer.feather, cycle);
-            const count = (left.macs || []).length + (right.macs || []).length;
-            if (count > bestCount) { best = cycle; bestCount = count; }
-        }
-        seek(best, .5);
+    function bridgeCellPosition(cell, side) {
+        return {x: (side === "source" ? 44 : 750) + cell.bank * 28 + 13, y: 126 + cell.row * 24 + 11, height: 24};
     }
-
-    function bridgeCellPosition(cell, side, rows) {
-        const cellHeight = Math.min(27, 218 / Math.max(1, rows));
-        return {x: (side === "source" ? 46 : 746) + cell.bank * 27 + 12, y: 91 + cell.row * cellHeight + cellHeight / 2, height: cellHeight};
+    function bridgeStyle(cell, sample) {
+        const sampleIndex = sample.findIndex(item => item.index === cell.index);
+        return {label: String(cell.index), color: elementColors[(sampleIndex < 0 ? cell.index : sampleIndex) % elementColors.length]};
+    }
+    function bridgeTile(ctx, position, style, outline) {
+        roundedRect(ctx, position.x - 13, position.y - 10, 26, 21, 3, style.color, null);
+        label(ctx, style.label, position.x, position.y + .5, 10, "#fff", "center", 600);
+        if (outline) {
+            ctx.strokeStyle = outline; ctx.lineWidth = 2;
+            ctx.strokeRect(position.x - 15, position.y - 12, 30, 25);
+        }
     }
     function renderBridge() {
         const boundary = state.chain.boundaries[state.boundaryIndex];
-        const canvas = byId("bridge"), ctx = canvas.getContext("2d"), palette = theme();
-        ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = palette.card; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (!boundary) { label(ctx, "No producer–consumer boundary in this preset.", 620, 180, 18, palette.muted, "center"); return; }
+        const canvas = byId("bridge"), palette = theme();
+        if (!boundary) {
+            const ctx = canvasContext("bridge", 580);
+            label(ctx, "No producer–consumer boundary in this preset.", 620, 180, 18, palette.muted, "center");
+            byId("layout-element").disabled = true;
+            state.bridge = {boundaryIndex: state.boundaryIndex, progress: 0, tokens: []};
+            return;
+        }
         const sourceCells = boundary.sourceCells || [], targetCells = boundary.targetCells || [];
         const rows = Math.max(1, ...sourceCells.map(cell => cell.row + 1), ...targetCells.map(cell => cell.row + 1));
         const targets = new Map(targetCells.map(cell => [cell.index, cell]));
-        label(ctx, `GEMM ${state.boundaryIndex + 1} · producer output`, 260, 27, 15, palette.text, "center", 600);
-        label(ctx, `GEMM ${state.boundaryIndex + 2} · consumer input`, 962, 27, 15, palette.text, "center", 600);
-        label(ctx, String(boundary.sourceLayout), 260, 50, 10, palette.muted, "center");
-        label(ctx, String(boundary.targetLayout), 962, 50, 10, palette.muted, "center");
-        for (let bank = 0; bank < 16; bank++) {
-            label(ctx, bank, 58 + bank * 27, 76, 9, palette.muted, "center");
-            label(ctx, bank, 758 + bank * 27, 76, 9, palette.muted, "center");
+        if (state.bridgeBoundary !== boundary) {
+            const previous = state.bridgeBoundary;
+            if (!previous || previous.from !== boundary.from || previous.elements !== boundary.elements) state.bridgeElement = null;
+            state.bridgeBoundary = boundary;
+            setOptions("layout-element", [["", "Show all sample elements"], ...sourceCells.map(cell =>
+                [cell.index, `Element ${cell.index} · C[${cell.m},${cell.n}] = ${number(cell.value)}`])], state.bridgeElement ?? "");
+            byId("layout-element").disabled = false;
         }
+        const sampleCount = Math.min(12, sourceCells.length);
+        const baseSample = Array.from({length: sampleCount}, (_, i) => sourceCells[Math.floor(i * sourceCells.length / sampleCount)]);
+        const sample = [...baseSample];
+        const selected = sourceCells.find(cell => cell.index === state.bridgeElement);
+        if (selected && !sample.some(cell => cell.index === selected.index)) sample.push(selected);
+        const height = Math.max(580, 126 + rows * 24 + 64);
+        const ctx = canvasContext("bridge", height);
+        ctx.fillStyle = palette.card; ctx.fillRect(0, 0, 1240, height);
+        label(ctx, `GEMM ${state.boundaryIndex + 1} · producer output`, 267, 28, 17, palette.text, "center", 600);
+        label(ctx, `GEMM ${state.boundaryIndex + 2} · consumer input`, 973, 28, 17, palette.text, "center", 600);
+        label(ctx, String(boundary.sourceLayout), 267, 54, 12, palette.muted, "center");
+        label(ctx, String(boundary.targetLayout), 973, 54, 12, palette.muted, "center");
+        label(ctx, "BANK", 267, 79, 10, palette.muted, "center", 600);
+        label(ctx, "BANK", 973, 79, 10, palette.muted, "center", 600);
         for (const side of ["source", "target"]) {
+            for (let bank = 0; bank < 16; bank++) {
+                const p = bridgeCellPosition({bank, row: 0}, side);
+                label(ctx, bank, p.x, 104, 11, palette.muted, "center");
+                for (let row = 0; row < rows; row++) {
+                    const slot = bridgeCellPosition({bank, row}, side);
+                    roundedRect(ctx, slot.x - 13, slot.y - 10, 26, 21, 3, palette.background, palette.line);
+                }
+            }
+            for (let row = 0; row < rows; row++) {
+                const p = bridgeCellPosition({bank: 0, row}, side);
+                label(ctx, row, p.x - 21, p.y, 10, palette.muted, "right");
+            }
             const cells = side === "source" ? sourceCells : targetCells;
             for (const cell of cells) {
-                const p = bridgeCellPosition(cell, side, rows), matching = targets.get(cell.index);
-                const moved = matching && (cell.bank !== matching.bank || cell.row !== matching.row);
-                roundedRect(ctx, p.x - 12, p.y - p.height / 2 + 1, 24, p.height - 2, 2,
-                    side === "source" ? colors.result : (palette.dark ? "#10395d" : "#dfedfc"), palette.line);
-                if (p.height >= 10) label(ctx, `${cell.m},${cell.n}`, p.x, p.y, p.height > 23 ? 8 : 6, side === "source" ? "#fff" : palette.text, "center");
-                if (moved && side === "source") { ctx.fillStyle = "#e2b673"; ctx.fillRect(p.x + 8, p.y - p.height / 2 + 3, 2, 2); }
+                const p = bridgeCellPosition(cell, side), style = bridgeStyle(cell, baseSample);
+                ctx.save();
+                if (selected && cell.index !== selected.index) ctx.globalAlpha = .25;
+                bridgeTile(ctx, p, style, selected && cell.index === selected.index ? palette.text : null);
+                ctx.restore();
             }
         }
-        const mode = byId("layout-mode").value;
         const actualChange = boundary.changed && !byId("compatible").checked;
-        roundedRect(ctx, 522, 131, 193, 97, 8, palette.background, palette.line);
-        label(ctx, !actualChange ? "ALREADY COMPATIBLE" : boundary.switched ? "LAYOUT SWITCH WHAT-IF" : "MATERIALIZE + REPACK", 618, 154, 10, palette.text, "center", 600);
-        label(ctx, !actualChange ? "no additional copy" : "same C[m,n], new address", 618, 180, 10, palette.muted, "center");
-        label(ctx, `${Math.round(state.bridgeProgress * 100)}% of illustration`, 618, 205, 10, palette.muted, "center");
-        const sampleCount = Math.min(12, sourceCells.length), tokens = [];
-        const sample = Array.from({length: sampleCount}, (_, i) => sourceCells[Math.floor(i * sourceCells.length / sampleCount)]);
-        for (let i = 0; i < sample.length; i++) {
-            const source = sample[i], target = targets.get(source.index);
+        roundedRect(ctx, 511, 22, 217, 90, 8, palette.background, palette.line);
+        label(ctx, !actualChange ? "ALREADY COMPATIBLE" : boundary.switched ? "LAYOUT SWITCH WHAT-IF" : "MATERIALIZE + REPACK", 620, 44, 11, palette.text, "center", 600);
+        label(ctx, !actualChange ? "no additional copy" : `${boundary.changedElements}/${boundary.elements} addresses change`, 620, 70, 11, palette.muted, "center");
+        label(ctx, `${Math.round(state.bridgeProgress * 100)}% of illustration`, 620, 94, 11, palette.muted, "center");
+        const tokens = [];
+        // Draw the selected route last so its label remains visible at crossings.
+        const ordered = sample.map((source, lane) => ({source, lane})).sort((a, b) =>
+            Number(a.source.index === state.bridgeElement) - Number(b.source.index === state.bridgeElement));
+        for (const {source, lane} of ordered) {
+            const target = targets.get(source.index);
             if (!target) continue;
-            const from = bridgeCellPosition(source, "source", rows), to = bridgeCellPosition(target, "target", rows);
-            const progress = clamp((state.bridgeProgress - i * .018) / .79, 0, 1);
-            const routeY = 114 + i * 13;
-            token(ctx, tokens, progress < .5 ? "result" : "input", [from, {x: 503, y: routeY}, {x: 730, y: routeY}, to], progress,
-                {id: `C:${source.m}:${source.n}`, index: source.index, m: source.m, n: source.n, value: source.value,
-                    sourceBank: source.bank, sourceRow: source.row, targetBank: target.bank, targetRow: target.row}, 5.5);
-            if (progress > .02 && progress < .98 && i % 4 === 0) {
-                const packet = tokens[tokens.length - 1];
-                roundedRect(ctx, packet.x + 7, packet.y - 19, 69, 15, 3, palette.background, palette.line);
-                label(ctx, `C[${source.m},${source.n}]`, packet.x + 11, packet.y - 11, 9, palette.text);
+            const from = bridgeCellPosition(source, "source"), to = bridgeCellPosition(target, "target");
+            const progress = clamp((state.bridgeProgress - lane * .018) / .79, 0, 1);
+            const routeY = 156 + lane * 28, style = bridgeStyle(source, baseSample);
+            const path = [from, {x: 515, y: routeY}, {x: 723, y: routeY}, to];
+            const pos = along(path, progress), active = !selected || selected.index === source.index;
+            ctx.save(); ctx.globalAlpha = active ? .3 : .035;
+            line(ctx, path, style.color, selected && active ? 2.5 : 1);
+            ctx.restore();
+            ctx.save(); ctx.globalAlpha = active ? 1 : .25;
+            if (progress > 0 && progress < 1) {
+                bridgeTile(ctx, pos, style, selected && active ? palette.text : null);
             }
+            ctx.restore();
+            tokens.push({id: `C:${source.m}:${source.n}`, label: style.label, color: style.color,
+                index: source.index, m: source.m, n: source.n, value: source.value,
+                sourceBank: source.bank, sourceRow: source.row, targetBank: target.bank, targetRow: target.row,
+                kind: progress < .5 ? "result" : "input", x: pos.x, y: pos.y, progress});
         }
-        label(ctx, `${sourceCells.length} logical elements · 16 banks · ${rows} address rows · up to 12 representative moving coordinates`, 620, 333, 11, palette.muted, "center");
-        label(ctx, "Coordinates are m,n. Reordering changes physical location, never mathematical identity.", 620, 351, 10, palette.muted, "center");
+        label(ctx, `${sourceCells.length} elements · 16 banks · ${rows} address rows · ${sample.length} illustrated routes`, 620, height - 38, 12, palette.muted, "center");
+        label(ctx, "Cell numbers are element IDs. The same ID and color identify the same C[m,n] on both sides.", 620, height - 16, 12, palette.muted, "center");
         canvas.dataset.tokens = JSON.stringify(tokens); canvas.dataset.progress = state.bridgeProgress; canvas.dataset.changed = boundary.changed;
-        byId("layout-summary").innerHTML = summary("Systolic extra repack", `${number(boundary.saCopyCycles)} cycles`, actualChange ? `${number(boundary.elements)} elements; editable bandwidth assumption.` : "Matching addresses: zero additional copy traffic.") +
-            summary("FEATHER extra repack · what-if", `${number(boundary.featherCopyCycles)} cycles`, mode === "switch" ? "Only a legal same-mapping output-order change can avoid the modeled repack." : "Fixed producer layout retains any required repack.") +
-            summary("Mapping configuration assumption", `${number(boundary.configCycles)} cycles`, "Hypothetical boundary overhead, separate from useful MAC utilization.");
-        byId("layout-detail").textContent = boundary.note;
-        state.bridge = {boundaryIndex: state.boundaryIndex, boundary, progress: state.bridgeProgress, tokens};
+        state.bridge = {boundaryIndex: state.boundaryIndex, boundary, progress: state.bridgeProgress, tokens, selectedIndex: state.bridgeElement};
     }
     function seekBridge(progress) { stopBridge(); state.bridgeProgress = clamp(Number(progress) || 0, 0, 1); renderBridge(); }
     function bridgeTick(now) {
@@ -427,47 +480,74 @@
         pause(); state.bridgePlaying = true; state.bridgeProgress = 0; state.bridgeStart = performance.now();
         byId("layout-play").textContent = "Pause layout bridge"; state.bridgeRequest = requestAnimationFrame(bridgeTick);
     }
-    function renderFormulas() {
-        byId("model-formulas").innerHTML = "<p><strong>Work:</strong> useful MACs = M × K × N. Instantaneous useful MACs are counted directly from the visible event trace. Peak MACs = max over ticks of that count. Integrated MAC utilization = useful MACs / (256 × run cycles).</p>" +
-            "<p><strong>Systolic alternatives:</strong> output-stationary places M × N on the grid and streams K; weight-stationary places K × N on the grid and streams M; input-stationary places M × K on the grid and streams N. Tiles are at most 16 × 16 and include a logical wavefront fill/drain. ‘Best’ selects the lowest modeled cycle count per layer, not a fixed hardware claim. DMA and WS/IS partial-sum spill traffic are omitted.</p>" +
-            "<p><strong>FEATHER:</strong> EM/ES and tile choices are checked-in compiler-generated selections from bounded legal mapping candidates, not an online search or claim of globally optimal choices. The 1×12×32 mapping expands N ownership across rows and columns without splitting K=12. Each active event retains its true (m,k,n) coordinate. The animation includes row-staggered issue, column transfers and an idealized eight-stage BIRRD drain. It omits physical arithmetic latency, controller gaps, and common weight loading; the timeline is not an RTL trace. Equal 16×16 PE counts do not imply equal area or storage.</p>" +
-            "<p><strong>Chain boundaries:</strong> Nᵢ = Kᵢ₊₁ and Cᵢ is passed unchanged to Aᵢ₊₁. Whole-tensor VN rank orders determine whether producer and consumer addresses agree. The bandwidth field models extra repack traffic only; matching addresses or a compatible writer cost zero extra repack. Configuration is an explicit hypothetical cost. Neither field changes the computed GEMM.</p>";
-    }
-
     byId("preset").addEventListener("change", () => { state.presetId = byId("preset").value; state.layerIndex = 0; state.boundaryIndex = 0; rebuild(); });
     byId("baseline").addEventListener("change", () => { state.baseline = byId("baseline").value; rebuild(); });
     byId("layer").addEventListener("change", () => selectLayer(byId("layer").value));
-    byId("scope").addEventListener("change", () => { pause(); state.scope = byId("scope").value; state.cycle = 0; state.fraction = 0; render(); });
     byId("speed").addEventListener("change", () => { state.speed = Number(byId("speed").value); });
     byId("play").addEventListener("click", () => state.playing ? pause() : play());
-    byId("step").addEventListener("click", () => seek(state.cycle + 1));
     byId("reset").addEventListener("click", () => seek(0));
-    byId("peak").addEventListener("click", jumpPeak);
     byId("scrub").addEventListener("input", () => seek(byId("scrub").value));
     byId("output-m").addEventListener("input", renderNumeric); byId("output-n").addEventListener("input", renderNumeric);
+    byId("numeric-toggle").addEventListener("click", () => {
+        const panel = byId("numeric-panel"), button = byId("numeric-toggle");
+        panel.hidden = !panel.hidden;
+        button.setAttribute("aria-expanded", String(!panel.hidden));
+        button.textContent = panel.hidden ? "Show numerical comparison" : "Hide numerical comparison";
+    });
     for (const id of ["layout-mode", "bandwidth", "config", "compatible"]) byId(id).addEventListener("change", rebuild);
     byId("boundary").addEventListener("change", () => { stopBridge(); state.boundaryIndex = Number(byId("boundary").value); state.bridgeProgress = 0; renderBridge(); });
     byId("layout-play").addEventListener("click", playBridge);
+    byId("layout-element").addEventListener("change", () => {
+        state.bridgeElement = byId("layout-element").value === "" ? null : Number(byId("layout-element").value);
+        renderBridge();
+    });
     for (const kind of ["systolic", "feather"]) {
         const canvas = byId(kind === "systolic" ? "sa" : "feather");
         canvas.addEventListener("mousemove", event => {
-            const rect = canvas.getBoundingClientRect(), x = (event.clientX - rect.left) * canvas.width / rect.width, y = (event.clientY - rect.top) * canvas.height / rect.height;
+            const {x, y} = canvasPoint(kind === "systolic" ? "sa" : "feather", event);
             const row = Math.floor((y - grid.y) / grid.step), col = Math.floor((x - grid.x) / grid.step);
             const pe = row >= 0 && row < 16 && col >= 0 && col < 16 ? state.boards[kind].snapshot.pe[row * 16 + col] : null;
             canvas.title = pe ? `PE[${row},${col}] ${pe.active ? "active" : pe.mapped ? "mapped / idle" : "unmapped"}; m=${pe.m}, k=${pe.k}, n=${pe.n}; A=${pe.a}, B=${pe.b}, partial=${pe.value}` : "Hover a PE for its coordinates and operands.";
         });
     }
-    byId("bridge").addEventListener("mousemove", event => {
-        const canvas = byId("bridge"), rect = canvas.getBoundingClientRect(), x = (event.clientX - rect.left) * canvas.width / rect.width, y = (event.clientY - rect.top) * canvas.height / rect.height;
-        const boundary = state.chain.boundaries[state.boundaryIndex]; if (!boundary) return;
-        const all = [...boundary.sourceCells, ...boundary.targetCells], rows = Math.max(1, ...all.map(cell => cell.row + 1));
+    function bridgeHit(event) {
+        const {x, y} = canvasPoint("bridge", event);
+        const boundary = state.chain.boundaries[state.boundaryIndex]; if (!boundary) return null;
+        const contains = position => Math.abs(x - position.x) < 13 && y - position.y >= -10 && y - position.y <= 11;
+        const packet = [...state.bridge.tokens].reverse().find(item => item.progress > 0 && item.progress < 1 && contains(item));
+        if (packet) return {...packet, side: "transfer"};
         const side = x < 620 ? "source" : "target", cells = side === "source" ? boundary.sourceCells : boundary.targetCells;
-        const cell = cells.find(item => { const p = bridgeCellPosition(item, side, rows); return Math.abs(x - p.x) < 13 && Math.abs(y - p.y) < p.height / 2; });
-        canvas.title = cell ? `${side} C[${cell.m},${cell.n}]=${cell.value} → bank ${cell.bank}, row ${cell.row}` : "Hover a buffer cell for its coordinate, value and address.";
+        const cell = cells.find(item => contains(bridgeCellPosition(item, side)));
+        return cell ? {...cell, side} : null;
+    }
+    byId("bridge").addEventListener("mousemove", event => {
+        const cell = bridgeHit(event);
+        byId("bridge").title = cell ? `Element ${cell.index} · C[${cell.m},${cell.n}]=${number(cell.value)} · ${cell.side === "transfer" ? `bank ${cell.sourceBank}, row ${cell.sourceRow} → bank ${cell.targetBank}, row ${cell.targetRow}` : `${cell.side} bank ${cell.bank}, row ${cell.row}`} · Click to highlight` : "Click a buffer cell or moving element to highlight its route.";
+    });
+    byId("bridge").addEventListener("click", event => {
+        const cell = bridgeHit(event);
+        if (!cell) return;
+        state.bridgeElement = state.bridgeElement === cell.index ? null : cell.index;
+        byId("layout-element").value = state.bridgeElement ?? "";
+        renderBridge();
     });
     document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); stopBridge(); } });
     motionPreference.addEventListener("change", () => { stopBridge(); render(); renderBridge(); });
     new MutationObserver(() => { render(); renderBridge(); }).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+    const redrawCanvases = () => {
+        if (!state.chain) return;
+        drawBoard("systolic"); drawBoard("feather"); renderBridge();
+    };
+    const canvasResize = new ResizeObserver(redrawCanvases);
+    for (const id of Object.keys(canvasSizes)) canvasResize.observe(byId(id));
+    window.addEventListener("resize", redrawCanvases);
+    function watchPixelRatio() {
+        window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`).addEventListener("change", () => {
+            redrawCanvases(); watchPixelRatio();
+        }, {once: true});
+    }
+    watchPixelRatio();
+    document.fonts.ready.then(redrawCanvases);
 
     window.FeatherComparisonView = {
         inspect: () => ({presetId: state.presetId, baseline: state.baseline, scope: state.scope, layerIndex: state.layerIndex,
@@ -477,7 +557,7 @@
         seek, play, pause, selectLayer, seekBridge, playBridge,
         selectPreset: id => { if (!model.presets().some(preset => preset.id === id)) throw new Error(`Unknown preset: ${id}`); state.presetId = id; byId("preset").value = id; state.layerIndex = 0; state.boundaryIndex = 0; rebuild(); },
         setBaseline: id => { if (!Object.hasOwn(names, id)) throw new Error(`Unknown baseline: ${id}`); state.baseline = id; byId("baseline").value = id; rebuild(); },
-        setScope: scope => { if (!["layer", "chain"].includes(scope)) throw new Error(`Unknown scope: ${scope}`); pause(); state.scope = scope; byId("scope").value = scope; state.cycle = 0; state.fraction = 0; render(); }
+        setScope: scope => { if (!["layer", "chain"].includes(scope)) throw new Error(`Unknown scope: ${scope}`); pause(); state.scope = scope; state.cycle = 0; state.fraction = 0; render(); }
     };
     setOptions("preset", model.presets().map(preset => [preset.id, preset.name]), state.presetId);
     rebuild();
