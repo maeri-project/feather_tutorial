@@ -42,7 +42,7 @@ async function main() {
     check(output !== repository && !output.startsWith(repository + path.sep), "browser artifacts remain outside the repository");
     await fs.mkdir(output, {recursive: true});
     const browser = await chromium.launch({headless: true});
-    const context = await browser.newContext({viewport: {width: 1600, height: 1100}, reducedMotion: "no-preference"});
+    const context = await browser.newContext({viewport: {width: 1600, height: 1100}, deviceScaleFactor: 2, reducedMotion: "no-preference"});
     await context.route(/^https?:\/\//, async route => {
         if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(route.request().url()))
             await route.fulfill({status: 200, contentType: "text/css", body: ""});
@@ -107,6 +107,9 @@ async function main() {
         await page.clock.pauseAt(new Date("2026-01-01T00:00:01Z"));
         await page.goto(pathToFileURL(html).href, {waitUntil: "load"});
         await page.clock.runFor(100);
+        check(!(await page.locator("#mgMotionMount").isVisible()), "transfer panel starts collapsed");
+        check(await page.locator(".mg-view-nav #mgMotionToggle").isVisible(), "transfer toggle shares the diagram toolbar");
+        await page.locator("#mgMotionToggle").click();
         check(await page.locator("#mgMotionMount").isVisible(), "architecture includes an in-place detailed packet-motion view");
 
         for (const width of [4, 8, 16]) {
@@ -199,15 +202,16 @@ async function main() {
         const active = await frame(activeIndex, 0.5), selected = active.packets.find(item => item.operand === "W" && item.valid);
         await select.selectOption(selected.key);
         check(!(await state()).playing, "choosing a packet does not implicitly start playback");
-        check((await page.locator("#mgMotionOrigin").innerText()).includes(selected.originLabel), "detail view spells out the selected packet's original provenance");
-        const endpoints = await page.locator("#mgMotionEndpoints").innerText();
-        check(endpoints.includes(selected.sourceLabel) && endpoints.includes(selected.destinationLabel), "detail view spells out both current movement endpoints");
+        equal(await page.locator("#mgMotionOrigin, #mgMotionEndpoints, .mg-motion-help").count(), 0, "removed explanatory text stays out of the detail panel");
+        const description = await diagram.locator("title").textContent();
+        check(description.includes(selected.sourceLabel) && description.includes(selected.destinationLabel), "accessible diagram description retains transfer endpoints");
         check((await page.locator("#mgMotionCard").textContent()).includes(selected.label), "large moving card carries an exact tensor coordinate");
         check((await page.locator("#mgMotionCard").textContent()).includes(selected.tag), "large moving card carries a distinguishable persistent tag");
         const renderedColor = await page.locator("#mgFeatherCanvas").evaluate((canvas, packet) => {
             const color = packet.color.slice(1).match(/../g).map(value => Number.parseInt(value, 16));
-            const x = Math.max(0, Math.floor(packet.x - 35)), y = Math.max(0, Math.floor(packet.y - 24));
-            const bytes = canvas.getContext("2d").getImageData(x, y, Math.min(70, canvas.width - x), Math.min(50, canvas.height - y)).data;
+            const sx = canvas.width / mgFeatherGeometry.width, sy = canvas.height / mgFeatherGeometry.height;
+            const x = Math.max(0, Math.floor((packet.x - 35) * sx)), y = Math.max(0, Math.floor((packet.y - 24) * sy));
+            const bytes = canvas.getContext("2d").getImageData(x, y, Math.min(Math.ceil(70 * sx), canvas.width - x), Math.min(Math.ceil(50 * sy), canvas.height - y)).data;
             let matches = 0;
             for (let i = 0; i < bytes.length; i += 4) if (bytes[i] === color[0] && bytes[i + 1] === color[1] && bytes[i + 2] === color[2] && bytes[i + 3] === 255) matches++;
             return matches;
@@ -239,7 +243,7 @@ async function main() {
         equal(await page.evaluate(() => document.activeElement.id), "mgMotionSelect", "animation updates do not steal packet-selector keyboard focus");
         equal(await select.getAttribute("data-test-focus-sentinel"), "same-control", "animation updates preserve the same selector DOM node");
 
-        await page.locator("#mgInspectW").click();
+        await page.locator("#mgInspectBuffer").selectOption("W");
         await page.locator(`#mgBufferPopupGrid button[data-bank="${selected.bank}"][data-scalar-row="${selected.scalarRow}"]`).click();
         const addressedSelection = await page.evaluate(() => {
             const key = document.getElementById("mgMotionSelect").value;
@@ -310,6 +314,7 @@ async function main() {
         await page.locator("#mgMotionMount").evaluate(node => { node.scrollTop = 0; });
         await page.screenshot({path: path.join(output, "motion-mobile-expanded.png"), animations: "disabled"});
         await page.locator("#mgExpandBtn").click(); await page.clock.runFor(64);
+        await page.locator(".mg-trace-tools > summary").click();
         await page.locator('button[onclick="mgClearAll()"]').click();
         equal(await page.evaluate(() => JSON.parse(document.getElementById("mgFeatherCanvas").dataset.motionPackets || "[]")), [],
             "clearing the ISA trace removes all stale packet identities");

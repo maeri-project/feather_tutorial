@@ -177,14 +177,14 @@
     const canvas=host.canvas();
     canvas.addEventListener('click',event=>{
       const geometry=host.geometry();if(!geometry)return;
-      const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*canvas.width/rect.width,
-        y=(event.clientY-rect.top)*canvas.height/rect.height;
+      const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*geometry.width/rect.width,
+        y=(event.clientY-rect.top)*geometry.height/rect.height;
       const region=geometry.bufferRegions?.find(item=>x>=item.x&&x<=item.x+item.width&&y>=item.y&&y<=item.y+item.height);
-      if(region)open(region.operand,document.getElementById('mgInspect'+region.operand));
+      if(region)open(region.operand,document.getElementById('mgInspectBuffer'));
     });
     canvas.addEventListener('mousemove',event=>{
       const geometry=host.geometry(),rect=canvas.getBoundingClientRect();if(!geometry)return;
-      const x=(event.clientX-rect.left)*canvas.width/rect.width,y=(event.clientY-rect.top)*canvas.height/rect.height;
+      const x=(event.clientX-rect.left)*geometry.width/rect.width,y=(event.clientY-rect.top)*geometry.height/rect.height;
       const hit=geometry.bufferRegions?.some(item=>x>=item.x&&x<=item.x+item.width&&y>=item.y&&y<=item.y+item.height);
       canvas.style.cursor=hit?'pointer':'default';
     });

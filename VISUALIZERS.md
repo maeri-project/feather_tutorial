@@ -7,7 +7,7 @@ The left sidebar offers three complementary pages:
   tab remains separate. The generic editor has no switch-command field, so its
   BIRRD animation is explicitly a PASS topology preview, not a configured
   reduction or cycle-accurate hardware trace. Click the streaming, stationary,
-  or output buffer in the architecture (or its **Inspect** button) to open a
+  or output buffer in the architecture (or the **Inspect** menu) to open a
   live scalar-layout inspector without leaving the diagram.
 - `QWEN3_MINISA_VISUALIZER.html` is the detailed FP16 Qwen3 explorer. It embeds
   the nine original full-layer prefill operators, all 22 recorded ACT
@@ -114,9 +114,16 @@ execution of all T dot groups. PASS outputs therefore show intended partial-sum
 destinations, not completed GEMM values or verified hardware writes; conflicts
 and invalid/unmapped addresses are reported instead of silently wrapped.
 
+The architecture defaults to **Fit width** for readable detail; **Fit diagram**
+shows the whole architecture, and **Actual size** preserves its logical size.
+**Legend** beside **Expand** opens an overlay. Hardware, trace editing,
+instruction details, and file operations expand when needed. Both visualization
+canvases render at least two pixels per displayed pixel and adapt to denser screens.
+
 ### Follow moving elements
 
-The **Detailed data movement** panel enlarges one current transfer into a moving
+Use **Detailed data movement** in the diagram toolbar to open the transfer
+panel. It starts collapsed and enlarges one current transfer into a moving
 element card. **Follow element** selects it; **Replay transfer** moves it from
 source to destination and pauses at arrival without advancing to the next
 frame. Drag **Transfer** to inspect any intermediate position. **Play** shares
@@ -128,7 +135,8 @@ a visible trail, and retains a source marker. Input/weight tags encode physical
 bank and scalar row; multicast copies keep the same tag. Partial-result tags
 encode mapping, source PE, and dot group and persist through all PASS stages
 and output writeback. A highlighted packet's physical endpoints are outlined
-in the overview; the detail card spells out its current hop and original source.
+in the overview; the detail card retains its tensor coordinate and identity tag.
+The SVG description includes the current transfer endpoints.
 The magnified lane is a teaching close-up of that hop, not additional hardware.
 Semantic colors remain input `#004C99`, weight `#006633`, partial `#4C0099`, and
 output `#990000`. No independent playback timer or fabricated tensor values are

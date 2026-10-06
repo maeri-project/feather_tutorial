@@ -13,7 +13,7 @@
         let activeKey = null;
         let preferredAddress = null;
         let optionsSignature = null;
-        let collapsed = false;
+        let collapsed = true;
 
         function html(tag, attrs, text, parent) {
             const node = document.createElement(tag);
@@ -34,9 +34,10 @@
         }
         const panel = html('section', { class: 'mg-motion', 'aria-label': 'Detailed data movement' }, undefined, mount);
         const header = html('div', { class: 'mg-motion-header' }, undefined, panel);
-        const toggle = html('button', { id: 'mgMotionToggle', type: 'button', 'aria-expanded': 'true', 'aria-controls': 'mgMotionBody' }, '▾ Detailed data movement', header);
+        const toggle = document.getElementById('mgMotionToggle');
         const phase = html('span', { id: 'mgMotionPhase', class: 'mg-motion-phase' }, '', header);
         const body = html('div', { id: 'mgMotionBody' }, undefined, panel);
+        body.hidden = collapsed;
         const controls = html('div', { class: 'mg-motion-controls' }, undefined, body);
         const selectorLabel = html('label', { for: 'mgMotionSelect' }, 'Follow element', controls);
         const select = html('select', { id: 'mgMotionSelect', 'aria-label': 'Element to follow through the architecture' }, undefined, selectorLabel);
@@ -45,7 +46,7 @@
         const scrubLabel = html('label', { class: 'mg-motion-scrub-label', for: 'mgMotionScrub' }, 'Transfer', controls);
         const scrub = html('input', { id: 'mgMotionScrub', type: 'range', min: '0', max: '100', step: '1', value: '100', 'aria-label': 'Transfer progress in the current architecture frame' }, undefined, scrubLabel);
         const percentage = html('output', { id: 'mgMotionPercent', for: 'mgMotionScrub' }, '100%', scrubLabel);
-        const diagram = svg('svg', { id: 'mgMotionDiagram', viewBox: '0 0 920 100', role: 'img', 'aria-label': 'Selected data element moving from its source to its destination' }, undefined, body);
+        const diagram = svg('svg', { id: 'mgMotionDiagram', viewBox: '0 0 920 88', role: 'img', 'aria-label': 'Selected data element moving from its source to its destination' }, undefined, body);
         const description = svg('title', {}, '', diagram);
         const track = svg('path', { class: 'mg-motion-track', d: 'M132 58H788' }, undefined, diagram);
         const trail = svg('path', { id: 'mgMotionTrail', class: 'mg-motion-trail', d: 'M132 58H788' }, undefined, diagram);
@@ -62,14 +63,6 @@
         const fingerprint = svg('path', { d: 'M-104,-4h12v12h-12z', class: 'mg-motion-fingerprint' }, undefined, card);
         const tagText = svg('text', { y: '-6', 'text-anchor': 'middle', class: 'mg-motion-card-tag' }, '', card);
         const labelText = svg('text', { y: '14', 'text-anchor': 'middle', class: 'mg-motion-card-label' }, '', card);
-        const statusText = svg('text', { x: '460', y: '96', 'text-anchor': 'middle', class: 'mg-motion-status' }, '', diagram);
-        const endpoints = html('div', { id: 'mgMotionEndpoints', class: 'mg-motion-endpoints' }, '', body);
-        const origin = html('div', { id: 'mgMotionOrigin', class: 'mg-motion-origin' }, '', body);
-        const help = html('details', { class: 'mg-motion-help' }, undefined, body);
-        html('summary', {}, 'Identity key · symbolic PASS partial-result preview', help);
-        html('div', { class: 'mg-motion-note' }, 'Identity tags: I/W = bank.scalar-row; P = mapping:PE-row.PE-column·dot. Matching tags are copies of the same source element.', help);
-        const disclaimer = html('div', { class: 'mg-motion-note' }, 'Symbolic tensor elements; timing is illustrative. BIRRD PASS traffic remains a partial result, not a completed GEMM value.', undefined);
-        help.appendChild(disclaimer);
 
         function packetAtAddress(packet, address) {
             return address && packet.operand === address.operand && packet.bank === address.bank && packet.scalarRow === address.scalarRow;
@@ -129,7 +122,7 @@
             const startX = cardWidth / 2 + 6;
             const endX = width - startX;
             const packetX = startX + (endX - startX) * progress;
-            diagram.setAttribute('viewBox', '0 0 ' + width + ' 100');
+            diagram.setAttribute('viewBox', '0 0 ' + width + ' 88');
             Object.assign(diagram.dataset, { selectedKey: activeKey || '', progress: String(progress), packetX: String(packetX), packetY: '58', startX: String(startX), endX: String(endX) });
             track.setAttribute('d', 'M' + startX + ' 58H' + endX);
             trail.setAttribute('d', 'M' + startX + ' 58H' + packetX);
@@ -145,7 +138,6 @@
             card.setAttribute('transform', 'translate(' + packetX + ' 58)');
             cardBox.setAttribute('x', -cardWidth / 2);
             cardBox.setAttribute('width', cardWidth);
-            statusText.setAttribute('x', width / 2);
             card.style.display = selected ? '' : 'none';
             ghost.style.display = selected ? '' : 'none';
             trail.style.display = selected ? '' : 'none';
@@ -167,24 +159,17 @@
                 fitText(ghostTag, signatureLabel, cardWidth - 20, 10);
                 fitText(ghostLabel, exactLabel, cardWidth - 18, 13);
                 description.textContent = exactLabel + ', ' + signatureLabel + ', from ' + selected.sourceLabel + ' to ' + selected.destinationLabel + ', ' + percent + '%';
-                endpoints.textContent = 'This transfer: ' + (selected.sourceLabel || 'Source') + ' → ' + (selected.destinationLabel || 'Destination');
-                origin.textContent = 'Original source: ' + (selected.originLabel || selected.sourceLabel || 'See mapped source') + ' · ' + exactLabel;
-                statusText.textContent = progress === 1 ? 'Arrived at this transfer’s destination' : progress === 0 ? 'At source — replay or drag Transfer to follow this element' : 'In flight · ' + percent + '% · same identity from source to destination';
                 card.dataset.packetKey = selected.key;
                 card.dataset.packetLabel = exactLabel;
                 ghost.dataset.packetKey = selected.key;
             } else {
                 description.textContent = 'No mapped transfer in this frame.';
-                endpoints.textContent = 'Generate Animation, then Replay transfer or Play to follow an element.';
-                origin.textContent = 'Exact element labels and physical addresses appear when a transfer is available.';
-                statusText.textContent = 'Generate Animation or step to a mapped transfer';
                 delete card.dataset.packetKey;
                 delete card.dataset.packetLabel;
                 delete ghost.dataset.packetKey;
             }
             panel.dataset.selectedKey = activeKey || '';
             panel.dataset.frame = String(current.frame);
-            fitText(statusText, statusText.textContent, width - 12, width < 700 ? 8 : 10);
         }
 
         select.addEventListener('change', function () {
@@ -200,12 +185,11 @@
         scrub.addEventListener('input', function () { call('onScrub', Number(scrub.value) / 100); });
         toggle.addEventListener('click', function () {
             collapsed = !collapsed;
+            mount.hidden = collapsed;
             body.hidden = collapsed;
             toggle.setAttribute('aria-expanded', String(!collapsed));
-            toggle.textContent = (collapsed ? '▸' : '▾') + ' Detailed data movement';
             call('onRedraw');
         });
-        help.addEventListener('toggle', function () { call('onRedraw'); });
         draw();
         return {
             render: draw,

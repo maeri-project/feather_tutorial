@@ -93,7 +93,11 @@ async function main() {
     page.on("pageerror", error => errors.push(String(error)));
     page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
     page.on("dialog", async dialog => { dialogs.push({type: dialog.type(), message: dialog.message()}); await dialog.accept(); });
-    const action = call => page.locator(`button[onclick="${call}"]`).click();
+    const action = async call => {
+        const button = page.locator(`button[onclick="${call}"]`);
+        if (!(await button.isVisible())) await button.locator("xpath=ancestor::details[1]/summary").click();
+        await button.click();
+    };
     const state = () => page.evaluate(() => ({hardware: {...mgHW}, instructions: structuredClone(mgInstructions),
         frame: mgCurrentFrame, count: mgAnimFrames.length, playing: mgPlaying, activeTab: mgActiveTab}));
     async function load(trace) {
@@ -130,14 +134,17 @@ async function main() {
             const panel = document.getElementById("mg-tab-feather"), canvas = document.getElementById("mgFeatherCanvas");
             const outer = panel.getBoundingClientRect(), inner = canvas.getBoundingClientRect();
             return {scale: mgFeatherGeometry.scale, canvas: {width: inner.width, height: inner.height},
-                backing: {width: canvas.width, height: canvas.height}, contained: inner.left >= outer.left - 1 &&
+                logical: {width: mgFeatherGeometry.width, height: mgFeatherGeometry.height},
+                density: Math.max(2, devicePixelRatio), backing: {width: canvas.width, height: canvas.height}, contained: inner.left >= outer.left - 1 &&
                     inner.right <= outer.right + 1 && inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1};
         });
         check(dimensions.contained, `${label}: Fit diagram exposes the complete connected NEST and BIRRD canvas inside its pane`);
         check(dimensions.scale > 0 && dimensions.scale <= 1, `${label}: fit has a positive bounded scale`);
-        check(Math.abs(dimensions.canvas.width - dimensions.backing.width * dimensions.scale) < 1 &&
-            Math.abs(dimensions.canvas.height - dimensions.backing.height * dimensions.scale) < 1,
+        check(Math.abs(dimensions.canvas.width - dimensions.logical.width * dimensions.scale) < 1 &&
+            Math.abs(dimensions.canvas.height - dimensions.logical.height * dimensions.scale) < 1,
         `${label}: fit retains the original geometry and aspect ratio`);
+        check(dimensions.backing.width >= Math.floor(dimensions.canvas.width * dimensions.density) &&
+            dimensions.backing.height >= Math.floor(dimensions.canvas.height * dimensions.density), `${label}: rendering preserves high-DPI detail`);
     }
     async function actualDiagram(label) {
         await page.locator("#mgDiagramScale").selectOption("actual");
@@ -145,9 +152,9 @@ async function main() {
             const panel = document.getElementById("mg-tab-feather"), canvas = document.getElementById("mgFeatherCanvas");
             const rect = canvas.getBoundingClientRect();
             return {scale: mgFeatherGeometry.scale, width: rect.width, height: rect.height,
-                backing: [canvas.width, canvas.height], scrollable: panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth};
+                logical: [mgFeatherGeometry.width, mgFeatherGeometry.height], scrollable: panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth};
         });
-        equal([dimensions.scale, dimensions.width, dimensions.height], [1, ...dimensions.backing],
+        equal([dimensions.scale, dimensions.width, dimensions.height], [1, ...dimensions.logical],
             `${label}: Actual size presents full-resolution readable canvas`);
         check(dimensions.scrollable, `${label}: full-resolution canvas scrolls inside its pane`);
         await noOverflow(`${label}: Actual size`);
@@ -236,7 +243,8 @@ async function main() {
         groups.push("original tutorial title, prose, controls, defaults and JSON schema");
 
         await page.locator("#mgIsaList .mg-isa-item").nth(2).click();
-        check((await page.locator("#mgDetailsBox").innerText()).includes("SetWVNLayout"), "selection opens original instruction details");
+        await page.locator("#mgInstructionDetails > summary").click();
+        check((await page.locator("#mgDetailsBox").innerText()).includes("SetWVNLayout"), "selection updates original instruction details");
         await action("mgEditInstruction()"); await page.locator("#mgm_order").fill("3");
         check((await page.locator("#mgOrderPrev").innerText()).includes("nL0"), "live VN-order preview works");
         await page.locator("#mgModalOk").click(); equal((await state()).instructions[2].params.order, 3, "editing custom ISA parameters retained");
@@ -500,7 +508,7 @@ async function main() {
             check(await page.locator("#mg-tab-buffer").isVisible(), "original VN-buffer panel still works");
             check(!(await page.locator("#mg-tab-feather").isVisible()), "only selected buffer panel is visible");
             await legendColors(`${width}-wide VN buffers`, false);
-            const buffer = await page.evaluate(() => ({...window.__tutorialBufferDraw, width: document.getElementById("mgBufferCanvas").width}));
+            const buffer = await page.evaluate(() => ({...window.__tutorialBufferDraw, width: parseFloat(document.getElementById("mgBufferCanvas").style.width)}));
             const panelWidth = Math.floor(buffer.width / 3) - 20;
             for (const [index, operand, label] of [[0, "input", "Input (IVN)"], [1, "weight", "Weight (WVN)"], [2, "result", "Output (OVN)"]]) {
                 const title = buffer.text.find(item => item.label === label);
@@ -545,6 +553,7 @@ async function main() {
         await page.clock.runFor(700);
         equal((await state()).frame, reducedFrame + 1, "reduced-motion playback retains discrete advance");
         await page.locator("#mgPlayBtn").click();
+        await page.locator("#mgNestSize").locator("xpath=ancestor::details[1]/summary").click();
         await page.locator("#mgNestSize").selectOption("8");
         equal((await state()).hardware.AW, 8, "original hardware dropdown applies changes");
         equal((await state()).count, 0, "hardware edits invalidate stale animation frames");

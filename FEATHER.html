@@ -37,7 +37,7 @@
     }
     /* left config panel */
     .mg-left {
-      width: 400px; min-width: 340px; overflow-y: auto;
+      width: 300px; min-width: 300px; overflow-y: auto;
       border-right: 1px solid var(--border-color);
       padding: 10px;
       background: var(--bg-sidebar);
@@ -58,6 +58,10 @@
       color: var(--text-main);
     }
     .mg-section-body { padding: 10px; }
+    details.mg-section > summary { cursor: pointer; }
+    details.mg-section:not([open]) > summary { border-bottom: 0; border-radius: 8px; }
+    .mg-trace-tools { margin-top: 8px; }
+    .mg-trace-tools > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; }
     .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
     .mg-row label { font-size: 12px; font-weight: 500; min-width: 24px; color: var(--text-muted); }
     .mg-row input, .mg-row select {
@@ -66,6 +70,12 @@
     }
     .mg-row input[type=number] { width: 72px; }
     .mg-row select { min-width: 90px; }
+    .mg-workload-row { gap:5px; margin-bottom:0; }
+    .mg-workload-row label { min-width:14px; }
+    .mg-workload-row input { flex:1; min-width:0; }
+    .mg-playback-speed { margin-top:8px; margin-bottom:0; }
+    #mgSpeedSlider { flex:1; min-width:0; max-width:140px; }
+    #mgFrameInfo { margin-left:auto; font-size:11px; color:var(--text-light); }
     .mg-btn {
       padding: 5px 12px; border: 1px solid var(--border-color); border-radius: 4px;
       background: var(--bg-card); cursor: pointer; font-size: 12px;
@@ -110,11 +120,13 @@
     /* tabs */
     .mg-tab-bar {
       display: flex; background: rgba(120,100,255,0.06);
-      align-items:center; flex-wrap:wrap;
+      align-items:center; flex-wrap:wrap; flex-shrink:0; position:relative;
       border-bottom: 2px solid var(--primary-color);
     }
+    .mg-tabs { display:flex; flex-wrap:wrap; }
+    .mg-view-actions { display:flex; gap:6px; margin:4px 8px 4px auto; }
     .mg-tab {
-      padding: 9px 18px; cursor: pointer; font-weight: 500; font-size: 13px;
+      padding: 9px 12px; cursor: pointer; font-weight: 500; font-size: 12px;
       border: none; background: transparent;
       border-bottom: 3px solid transparent; transition: all 0.2s;
       color: var(--text-muted);
@@ -126,25 +138,30 @@
     .mg-view-nav { position:sticky; top:0; z-index:1; padding:7px 12px; display:flex;
       gap:6px; align-items:center; flex-wrap:wrap; background:var(--bg-card);
       border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:11px; }
+    .mg-view-nav select { color:var(--text-main); background:var(--bg-body); font:inherit;
+      padding:5px 7px; border:1px solid var(--border-color); border-radius:4px; max-width:100%; }
+    .mg-view-nav label { display:flex; align-items:center; gap:5px; }
+    .mg-view-nav .mg-btn { font:inherit; white-space:nowrap; }
+    #mgMotionToggle[aria-expanded="true"] { border-color:var(--primary-color); background:rgba(120,100,255,0.1); }
+    .mg-inspect-control { margin-left:auto; }
     #mgAnimInfo { overflow-wrap:anywhere; line-height:1.5; }
     .mg-app.mg-expanded { position:fixed; inset:16px; height:auto; margin:0; z-index:1200;
       box-shadow:0 0 0 100vmax rgba(0,0,0,.5); }
-    .mg-expanded .mg-left { width:340px; min-width:300px; }
-    #mgWlM, #mgWlK, #mgWlN { width:60px; }
-    #mgExpandBtn { margin:4px 8px 4px auto; }
-    #mgDiagramScale { color:var(--text-main); background:var(--bg-body); font-size:11px;
-      padding:4px; border:1px solid var(--border-color); border-radius:4px; }
+    #mgWlM, #mgWlK, #mgWlN { width:62px; }
     #mgFeatherCanvas { min-width:0; min-height:0; }
     #mgMotionMount { overflow:auto; min-height:0; }
     .mg-tab:focus-visible, .mg-btn:focus-visible { outline:2px solid var(--primary-color); outline-offset:-2px; }
     .mg-tab-content canvas { display:block; min-width: 700px; min-height: 600px; }
     .mg-legend {
-      display:flex; gap:10px; flex-wrap:wrap; padding:6px 12px;
-      background: var(--bg-sidebar); border-bottom:1px solid var(--border-color); font-size:11px;
+      position:absolute; top:calc(100% + 6px); right:8px; z-index:5;
+      display:grid; gap:12px; padding:16px; width:max-content; max-width:calc(100% - 16px);
+      background: var(--bg-card); border:1px solid var(--border-color); border-radius:8px;
+      box-shadow:0 8px 24px rgba(0,0,0,.18); font-size:12px;
       color: var(--text-muted);
     }
+    .mg-legend[hidden] { display:none; }
     .mg-legend-item { display:flex; align-items:center; gap:4px; }
-    .mg-legend-swatch { width:14px; height:14px; border-radius:3px; border:1px solid #999; }
+    .mg-legend-swatch { width:14px; height:14px; flex-shrink:0; border-radius:3px; border:1px solid #999; }
     /* modal */
     .mg-modal-overlay {
       display:none; position:fixed; top:0; left:0; width:100%; height:100%;
@@ -185,13 +202,20 @@
     @keyframes mgFadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
 
     /* Responsive: on small screens stack vertically */
-    @media (max-width: 900px) {
-      .mg-app { flex-direction: column; height: auto; }
-      .mg-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
-      .mg-right { min-height: 500px; }
+    @media (max-width: 1440px) {
+      .on-this-page { display:none; }
+      .doc-content { padding-right:0; }
+    }
+    @media (max-width: 1100px) {
+      .mg-app { flex-direction: column-reverse; height: auto; }
+      .mg-left { width: 100%; min-width: unset; border-right: none; border-top: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
+      .mg-right { flex:none; height:720px; min-height:0; }
       .mg-app.mg-expanded { inset:8px; }
       .mg-expanded .mg-left { width:100%; min-width:0; max-height:35%; flex-shrink:0; }
       .mg-expanded .mg-right { min-height:0; flex:1; }
+      .mg-tab { padding:9px 8px; }
+      .mg-view-nav { padding:7px; }
+      .mg-inspect-control { margin-left:0; }
     }
   </style>
 </head>
@@ -286,8 +310,8 @@
               <!-- LEFT PANEL -->
               <div class="mg-left">
                 <!-- HW Config -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Hardware Configuration</div>
+                <details class="mg-section">
+                  <summary class="mg-section-title">Hardware Configuration</summary>
                   <div class="mg-section-body">
                     <div class="mg-row">
                       <label>NEST Size:</label>
@@ -300,12 +324,12 @@
                       <input type="number" id="mgSramMB" value="4" min="1" max="4096" step="0.5" onchange="mgOnSramChange()">
                     </div>
                   </div>
-                </div>
+                </details>
                 <!-- Workload -->
                 <div class="mg-section">
                   <div class="mg-section-title">Workload (GEMM)</div>
                   <div class="mg-section-body">
-                    <div class="mg-row">
+                    <div class="mg-row mg-workload-row">
                       <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
                       <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
                       <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
@@ -317,6 +341,8 @@
                   <div class="mg-section-title">ISA Trace Sequence</div>
                   <div class="mg-section-body">
                     <div class="mg-isa-list" id="mgIsaList"></div>
+                    <details class="mg-trace-tools">
+                      <summary>Edit trace</summary>
                     <div class="mg-btn-row" style="margin-top:8px;">
                       <select id="mgIsaTypeSelect" style="font-size:12px;padding:4px;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
                         <option value="SetIVNLayout">SetIVNLayout</option>
@@ -338,15 +364,16 @@
                       <button class="mg-btn" onclick="mgClearAll()">Clear</button>
                       <button class="mg-btn" onclick="mgResetDefault()">Reset Default</button>
                     </div>
+                    </details>
                   </div>
                 </div>
                 <!-- Details -->
-                <div class="mg-section">
-                  <div class="mg-section-title">Instruction Details</div>
+                <details class="mg-section" id="mgInstructionDetails">
+                  <summary class="mg-section-title">Instruction Details</summary>
                   <div class="mg-section-body">
                     <div class="mg-details" id="mgDetailsBox">Select an instruction to view details.</div>
                   </div>
-                </div>
+                </details>
                 <!-- Animation Controls -->
                 <div class="mg-section">
                   <div class="mg-section-title">Animation Controls</div>
@@ -354,20 +381,22 @@
                     <button class="mg-btn primary" onclick="mgGenerateAnimation()" style="width:100%;margin-bottom:8px;">Generate Animation</button>
                     <div id="mgAnimInfo" style="font-size:11px;color:var(--text-light);margin-bottom:6px;">No animation generated</div>
                     <div class="mg-btn-row" style="align-items:center;">
-                      <button class="mg-btn" onclick="mgStepAnim(-10)">&lt;&lt;</button>
-                      <button class="mg-btn" onclick="mgStepAnim(-1)">&lt;</button>
+                      <button class="mg-btn" aria-label="Back 10 frames" onclick="mgStepAnim(-10)">&lt;&lt;</button>
+                      <button class="mg-btn" aria-label="Previous frame" onclick="mgStepAnim(-1)">&lt;</button>
                       <button class="mg-btn" id="mgPlayBtn" onclick="mgTogglePlay()" style="min-width:50px;">Play</button>
-                      <button class="mg-btn" onclick="mgStepAnim(1)">&gt;</button>
-                      <button class="mg-btn" onclick="mgStepAnim(10)">&gt;&gt;</button>
-                      <label style="font-size:11px;margin-left:6px;color:var(--text-light);">Speed:</label>
-                      <input type="range" id="mgSpeedSlider" style="width:70px;" min="0.1" max="5" step="0.1" value="1">
-                      <span id="mgFrameInfo" style="font-size:11px;color:var(--text-light);">0/0</span>
+                      <button class="mg-btn" aria-label="Next frame" onclick="mgStepAnim(1)">&gt;</button>
+                      <button class="mg-btn" aria-label="Forward 10 frames" onclick="mgStepAnim(10)">&gt;&gt;</button>
+                    </div>
+                    <div class="mg-row mg-playback-speed">
+                      <label for="mgSpeedSlider">Speed</label>
+                      <input type="range" id="mgSpeedSlider" min="0.1" max="5" step="0.1" value="1">
+                      <span id="mgFrameInfo">0/0</span>
                     </div>
                   </div>
                 </div>
                 <!-- File Ops -->
-                <div class="mg-section">
-                  <div class="mg-section-title">File Operations</div>
+                <details class="mg-section">
+                  <summary class="mg-section-title">File Operations</summary>
                   <div class="mg-section-body">
                     <div class="mg-btn-row">
                       <button class="mg-btn" onclick="mgSaveTrace()">Save JSON</button>
@@ -375,31 +404,39 @@
                       <input type="file" id="mgLoadFile" accept=".json" style="display:none" onchange="mgLoadTrace(event)">
                     </div>
                   </div>
-                </div>
+                </details>
               </div>
 
               <!-- RIGHT PANEL -->
               <div class="mg-right">
-                <div class="mg-tab-bar" role="tablist" aria-label="FEATHER visualization">
-                  <button class="mg-tab active" id="mg-feather-tab" data-tab="feather" role="tab" aria-selected="true" aria-controls="mg-tab-feather" onclick="mgSwitchTab('feather')">FEATHER · NEST + BIRRD</button>
-                  <button class="mg-tab" id="mg-buffer-tab" data-tab="buffer" role="tab" aria-selected="false" aria-controls="mg-tab-buffer" onclick="mgSwitchTab('buffer')">VN Buffers</button>
-                  <button class="mg-btn" id="mgExpandBtn" aria-pressed="false" onclick="mgToggleExpanded()">Expand</button>
-                </div>
-                <div class="mg-legend" id="mgLegend"></div>
-                <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
-                  <div class="mg-view-nav">Connected accelerator:
-                    <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
-                      <option value="fit">Fit diagram</option><option value="actual">Actual size</option>
-                    </select>
-                    <button class="mg-btn" onclick="mgScrollDiagram('nest')">NEST ↓</button>
-                    <button class="mg-btn" onclick="mgScrollDiagram('network')">BIRRD ↓</button>
-                    <button class="mg-btn" onclick="mgScrollDiagram('output')">Output ↓</button>
-                    <button class="mg-btn" id="mgInspectI" aria-haspopup="dialog" onclick="mgOpenBuffer('I',this)">Inspect streaming</button>
-                    <button class="mg-btn" id="mgInspectW" aria-haspopup="dialog" onclick="mgOpenBuffer('W',this)">Inspect stationary</button>
-                    <button class="mg-btn" id="mgInspectO" aria-haspopup="dialog" onclick="mgOpenBuffer('O',this)">Inspect output</button>
+                <div class="mg-tab-bar">
+                  <div class="mg-tabs" role="tablist" aria-label="FEATHER visualization">
+                    <button class="mg-tab active" id="mg-feather-tab" data-tab="feather" role="tab" aria-selected="true" aria-controls="mg-tab-feather" onclick="mgSwitchTab('feather')">FEATHER</button>
+                    <button class="mg-tab" id="mg-buffer-tab" data-tab="buffer" role="tab" aria-selected="false" aria-controls="mg-tab-buffer" onclick="mgSwitchTab('buffer')">VN Buffers</button>
                   </div>
-                  <div id="mgMotionMount" tabindex="0" aria-label="Detailed data movement panel"></div>
-                  <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST; each PE's bottom-right output connects diagonally to the vertical bus on its column's right side. Each column bus connects directly to a BIRRD input. Network outputs route illustrative partial results to addressed output-buffer cells. Use the Inspect buttons to explore each buffer's scalar layout."></canvas>
+                  <div class="mg-view-actions">
+                    <button class="mg-btn" id="mgLegendBtn" aria-expanded="false" aria-controls="mgLegend" onclick="mgToggleLegend()">Legend</button>
+                    <button class="mg-btn" id="mgExpandBtn" aria-pressed="false" onclick="mgToggleExpanded()">Expand</button>
+                  </div>
+                  <div class="mg-legend" id="mgLegend" role="region" aria-label="Diagram legend" hidden></div>
+                </div>
+                <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
+                  <div class="mg-view-nav">
+                    <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
+                      <option value="width">Fit width</option><option value="fit">Fit diagram</option><option value="actual">Actual size</option>
+                    </select>
+                    <select id="mgDiagramJump" aria-label="Jump to architecture section" onchange="mgScrollDiagram(this.value);this.value=''">
+                      <option value="">Jump to…</option><option value="nest">NEST</option><option value="network">BIRRD</option><option value="output">Output</option>
+                    </select>
+                    <button class="mg-btn" id="mgMotionToggle" type="button" aria-expanded="false" aria-controls="mgMotionMount">Detailed data movement</button>
+                    <label class="mg-inspect-control">Inspect
+                      <select id="mgInspectBuffer" aria-label="Inspect buffer" onchange="if(this.value)mgOpenBuffer(this.value,this);this.value=''">
+                        <option value="">Buffer…</option><option value="I">Streaming</option><option value="W">Stationary</option><option value="O">Output</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="mgMotionMount" tabindex="0" aria-label="Detailed data movement panel" hidden></div>
+                  <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST; each PE's bottom-right output connects diagonally to the vertical bus on its column's right side. Each column bus connects directly to a BIRRD input. Network outputs route illustrative partial results to addressed output-buffer cells. Use Inspect buffer to explore each buffer's scalar layout."></canvas>
                 </div>
                 <div class="mg-tab-content" id="mg-tab-buffer" role="tabpanel" aria-labelledby="mg-buffer-tab" tabindex="0"><canvas id="mgBufferCanvas" role="img" aria-label="Input, weight, and output VN buffer layouts"></canvas></div>
               </div>
@@ -937,12 +974,33 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       :[['Streaming (IVN)',MG_DATA_COLORS.input,MG_DATA_COLORS.input],['Stationary (WVN)',MG_DATA_COLORS.weight,MG_DATA_COLORS.weight],['Output (OVN)',MG_DATA_COLORS.result,MG_DATA_COLORS.result]];
     l.innerHTML=items.map(([n,c,e])=>'<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:'+c+';border-color:'+e+'"></div>'+n+'</div>').join('');
   }
+  function mgToggleLegend(open=document.getElementById('mgLegend').hidden){
+    document.getElementById('mgLegend').hidden=!open;
+    document.getElementById('mgLegendBtn').setAttribute('aria-expanded',String(open));
+  }
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('#mgLegend, #mgLegendBtn'))mgToggleLegend(false);
+  });
   function mgDrawActive(){
     if(mgActiveTab==='feather')mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
     else mgDrawBuffer();
   }
 
   // ---------- Canvas Helpers ----------
+  function mgPrepareCanvas(cv,width,height,scale=1){
+    const displayWidth=width*scale,displayHeight=height*scale;
+    // Supersample at least 2x, and match denser displays without changing
+    // the logical coordinates used by animation paths and buffer hit targets.
+    const density=Math.max(2,window.devicePixelRatio||1);
+    const pixelWidth=Math.ceil(displayWidth*density),pixelHeight=Math.ceil(displayHeight*density);
+    cv.style.width=displayWidth+'px';cv.style.height=displayHeight+'px';
+    if(cv.width!==pixelWidth)cv.width=pixelWidth;
+    if(cv.height!==pixelHeight)cv.height=pixelHeight;
+    const ctx=cv.getContext('2d');
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.setTransform(pixelWidth/width,0,0,pixelHeight/height,0,0);
+    return ctx;
+  }
   function mgRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
   function mgArrow(ctx,x1,y1,x2,y2,color,lw){const hl=8,a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
@@ -980,13 +1038,18 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     requestAnimationFrame(mgDrawActive);
   }
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&!mgBufferLink?.popup.isOpen()&&document.querySelector('.mg-app').classList.contains('mg-expanded'))mgToggleExpanded();
+    if(event.key!=='Escape')return;
+    if(!document.getElementById('mgLegend').hidden){
+      mgToggleLegend(false);document.getElementById('mgLegendBtn').focus();return;
+    }
+    if(!mgBufferLink?.popup.isOpen()&&document.querySelector('.mg-app').classList.contains('mg-expanded'))mgToggleExpanded();
   });
   function mgScrollDiagram(section){
     if(!mgFeatherGeometry)return;const pane=document.getElementById('mg-tab-feather');
     const positions={nest:0,network:mgFeatherGeometry.nestBottom-30,output:mgFeatherGeometry.outputY-120};
     const offset=section==='nest'?0:document.getElementById('mgFeatherCanvas').offsetTop;
-    pane.scrollTo({top:offset+(positions[section]||0)*mgFeatherGeometry.scale,behavior:mgReducedMotion.matches?'instant':'smooth'});
+    const toolbarHeight=pane.querySelector('.mg-view-nav').offsetHeight;
+    pane.scrollTo({top:Math.max(0,offset+(positions[section]||0)*mgFeatherGeometry.scale-toolbarHeight),behavior:mgReducedMotion.matches?'instant':'smooth'});
   }
   function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
     const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
@@ -995,7 +1058,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const bufferHeights=Object.fromEntries(['I','W','O'].map(operand=>[operand,
       FeatherBufferView.height(mgBufferLink.getLayout(operand),mgBufferLink.windowFor(operand))]));
     const cell=AW>8?48:58,pitch=cell+18,cardWidth=AW*44+58;
-    const top=65+Math.max(bufferHeights.I,bufferHeights.W)+48;
+    const bufferTop=12,top=bufferTop+Math.max(bufferHeights.I,bufferHeights.W)+48;
     const width=Math.max(700,ct.clientWidth,100+AW*pitch+32,2*cardWidth+80);
     const left=(width-((AW-1)*pitch+cell))/2;
     const columnX=c=>left+c*pitch+cell/2;
@@ -1006,23 +1069,20 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const nestBottom=top+(AH-1)*pitch+cell,networkTop=nestBottom+100;
     const stageY=s=>networkTop+80+s*72,outputY=stageY(stages-1)+108,eggHeight=28;
     const height=outputY+60+bufferHeights.O+78;
-    const fit=document.getElementById('mgDiagramScale').value==='fit';
+    const sizing=document.getElementById('mgDiagramScale').value,fit=sizing==='fit';
     const motionMount=document.getElementById('mgMotionMount');
     motionMount.style.maxHeight=Math.max(110,Math.floor(ct.clientHeight*.45))+'px';
     const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
       Math.max(1,ct.clientHeight-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);
-    let scale=fit?fittedScale():1;
-    cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';
-    cv.style.margin=fit?'0 auto':'0';
-    if(cv.width!==width)cv.width=width;if(cv.height!==height)cv.height=height;
-    const ctx=cv.getContext('2d');
-    ctx.clearRect(0,0,width,height);
+    let scale=fit?fittedScale():sizing==='width'?Math.min(1,Math.max(1,ct.clientWidth-12)/width):1;
+    cv.style.margin=sizing==='actual'?'0':'0 auto';
+    const ctx=mgPrepareCanvas(cv,width,height,scale);
     const textColor=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';
     const muted=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';
     const center=(columnX(0)+columnX(AW-1))/2;
     const inputX=center-cardWidth/2-16,weightX=center+cardWidth/2+16;
-    const bufferRegions=[{operand:'I',x:inputX-cardWidth/2,y:65,width:cardWidth,height:bufferHeights.I},
-      {operand:'W',x:weightX-cardWidth/2,y:65,width:cardWidth,height:bufferHeights.W},
+    const bufferRegions=[{operand:'I',x:inputX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.I},
+      {operand:'W',x:weightX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.W},
       {operand:'O',x:portX(0)-cell/2,y:outputY+60,width:(AW-1)*pitch+cell,height:bufferHeights.O}];
     const columnLinks=Array.from({length:AW},(_,c)=>({column:c,input:c,
       from:[busX(c),top],to:[busX(c),networkTop]}));
@@ -1055,12 +1115,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
     function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
       points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
-    label('FEATHER · NEST compute → BIRRD network → output buffer',center,24,textColor,12,true);
-    label('Illustrative dataflow • logical elements, not RTL-cycle timing',center,43,muted,11);
-    box(bufferRegions[0].x,65,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label('Streaming buffer (IVN)',inputX,82,MG_DATA_COLORS.input,11,true);
-    box(bufferRegions[1].x,65,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label('Stationary buffer (WVN)',weightX,82,MG_DATA_COLORS.weight,11,true);
-    mgArrow(ctx,inputX,65+bufferHeights.I,inputX,top-14,MG_DATA_COLORS.input,2);
-    mgArrow(ctx,weightX,65+bufferHeights.W,weightX,top-14,MG_DATA_COLORS.weight,2);
+    box(bufferRegions[0].x,bufferTop,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label('Streaming buffer (IVN)',inputX,bufferTop+17,MG_DATA_COLORS.input,11,true);
+    box(bufferRegions[1].x,bufferTop,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label('Stationary buffer (WVN)',weightX,bufferTop+17,MG_DATA_COLORS.weight,11,true);
+    mgArrow(ctx,inputX,bufferTop+bufferHeights.I,inputX,top-14,MG_DATA_COLORS.input,2);
+    mgArrow(ctx,weightX,bufferTop+bufferHeights.W,weightX,top-14,MG_DATA_COLORS.weight,2);
     label('NEST · '+AH+' × '+AW+' PE array',center,top-9,textColor,12,true);
     for(let r=0;r<AH;r++){
       const y=top+r*pitch;
@@ -1280,9 +1338,15 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     cv.dataset.bufferCells=JSON.stringify(mgFeatherGeometry.bufferCells);
     mgMotionPackets=motionPackets;
     mgSyncMotion(progress);
-    // Endpoint text can wrap differently when the selected transfer changes.
-    // Refit after the detail panel updates, without redrawing intrinsic paths.
-    if(fit){scale=fittedScale();cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';mgFeatherGeometry.scale=scale;}
+    // A wrapping transfer label can change the available height. Resize the
+    // display immediately, then refresh its backing pixels at the final scale.
+    if(fit){
+      const nextScale=fittedScale();
+      if(nextScale!==scale){
+        scale=nextScale;cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';
+        mgFeatherGeometry.scale=scale;requestAnimationFrame(mgDrawActive);
+      }
+    }
     // The detailed view can choose a new scalar at a frame boundary. Mark its
     // physical endpoints immediately, even while paused on that first frame.
     const tracked=motionPackets.find(packet=>packet.key===mgMotionLink?.selectedKey());
@@ -1318,10 +1382,9 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const layouts=Object.fromEntries(buffers.map(buffer=>[buffer.operand,mgBufferLink.getLayout(buffer.operand)]));
     const heights=Object.fromEntries(buffers.map(buffer=>[buffer.operand,
       FeatherBufferView.height(layouts[buffer.operand],windows[buffer.operand])]));
-    cv.width=Math.max(ct.clientWidth,3*(mgHW.AW*54+78)+40);
-    cv.height=Math.max(600,ct.clientHeight,...Object.values(heights).map(height=>height+48));
-    const ctx=cv.getContext('2d'),panelWidth=Math.floor(cv.width/3)-20,cells={};
-    ctx.clearRect(0,0,cv.width,cv.height);
+    const width=Math.max(ct.clientWidth,3*(mgHW.AW*54+78)+40);
+    const height=Math.max(600,ct.clientHeight,...Object.values(heights).map(height=>height+48));
+    const ctx=mgPrepareCanvas(cv,width,height),panelWidth=Math.floor(width/3)-20,cells={};
     buffers.forEach((buffer,index)=>{
       const region={operand:buffer.operand,x:15+index*(panelWidth+15),y:12,width:panelWidth-2,height:heights[buffer.operand]};
       ctx.fillStyle=buffer.fill;ctx.strokeStyle=buffer.color;ctx.lineWidth=1.5;

@@ -78,7 +78,11 @@ async function main() {
     page.on("pageerror", error => errors.push(String(error)));
     page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
     page.on("dialog", async dialog => { dialogs.push(dialog.message()); await dialog.accept(); });
-    const action = call => page.locator(`button[onclick="${call}"]`).click();
+    const action = async call => {
+        const button = page.locator(`button[onclick="${call}"]`);
+        if (!(await button.isVisible())) await button.locator("xpath=ancestor::details[1]/summary").click();
+        await button.click();
+    };
     const popup = page.locator("#mgBufferPopup");
     async function load(value) {
         await page.locator("#mgLoadFile").setInputFiles({name: "buffer_trace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(value))});
@@ -111,7 +115,7 @@ async function main() {
         }
     }
     async function openButton(operand) {
-        await page.locator(`#mgInspect${operand}`).click();
+        await page.locator("#mgInspectBuffer").selectOption(operand);
         check(await popup.isVisible(), `${operand}: accessible figure control opens its layout inspector`);
         equal(await popup.getAttribute("data-operand"), operand, "figure and inspector use the same operand identity");
     }
@@ -165,7 +169,7 @@ async function main() {
         for (const operand of ["I", "W", "O"]) {
             await openButton(operand); await page.keyboard.press("Escape");
             check(!(await popup.isVisible()), "Escape dismisses only the buffer inspector");
-            equal(await page.evaluate(() => document.activeElement.id), `mgInspect${operand}`, "closing inspection restores focus to its figure button");
+            equal(await page.evaluate(() => document.activeElement.id), "mgInspectBuffer", "closing inspection restores focus to its toolbar control");
         }
         await openButton("I");
         const rightBounds = await popup.boundingBox();

@@ -41,12 +41,12 @@ function fixture(width) {
   }
   let index=0, progress=1, playing=false, redraws=0, refreshes=0, opened=null, popupOptions;
   const listeners = {};
-  const geometry = {bufferRegions:[
+  const geometry = {width:1000,height:1000,bufferRegions:[
     {operand:'I',x:0,y:10,width:240,height:72},
     {operand:'W',x:250,y:10,width:240,height:72},
     {operand:'O',x:0,y:500,width:490,height:72}
   ]};
-  const canvas = {width:1000,height:1000,style:{},addEventListener:(name,fn)=>{listeners[name]=fn;},
+  const canvas = {width:2000,height:2000,style:{},addEventListener:(name,fn)=>{listeners[name]=fn;},
     getBoundingClientRect:()=>({left:10,top:20,width:500,height:500})};
   const opener = {id:'opener'};
   const context = {FeatherBufferModel:model, FeatherBufferView:bufferView, document:{getElementById:()=>opener},
@@ -214,7 +214,9 @@ api.open('W',{id:'trigger'});
 equal(f.counters().opened.operand,'W');
 equal(f.counters().opened.element.id,'trigger');
 f.listeners.click({clientX:35,clientY:40});
-equal(f.counters().opened.operand,'I','Canvas clicks are transformed from rendered pixels to backing coordinates.');
+equal(f.counters().opened.operand,'I','Canvas clicks are transformed from rendered pixels to logical coordinates at high DPI.');
+f.listeners.click({clientX:210,clientY:40});
+equal(f.counters().opened.operand,'W','High-DPI backing pixels do not shift physical buffer hit targets.');
 f.listeners.mousemove({clientX:35,clientY:40});
 equal(f.canvas.style.cursor,'pointer');
 f.listeners.mousemove({clientX:499,clientY:499});
