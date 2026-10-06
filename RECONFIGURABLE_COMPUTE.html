@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reconfigurable compute · Qwen3 on FEATHER</title>
+  <meta name="description" content="Explore how changing PE weight placement and column input streams improves Qwen3 prefill and decode on the same 16×16 FEATHER accelerator.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/reconfigurable_compute.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section"><h3 class="nav-title">tutorial</h3><ul class="nav-links"><li><a href="index.html">ASPLOS'26@Pittsburgh</a></li></ul></div>
+        <div class="nav-section"><h3 class="nav-title">docs</h3><ul class="nav-links">
+          <li><a href="FEATHER.html">FEATHER</a></li>
+          <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
+          <li><a href="RECONFIGURABLE_COMPUTE.html" class="active" aria-current="page">Reconfigurable compute</a></li>
+          <li><a href="FEATHER_VS_SYSTOLIC.html">Systolic Array vs. FEATHER</a></li>
+        </ul></div>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg></button>
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+        <div class="top-actions"><button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+        </button></div>
+      </header>
+      <div class="content-wrapper rc-content">
+        <article class="doc-content rc-page">
+          <div class="rc-intro">
+            <div class="rc-eyebrow">Qwen3-0.6B / FEATHER 16×16</div>
+            <h1>Reconfigurable compute</h1>
+            <p>Prefill has hundreds of input tokens. Decode has one. Change which weights each PE holds and which inputs stream down each column to keep more useful work on the same array.</p>
+            <div class="rc-path" aria-label="Mapping policy across phases">
+              <div><strong>Prefill → mapping A</strong><small>Replicate weights to process more tokens.</small></div>
+              <span aria-hidden="true">→</span>
+              <div><strong>Decode → mapping B</strong><small>Place more distinct weights to cover more outputs.</small></div>
+            </div>
+          </div>
+          <section aria-labelledby="rc-array-title">
+            <h2 id="rc-array-title">Watch the weights stay. Watch inputs flow.</h2>
+            <div class="rc-controls">
+              <div class="rc-tabs" role="group" aria-label="Qwen3 phase">
+                <button id="rc-prefill" type="button" aria-pressed="false">Prefill · 768 tokens</button>
+                <button id="rc-decode" type="button" aria-pressed="true">Decode · 1 token</button>
+              </div>
+              <span id="rc-shape" class="rc-chip"></span>
+            </div>
+            <p id="rc-takeaway" class="rc-takeaway" aria-live="polite"></p>
+            <div class="rc-arrays">
+              <div class="rc-card" id="rc-card-reuse">
+                <div class="rc-card-head"><div><div class="rc-eyebrow">Mapping A</div><h3>Reuse across tokens</h3></div><span id="rc-selected-reuse" class="rc-winner" hidden>Selected for prefill</span></div>
+                <p class="rc-card-description">Four copies of each weight vector serve four token rows. Each K half covers 32 output channels.</p>
+                <canvas id="rc-canvas-reuse" width="1200" height="1184" tabindex="0" role="img" aria-label="Mapping A, 16 by 16 PE array. Use arrow keys to select a PE." aria-describedby="rc-canvas-help"></canvas>
+                <div id="rc-metrics-reuse" class="rc-metrics"></div>
+              </div>
+              <div class="rc-card" id="rc-card-outputs">
+                <div class="rc-card-head"><div><div class="rc-eyebrow">Mapping B</div><h3>Cover more outputs</h3></div><span id="rc-selected-outputs" class="rc-winner">Selected for decode</span></div>
+                <p class="rc-card-description">Two copies of each weight vector leave room for twice as many distinct weights: 64 output channels per K half.</p>
+                <canvas id="rc-canvas-outputs" width="1200" height="1184" tabindex="0" role="img" aria-label="Mapping B, 16 by 16 PE array. Use arrow keys to select a PE." aria-describedby="rc-canvas-help"></canvas>
+                <div id="rc-metrics-outputs" class="rc-metrics"></div>
+              </div>
+            </div>
+            <div class="rc-legend" aria-label="Diagram legend"><span><i></i>Resident W, K[0:16)</span><span><i class="rc-other"></i>Resident W, K[16:32)</span><span><i class="rc-input"></i>Streaming input</span><span><i class="rc-idle"></i>No valid token</span></div>
+            <div class="rc-playback">
+              <button id="rc-play" type="button">Play</button><button id="rc-step" type="button">Step</button><button id="rc-reset" type="button">Reset</button>
+              <label>Speed<select id="rc-speed"><option value="2">2 steps/s</option><option value="6" selected>6 steps/s</option><option value="16">16 steps/s</option></select></label>
+              <div class="rc-timeline"><label for="rc-scrub">Input propagation <output id="rc-step-label"></output></label><input id="rc-scrub" type="range" min="0" max="31" value="15" step="1"></div>
+            </div>
+            <p id="rc-canvas-help" class="rc-note">Each cell is one PE holding 16 weights. Its number is the output channel n. Inputs enter at the top and move down the column, one row per teaching step. Click a PE or use the selectors below to inspect it.</p>
+            <div class="rc-card rc-inspector">
+              <div><div class="rc-eyebrow">Inside one PE</div><h3 id="rc-pe-title"></h3><p id="rc-pe-owner"></p>
+                <div class="rc-pe-controls">
+                  <label>Mapping<select id="rc-inspect-policy"><option value="outputs">B</option><option value="reuse">A</option></select></label>
+                  <label>Row<select id="rc-inspect-row" aria-label="Inspect PE row"></select></label>
+                  <label>Column<select id="rc-inspect-col" aria-label="Inspect PE column"></select></label>
+                </div><p id="rc-pe-stream"></p>
+              </div>
+              <div><div class="rc-eyebrow">16 resident weights · slot k within this K half</div><div id="rc-weight-slots" class="rc-slots"></div><div id="rc-equation" class="rc-equation"></div></div>
+            </div>
+            <p class="rc-note">First tile shown; values are deterministic teaching samples. Playback shows input forwarding and local dot products. The two K halves are subsequently added by BIRRD; remaining K tiles accumulate into the output. Animation steps are separate from the program cycle predictions below.</p>
+          </section>
+          <section class="rc-performance" aria-labelledby="rc-performance-title">
+            <div class="rc-eyebrow">Same work / same hardware</div>
+            <h2 id="rc-performance-title">A fixed mapping leaves performance on the table.</h2>
+            <p>For this Qwen3 query projection, choose A for prefill and B for decode. Both policies use 256 PEs, 16 weights per PE, and the same 128/64/64 buffer depths.</p>
+            <div class="rc-table-scroll" tabindex="0" role="region" aria-label="Predicted program cycles by mapping policy"><table>
+              <thead><tr><th scope="col">Mapping policy</th><th scope="col">Prefill · M=768<br>Predicted cycles</th><th scope="col">Decode · M=1<br>Predicted cycles</th></tr></thead><tbody id="rc-performance-rows"></tbody>
+            </table></div>
+            <p id="rc-savings" class="rc-note"></p>
+            <details><summary>Why do the mappings have different costs?</summary><div class="rc-details-body">
+              <p><strong>Prefill rewards reuse.</strong> A reuses each weight tile across 32 tokens; B covers 16. Both have 256 useful PE owners per dot, but B reloads twice as many weight bytes for the full projection. A saves 1,572,864 predicted cycles after accounting for both input and weight transfers.</p>
+              <p><strong>Decode rewards output coverage.</strong> With only one token, A uses 64 of 256 PE owners; B uses 128. B covers twice as many outputs per mapping, reducing mapping invocations from 2,048 to 1,024 and halving PE weight-preload cycles. Both still read the same full 4 MiB weight matrix.</p>
+              <p>Mapped PE ownership describes useful dot products assigned to PEs. It is different from whole-program MAC utilization, which also includes loading, gaps, dispatch, and output stores.</p>
+              <div class="rc-table-scroll"><table><thead><tr><th scope="col">Full-program component</th><th scope="col">Mapping A</th><th scope="col">Mapping B</th></tr></thead><tbody id="rc-components"></tbody></table></div>
+              <p class="rc-note">Component table follows the selected phase above.</p>
+            </div></details>
+            <details><summary>Mapping parameters, evidence, and model boundaries</summary><div class="rc-details-body">
+              <p>One complete <code>q_proj</code> invocation: prefill <code>768×1024×2048</code>, decode <code>1×1024×2048</code> (M×K×N), batch 1, Qwen3-0.6B. These are matrix costs, not end-to-end token latency.</p>
+              <p>A fixes <code>Gr=8, Gc=2</code> with a maximum <code>32×32×32</code> tile. B fixes <code>Gr=8, Gc=4</code> with a maximum <code>16×32×64</code> tile. Both use <code>sr=1, sc=16</code>, two K groups, W/O orders 2/0, and WO-S execution. The M tile clips to the available tokens; input layout becomes 2 for prefill and 0 for decode. “Fixed” here means a fixed spatial mapping policy, not an identical binary for different shapes.</p>
+              <p>At PE row r and column c: <code>n = r + 16(c mod Gc)</code>, <code>K half = floor(c/8)</code>, <code>m = dot·(8/Gc) + floor((c mod 8)/Gc)</code>. Each PE holds <code>W[K half·16 : K half·16+16, n]</code> and receives <code>I[m, k]</code> down its column.</p>
+              <p>The exported records pass compiler checks for encodings, buffer capacity, memory-bank conflicts, and exact tile MAC coverage. Performance uses <code>serialized_minisa_v2</code>, including operand loads, PE preload, streaming, gaps/drain, instruction dispatch, and stores. Operands start in their required layouts. Layout conversion, external-memory stalls, host launch, and non-GEMM operations are excluded. These four comparisons are predictions; no new RTL measurements are claimed.</p>
+              <p>The result compares these two supported mappings and does not establish a universal advantage over every fixed mapping. Reconfiguration and weight setup instructions are included in each program; retaining weights across separate phase programs is not assumed.</p>
+              <p><a href="script/reconfigurable_compute_data.js">Exported mappings and cycle components</a> · <a href="https://github.com/maeri-project/feather_tutorial/blob/main/tools/build_reconfigurable_compute.py">Reproduction script</a> · <a href="https://arxiv.org/abs/2405.13170">FEATHER architecture paper</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B/blob/c1899de289a04d12100db370d81485cdf75e47ca/config.json">Qwen3 model configuration</a></p>
+            </div></details>
+          </section>
+          <p class="rc-footer-link"><a href="QWEN3_MINISA_VISUALIZER.html">Explore complete Qwen3 MINISA programs →</a></p>
+          <noscript>This interactive page needs JavaScript to show the PE arrays and compiler predictions.</noscript>
+        </article>
+      </div>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script src="script/reconfigurable_compute_data.js"></script>
+  <script src="script/reconfigurable_compute_model.js"></script>
+  <script src="script/reconfigurable_compute_view.js"></script>
+</body>
+</html>
