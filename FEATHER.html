@@ -1057,7 +1057,17 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const positions={nest:0,network:mgFeatherGeometry.nestBottom-30,output:mgFeatherGeometry.outputY-120};
     const offset=section==='nest'?0:document.getElementById('mgFeatherCanvas').offsetTop;
     const toolbarHeight=pane.querySelector('.mg-view-nav').offsetHeight;
-    pane.scrollTo({top:Math.max(0,offset+(positions[section]||0)*mgFeatherGeometry.scale-toolbarHeight),behavior:mgReducedMotion.matches?'instant':'smooth'});
+    const top=Math.max(0,offset+(positions[section]||0)*mgFeatherGeometry.scale-toolbarHeight);
+    const behavior=mgReducedMotion.matches?'instant':'smooth';
+    if(window.matchMedia('(max-width:900px)').matches){
+      const app=document.querySelector('.mg-app');
+      if(app.classList.contains('mg-expanded')){
+        app.scrollTo({top:app.scrollTop+pane.getBoundingClientRect().top-app.getBoundingClientRect().top+top,behavior});
+      }else{
+        const headerHeight=document.querySelector('.top-bar').getBoundingClientRect().height;
+        window.scrollTo({top:window.scrollY+pane.getBoundingClientRect().top+top-headerHeight,behavior});
+      }
+    }else pane.scrollTo({top,behavior});
   }
   function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
     const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
@@ -1079,9 +1089,13 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const height=outputY+60+bufferHeights.O+78;
     const sizing=document.getElementById('mgDiagramScale').value,fit=sizing==='fit';
     const motionMount=document.getElementById('mgMotionMount');
-    motionMount.style.maxHeight=Math.max(110,Math.floor(ct.clientHeight*.45))+'px';
+    // Phone panels grow with the drawing. Fit uses the screen height instead
+    // of feeding the auto-sized panel's height back into its canvas scale.
+    const phone=window.matchMedia('(max-width:900px)').matches;
+    const availableHeight=()=>phone?Math.max(320,window.innerHeight*.8)-ct.parentElement.querySelector('.mg-tab-bar').offsetHeight:ct.clientHeight;
+    motionMount.style.maxHeight=Math.max(110,Math.floor(availableHeight()*.45))+'px';
     const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
-      Math.max(1,ct.clientHeight-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);
+      Math.max(1,availableHeight()-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);
     let scale=fit?fittedScale():sizing==='width'?Math.min(1,Math.max(1,ct.clientWidth-12)/width):1;
     cv.style.margin=sizing==='actual'?'0':'0 auto';
     const ctx=mgPrepareCanvas(cv,width,height,scale);

@@ -93,7 +93,8 @@
   /* The generic editor's native scale selector preserves its own geometry. */
   .mg-app { flex-direction:column-reverse;height:auto; }
   .mg-left { width:100%;min-width:0;max-height:none;overflow:visible; }
-  .mg-right { flex:none;height:80svh;min-height:420px; }
+  .mg-right { flex:none;height:auto;min-height:420px; }
+  .mg-tab-content { flex:none; }
   .mg-view-nav { gap:8px;padding:8px; }
   .mg-view-nav label { min-width:0; }
   .mg-mobile-playback { display:flex;gap:8px; }
@@ -110,7 +111,7 @@
   .mg-toast { left:8px;right:8px;max-width:none; }
   .mg-app.mg-expanded { inset:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overflow-y:auto;border-radius:0;overscroll-behavior:contain;flex-direction:column; }
   .mg-expanded .mg-left { max-height:none;flex:none; }
-  .mg-expanded .mg-right { flex:none;height:80dvh;min-height:320px;order:-1; }
+  .mg-expanded .mg-right { flex:none;height:auto;min-height:320px;order:-1; }
   .mg-buffer-popup { right:8px;bottom:max(8px,env(safe-area-inset-bottom));width:calc(100vw - 16px);max-height:70dvh; }
   .mg-buffer-heading { padding:6px 8px; }
   .mg-buffer-grid-scroll { max-height:40dvh; }
