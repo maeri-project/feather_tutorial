@@ -425,10 +425,6 @@
                 </div>
                 <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
                   <div class="mg-view-nav">
-                    <div class="mg-mobile-playback">
-                      <button class="mg-btn" id="mgMobilePlay" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgTogglePlay()">Play</button>
-                      <button class="mg-btn" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgStepAnim(1)">Step</button>
-                    </div>
                     <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
                       <option value="width">Fit width</option><option value="fit">Fit diagram</option><option value="actual">Actual size</option>
                     </select>
@@ -446,6 +442,11 @@
                   <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST; each PE's bottom-right output connects diagonally to the vertical bus on its column's right side. Each column bus connects directly to a BIRRD input. Network outputs route illustrative partial results to addressed output-buffer cells. Use Inspect buffer to explore each buffer's scalar layout."></canvas>
                 </div>
                 <div class="mg-tab-content" id="mg-tab-buffer" role="tabpanel" aria-labelledby="mg-buffer-tab" tabindex="0"><canvas id="mgBufferCanvas" role="img" aria-label="Input, weight, and output VN buffer layouts"></canvas></div>
+                <div class="mg-mobile-playback" role="group" aria-label="Animation controls">
+                  <button class="mg-btn primary" id="mgMobileGenerate" type="button" onclick="mgGenerateAnimation()">Generate Animation</button>
+                  <button class="mg-btn" id="mgMobilePlay" type="button" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgTogglePlay()">Play</button>
+                  <button class="mg-btn" type="button" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgStepAnim(1)">Step</button>
+                </div>
               </div>
             </div>
           </section>
@@ -1092,7 +1093,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     // Phone panels grow with the drawing. Fit uses the screen height instead
     // of feeding the auto-sized panel's height back into its canvas scale.
     const phone=window.matchMedia('(max-width:900px)').matches;
-    const availableHeight=()=>phone?Math.max(320,window.innerHeight*.8)-ct.parentElement.querySelector('.mg-tab-bar').offsetHeight:ct.clientHeight;
+    const availableHeight=()=>phone?Math.max(320,window.innerHeight*.8)-ct.parentElement.querySelector('.mg-tab-bar').offsetHeight-ct.parentElement.querySelector('.mg-mobile-playback').offsetHeight:ct.clientHeight;
     motionMount.style.maxHeight=Math.max(110,Math.floor(availableHeight()*.45))+'px';
     const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
       Math.max(1,availableHeight()-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);

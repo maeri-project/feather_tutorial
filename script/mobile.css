@@ -97,7 +97,7 @@
   .mg-tab-content { flex:none; }
   .mg-view-nav { gap:8px;padding:8px; }
   .mg-view-nav label { min-width:0; }
-  .mg-mobile-playback { display:flex;gap:8px; }
+  .mg-mobile-playback { display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:10px;flex-shrink:0;border-top:1px solid var(--border-color);background:var(--bg-card); }
   .mg-view-actions { margin:4px; }
   .mg-row { flex-wrap:wrap; }
   .mg-workload-row { display:grid;grid-template-columns:auto 1fr; }
