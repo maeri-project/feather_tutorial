@@ -117,10 +117,37 @@
   .mg-buffer-grid-scroll { max-height:40dvh; }
   .mg-buffer-popup[data-dock=left] { left:8px; }
   #mgBufferPopupDock { display:none; }
-  /* Side-by-side diagrams stack, with local zoom instead of tiny labels. */
-  .rc-arrays,.comparison-array-grid { grid-template-columns:minmax(0,1fr); }
+  /* Keep both alternatives visible; zoom remains local to each drawing. */
+  .rc-arrays,.comparison-array-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
   .rc-content,.comparison-content { padding:24px 12px 40px; }
   .rc-card,.comparison-card { padding:12px; }
+  .rc-arrays > .rc-card,.comparison-array-card { padding:8px;overflow-wrap:anywhere; }
+  .rc-arrays h3,.comparison-array-heading h3 { font-size:14px;line-height:1.4; }
+  /* Shared rows keep the canvases aligned when headings or mappings wrap. */
+  .mobile-comparison { row-gap:0; }
+  .mobile-comparison > .rc-card { display:grid;grid-template-rows:subgrid;grid-row:span 5;row-gap:0; }
+  .mobile-comparison > .comparison-array-card { display:grid;grid-template-rows:subgrid;grid-row:span 6;row-gap:0; }
+  .mobile-comparison > * > * { min-width:0; }
+  .mobile-comparison .comparison-array-heading { grid-row:1; }
+  .mobile-comparison .comparison-mapping { grid-row:2; }
+  .mobile-comparison .comparison-array-card > .mobile-diagram { grid-row:3; }
+  .mobile-comparison .mobile-pe-readout { grid-row:4; }
+  .mobile-comparison .comparison-metric-grid { grid-row:5; }
+  .mobile-comparison .comparison-caption { grid-row:6; }
+  .mobile-comparison .mobile-diagram-tools { display:grid;grid-template-columns:repeat(2,minmax(44px,1fr));gap:4px; }
+  .mobile-comparison .mobile-diagram-tools button { padding:6px 4px;font-size:13px; }
+  .mobile-comparison .mobile-diagram-tools output { grid-column:1/-1;justify-self:end; }
+  .mobile-comparison .rc-card-head,.mobile-comparison .comparison-array-heading { flex-direction:column;gap:4px;justify-content:flex-start; }
+  .mobile-comparison .rc-badge,.mobile-comparison .comparison-badge { white-space:normal; }
+  .mobile-comparison .comparison-eyebrow { font-size:11px;letter-spacing:.03em; }
+  .mobile-comparison .rc-specs { font-size:12px;gap:4px;padding:8px 0; }
+  .mobile-comparison .comparison-mapping { font-size:12px; }
+  .mobile-comparison .comparison-metric { padding:8px 6px; }
+  .mobile-comparison .comparison-metric strong { font-size:1rem; }
+  .rc-arrays .rc-data-path > div { padding:8px; }
+  .rc-arrays .rc-details-body { padding:0 8px 8px; }
+  .rc-arrays .rc-sample-slots { grid-template-columns:repeat(4,minmax(0,1fr));padding:0 4px; }
+  .rc-arrays .rc-banks { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .rc-controls,.rc-playback,.comparison-play-buttons { gap:8px; }
   .rc-card-head { flex-wrap:wrap; }
   .rc-page .rc-scrubber { min-width:0;flex-basis:100%;margin-left:0; }
@@ -130,5 +157,9 @@
   .comparison-field { min-width:0;flex-basis:100%;max-width:none; }
   .comparison-bridge-scroll { overflow:visible; }
   .comparison-page .comparison-bridge-scroll canvas { min-width:0; }
+}
+@media (max-width:600px) {
+  .mobile-comparison .comparison-metric-grid { grid-template-columns:minmax(0,1fr); }
+  .rc-arrays .rc-banks { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (prefers-reduced-motion:reduce) { .sidebar,body { transition:none; } }

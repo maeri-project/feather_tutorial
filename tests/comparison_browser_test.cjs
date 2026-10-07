@@ -256,7 +256,8 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         await page.setViewportSize({width: 390, height: 844});
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.body.scrollWidth <= innerWidth), "mobile layout has no horizontal document overflow");
         const mobileBoxes = await Promise.all(["sa", "feather"].map(id => page.locator(`#comparison-${id}`).boundingBox()));
-        check(mobileBoxes[1].y >= mobileBoxes[0].y + mobileBoxes[0].height, "mobile arrays stack vertically rather than shrink into illegible columns");
+        check(mobileBoxes[1].x >= mobileBoxes[0].x + mobileBoxes[0].width && Math.abs(mobileBoxes[1].y - mobileBoxes[0].y) < 2,
+            "mobile arrays stay side by side with aligned canvases");
         await checkResolution();
         const bridgeViewer = page.locator('.mobile-diagram[data-diagram="comparison-bridge"]');
         await bridgeViewer.getByRole("button", {name:"Zoom in", exact:true}).click();
