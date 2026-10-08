@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FEATHER vs. Xilinx DPU - RAIC Tutorial</title>
+  <meta name="description" content="Replay of measured per-layer ResNet-50 convolution latency on FEATHER and the Xilinx DPU, animated with each engine&#39;s real dataflow.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/feather_comparison.css">
+  <link rel="stylesheet" href="script/feather_dpu_race.css">
+  <link rel="stylesheet" href="script/mobile.css">
+  <script src="script/mobile.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section"><h3 class="nav-title">tutorial</h3><ul class="nav-links"><li><a href="index.html">ASPLOS'26@Pittsburgh</a></li></ul></div>
+        <div class="nav-section"><h3 class="nav-title">docs</h3><ul class="nav-links">
+          <li><a href="FEATHER.html">FEATHER</a></li>
+          <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
+            <li><a href="RECONFIGURABLE_COMPUTE.html">Reconfigurable compute</a></li>
+          <li><a href="FEATHER_VS_SYSTOLIC.html">Systolic Array vs. FEATHER</a></li>
+          <li><a class="active" aria-current="page" href="FEATHER_VS_DPU.html">FEATHER vs. Xilinx DPU</a></li>
+        </ul></div>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg></button>
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+        <div class="top-actions"><button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+        </button></div>
+      </header>
+      <div class="content-wrapper comparison-content">
+        <article class="doc-content comparison-page">
+          <section id="race-intro" class="hero-section">
+            <div class="comparison-eyebrow">RESNET-50 · 53 CONVOLUTIONS · PYNQ ZCU104</div>
+            <h1>FEATHER vs. Xilinx DPU</h1>
+            <p class="subtitle">A replay of measured per-layer convolution latency, drawn with each engine's real dataflow.</p>
+            <p>Both accelerators ran every convolution of ResNet-50 on the same ZCU104 board. The DPU took <strong><span id="race-total-dpu">280.65</span> ms</strong> in total, FEATHER <strong><span id="race-total-feather">62.42</span> ms</strong>, a ratio of <strong id="race-total-ratio">4.50×</strong>. The replay below spends that measured time layer by layer, slowed down so the dataflow can be followed: each panel animates the layer at its true size, kernel and stride, with the parallelism of the engine that ran it.</p>
+            <div class="comparison-note"><strong>What was measured, and how.</strong> Each engine was timed with its own original per-layer notebook, 100 repetitions per layer, averaged. The DPU (B1152, 300 MHz) ran one compiled model per layer, timed around VART <code>execute_async</code> + <code>wait</code>. FEATHER (16×9 PEs, 100 MHz) was timed around the flexDataflow library's <code>run_workload_on_fpga</code>: start the kernel and poll until idle, with no activations fed in. 1×1 layers on FEATHER use the library's folded mapping. The two timers wrap different kinds of call, so read these as per-layer convolution latency under each flow, not pure on-chip cycles, and not whole-network classification speed.</div>
+          </section>
+
+          <section id="race-replay" aria-labelledby="race-replay-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">01 / THE RACE</div><h2 id="race-replay-title">53 convolutions, replayed</h2></div><span class="comparison-badge">measured · replayed</span></div>
+            <div class="race-playbar comparison-card" aria-label="Playback">
+              <button id="race-play" class="comparison-primary" type="button">▶ Play</button>
+              <span class="race-cap">playback</span>
+              <label class="race-speed">fast<input type="range" id="race-speed" min="0" max="100" step="1" value="40" aria-label="Playback speed">slow</label>
+              <span class="race-rate" id="race-rate"></span>
+              <span class="race-est" id="race-est"></span>
+              <span class="race-cap">align</span>
+              <span class="race-seg" role="group" aria-label="Replay alignment">
+                <button type="button" data-race-align="time" aria-pressed="true" title="Both spend measured time at the same rate: the race as measured">Time</button>
+                <button type="button" data-race-align="layer" aria-pressed="false" title="Both start each layer together; the faster one waits at the end of it">Layer</button>
+              </span>
+              <span class="race-btns"><button id="race-pause" type="button" disabled aria-pressed="false" title="Pause or resume (Space)">❚❚ Pause</button></span>
+            </div>
+            <div class="race-arena" id="race-arena">
+              <div class="race-side dpu comparison-card" id="race-side-dpu">
+                <div class="race-head"><span class="race-name">Xilinx DPU</span><span class="race-part">B1152 · 300 MHz</span></div>
+                <div class="race-clock"><span data-clock>0.00</span><small>ms</small></div>
+                <canvas width="560" height="620" aria-label="Animated DPU convolution dataflow"></canvas>
+                <div class="race-layer"><span data-layer>—</span><span class="shape" data-shape></span></div>
+              </div>
+              <div class="race-divider">
+                <div class="race-ratio idle" id="race-ratio">—</div>
+                <div class="race-ratio-label" id="race-ratio-label">layers done<br>FEATHER : DPU</div>
+              </div>
+              <div class="race-side feather comparison-card" id="race-side-feather">
+                <div class="race-head"><span class="race-name">FEATHER</span><span class="race-part">16×9 PEs · 100 MHz</span></div>
+                <div class="race-clock"><span data-clock>0.00</span><small>ms</small></div>
+                <canvas width="560" height="620" aria-label="Animated FEATHER convolution dataflow"></canvas>
+                <div class="race-layer"><span data-layer>—</span><span class="shape" data-shape></span></div>
+              </div>
+            </div>
+            <p class="comparison-muted" style="margin-top:14px"><strong>Time</strong> plays both engines at the same rate, so the faster one gets ahead: the race exactly as measured, with the divider counting layers done. <strong>Layer</strong> starts both on every layer together; whichever finishes first waits at a barrier, and the divider shows that layer's DPU ÷ FEATHER ratio. <strong>Pause</strong> (or Space) freezes the race while the close-up keeps looping.</p>
+          </section>
+
+          <section id="race-dataflow" aria-labelledby="race-dataflow-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">02 / DATAFLOW</div><h2 id="race-dataflow-title">What each engine does in one cycle</h2></div></div>
+            <div class="comparison-card">
+              <div class="race-table-wrap"><table class="race-table">
+                <thead><tr><th></th><th>per cycle</th><th>loop order</th><th>source</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>FEATHER</strong></td><td>1 output pixel, its whole 3×3 window, 9 input × 16 output channels = 1,296 MACs</td><td>output-channel tile → input-channel tile → every output pixel</td><td>HLS <code>DPE_ARRAY</code>, <code>SushiAccel_K16_C9</code></td></tr>
+                  <tr><td><strong>DPU B1152</strong></td><td>4 output pixels, one kernel tap, 12 input × 12 output channels = 576 MACs</td><td>not published; the drawn order is illustrative</td><td>Xilinx B1152 configuration</td></tr>
+                </tbody>
+              </table></div>
+              <p class="comparison-muted" style="margin:12px 0 0">FEATHER's kernel is compiled for 3×3. For 1×1 layers the flexDataflow library folds 9 input channels into each PE's 9 multipliers; the 7×7 stem runs as 3×3 sub-layers. A layer is millions of cycles, so when one sweep of the output map would last under a few frames the panel shows whole passes instead and says so.</p>
+            </div>
+          </section>
+
+          <section id="race-terms" aria-labelledby="race-terms-title">
+            <div class="comparison-section-heading"><div><div class="comparison-eyebrow">03 / READING THE PANELS</div><h2 id="race-terms-title">Terms used in the animation</h2></div></div>
+            <div class="race-terms">
+              <div class="comparison-card"><h3>Maps and sheets</h3><p>Left is the input feature map, right the output. The sheets behind each map are the channel tile handled per cycle: 9 in / 16 out on FEATHER, 12 / 12 on the DPU.</p></div>
+              <div class="comparison-card"><h3>Pixel and window</h3><p>An output pixel is one position of the output map; its window is the k×k patch of input it reads. FEATHER fills one window per cycle; the DPU outlines its 4 windows.</p></div>
+              <div class="comparison-card"><h3>Tap</h3><p>One position inside the k×k kernel, so a 3×3 kernel has 9 taps. FEATHER does all 9 at once; the DPU does one tap per cycle for its 4 pixels, so a 7×7 window takes it 49 cycles.</p></div>
+              <div class="comparison-card"><h3>Strip</h3><p>The DPU's unit of work: 4 neighbouring output pixels in a row, computed together.</p></div>
+              <div class="comparison-card"><h3>Out-tile and pass</h3><p>Channels are processed one tile at a time. A pass is one sweep of the whole output map for one input-tile and output-tile pair; the output map darkens as passes complete.</p></div>
+              <div class="comparison-card"><h3>Channel bars and array</h3><p>Below the maps, the bars show the current input and output channel tile, hatched where the array carries padding the layer lacks. The array picture lights the multipliers doing real work, with the fraction kept busy.</p></div>
+              <div class="comparison-card"><h3>One cycle, up close</h3><p>The inset loops a few cycles slowly, whatever the playback speed, so the two dataflows can be compared directly.</p></div>
+            </div>
+          </section>
+        </article>
+      </div>
+      <footer class="site-footer"><p>&copy; 2026 FEATHER Tutorial.</p></footer>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script src="script/feather_dpu_race_data.js"></script>
+  <script src="script/feather_dpu_conv_view.js"></script>
+  <script src="script/feather_dpu_race.js"></script>
+</body>
+</html>
