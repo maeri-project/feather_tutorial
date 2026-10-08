@@ -63,7 +63,7 @@
     const bankW = Math.max(1, (region.width - 34 - 24) / AW);
     const cells = [];
     ctx.save();
-    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.font = '8px sans-serif';
+    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.font = '8px system-ui, sans-serif';
     const contiguous = rows.every((row, index) => !index || row === rows[index - 1] + 1);
     const rowLabel = rows.length ? (contiguous ? rows[0] + '–' + rows[rows.length - 1] : rows.join(',')) : 'none';
     ctx.fillText('VN rows ' + rowLabel + ' / ' + projection.totalVNRows + ' · each VN = ' + AH + ' scalar lanes',
@@ -72,7 +72,7 @@
       ctx.fillText('B' + bank, region.x + 34 + (bank + .5) * bankW, region.y + 44, bankW - 1);
     rows.forEach((vnRow, rowIndex) => {
       const rowY = region.y + 52 + rowIndex * rowH;
-      ctx.fillStyle = color; ctx.textAlign = 'right'; ctx.font = '8px sans-serif';
+      ctx.fillStyle = color; ctx.textAlign = 'right'; ctx.font = '8px system-ui, sans-serif';
       ctx.fillText('VNr' + vnRow, region.x + 30, rowY + rowH / 2, 29);
       for (let bank = 0; bank < AW; bank++) {
         const bankX = region.x + 34 + bank * bankW, vnCell = getCell(bank, vnRow * AH);
@@ -81,7 +81,7 @@
         ctx.fillRect(bankX + 1, rowY, Math.max(1, bankW - 2), rowH - 6);
         ctx.strokeStyle = vnValid ? color : '#BCC3C8'; ctx.lineWidth = .7;
         ctx.strokeRect(bankX + 1, rowY, Math.max(1, bankW - 2), rowH - 6);
-        ctx.fillStyle = vnValid ? color : '#747B80'; ctx.textAlign = 'center'; ctx.font = '8px sans-serif';
+        ctx.fillStyle = vnValid ? color : '#747B80'; ctx.textAlign = 'center'; ctx.font = '8px system-ui, sans-serif';
         const coordinate = vnValid ? '(' + vnCell.first + ',' + vnCell.second + ')' : '—';
         ctx.fillText(coordinate, bankX + bankW / 2, rowY + 10, Math.max(1, bankW - 4));
         for (let lane = 0; lane < AH; lane++) {
@@ -110,7 +110,7 @@
       }
     });
     if (!layout?.valid || !rows.length) {
-      ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.font = '9px sans-serif';
+      ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.font = '9px system-ui, sans-serif';
       ctx.fillText('Configure a valid layout to display physical buffer addresses',
         region.x + region.width / 2, region.y + 59, Math.max(1, region.width - 12));
     }

@@ -34,6 +34,7 @@ def compact_phone_drawing(script):
             const width = geom.width * scale, height = geom.height * scale;''', '''            // Compress horizontal geometry, but keep values uncompressed and
             // retain the original logical coordinates for packets and clicks.
             const phone = global.matchMedia("(max-width:900px)").matches;
+            const fontFamily = global.getComputedStyle(canvas).fontFamily;
             const displayWidth = phone ? 720 : geom.width, horizontalScale = displayWidth / geom.width;
             geom.pw = phone ? 30 : geom.dx - 22;
             canvas.style.aspectRatio = `${displayWidth} / ${geom.height}`;
@@ -43,6 +44,18 @@ def compact_phone_drawing(script):
             const width = displayWidth * scale, height = geom.height * scale;''')
     edit('ctx.setTransform(scale, 0, 0, scale, 0, 0);',
          'ctx.setTransform(scale * horizontalScale, 0, 0, scale, 0, 0);')
+    edit('''            function text(x, y, label, size = 11, color = "#263d4b", align = "left") {
+                ctx.fillStyle = color; ctx.font = `${size}px system-ui, sans-serif`; ctx.textAlign = align; ctx.fillText(label, x, y);
+            }''', '''            function text(x, y, label, size = 11, color = "#263d4b", align = "left", maxWidth) {
+                // Position labels in diagram coordinates, then cancel horizontal
+                // compression for every glyph. Fit by font size, never by stretch.
+                ctx.save(); ctx.translate(x, y); ctx.scale(1 / horizontalScale, 1);
+                ctx.fillStyle = color; ctx.font = `${size}px ${fontFamily}`; ctx.textAlign = align;
+                const room = maxWidth ?? (align === "center" ? 2 * Math.min(x, geom.width - x) : align === "right" ? x - 6 : geom.width - x - 6);
+                const measured = ctx.measureText(String(label)).width;
+                const fitted = measured ? Math.min(size, size * Math.max(1, room * horizontalScale) / measured) : size;
+                ctx.font = `${fitted}px ${fontFamily}`; ctx.fillText(label, 0, 0); ctx.restore();
+            }''')
     edit('''            function line(points, color = C.line, width = 1, dash = []) {''', '''            function shortValue(value) {
                 if (!Number.isFinite(value)) return String(value);
                 const rounded = Number(value.toPrecision(2));
@@ -50,9 +63,7 @@ def compact_phone_drawing(script):
                 return label.length <= 4 ? label : value.toExponential(0).replace("e+", "e");
             }
             function cellText(x, y, label, width, color, align = "center") {
-                ctx.save(); ctx.translate(x, y); ctx.scale(1 / horizontalScale, 1);
-                ctx.fillStyle = color; ctx.font = "11px ui-monospace, monospace"; ctx.textAlign = align;
-                ctx.fillText(label, 0, 0, width * horizontalScale); ctx.restore();
+                text(x, y, label, 11, color, align, width);
             }
             function line(points, color = C.line, width = 1, dash = []) {''')
     edit('''                    const caption = `${record.identity}=${compact(value)}`;
@@ -61,7 +72,7 @@ def compact_phone_drawing(script):
                     ctx.fillStyle = "#fffffff2"; ctx.fillRect(tx - 3, ty - 12, Math.min(230, ctx.measureText(caption).width + 6), 17);
                     text(tx, ty, caption, 11, color);''', '''                    const caption = phone ? shortValue(value) : `${record.identity}=${compact(value)}`;
                     const tx = Math.max(8, Math.min(phone ? geom.width - 85 : 880, x + 7)), ty = Math.max(14, y - 6);
-                    ctx.font = "11px ui-monospace, monospace";
+                    ctx.font = `11px ${fontFamily}`;
                     const labelWidth = phone ? Math.min(70, ctx.measureText(caption).width / horizontalScale + 6) : Math.min(230, ctx.measureText(caption).width + 6);
                     ctx.fillStyle = "#fffffff2"; ctx.fillRect(tx - 3, ty - 12, labelWidth, 17);
                     if (phone) cellText(tx, ty, caption, labelWidth - 6, color, "left");
@@ -79,6 +90,12 @@ def compact_phone_drawing(script):
                     const modeLabel = mode?.label || mode?.name || String(node.command);
                     if (phone) cellText(center, sy + 12, modeLabel, switchWidth - 4, C.P);
                     else text(center, sy + 12, modeLabel, 8, C.P, "center");''')
+    edit('''                text(x + 12, y + 22, title, 13, color);
+                text(x + 12, y + 38, `${cells.length} cells · ${g.rows} used / ${trace.bufferDepths[operand]} available rows per bank · order ${trace.case.orders[operand]}`, 10, "#61717b");''',
+         '''                const shortTitle = {I: "Streaming buffer · FP16", W: "Stationary buffer · FP16", O: "Output buffer · FP32 until Store"}[operand];
+                text(x + 12, y + 22, phone ? shortTitle : title, 13, color, "left", w - 24);
+                const rowLabel = phone ? `${g.rows}/${trace.bufferDepths[operand]} rows/bank · order ${trace.case.orders[operand]}` : `${cells.length} cells · ${g.rows} used / ${trace.bufferDepths[operand]} available rows per bank · order ${trace.case.orders[operand]}`;
+                text(x + 12, y + 38, rowLabel, 10, "#61717b", "left", w - 24);''')
     return script
 
 
@@ -451,7 +468,7 @@ SITE_ADAPTATION = """
   --line: var(--border-color); --paper: var(--bg-body);
   --teal: var(--primary-color); --teal-light: #e7dcfb;
   color-scheme: light dark; background: var(--bg-body); color: var(--text-main);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
   min-width: 0; padding-bottom: 24px;
 }
 [data-theme="light"] .qwen-app { color-scheme: light; }
@@ -463,7 +480,7 @@ SITE_ADAPTATION = """
 .qwen-app .brand span, .qwen-app .hero-note, .qwen-app .intro { color: var(--text-muted); }
 .qwen-app .hero .eyebrow { color: var(--primary-color); }
 .qwen-app .hero { padding-top: 32px; padding-bottom: 32px; }
-.qwen-app h1, .qwen-app h2, .qwen-app h3, .qwen-app h4 { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
+.qwen-app h1, .qwen-app h2, .qwen-app h3, .qwen-app h4 { font-family: var(--font-ui); }
 .qwen-app .selection { margin-top: 0; }
 .qwen-app .card { background: var(--bg-card); border-color: var(--border-color); box-shadow: var(--shadow-sm); }
 .qwen-app button, .qwen-app select, .qwen-app input[type=number] { background: var(--bg-body); border-color: var(--border-color); color: var(--text-main); }
@@ -595,6 +612,12 @@ def build(source, shell):
        standalone explorer. Local site assets are the only runtime dependencies. -->
   {prefix}
       <div class="qwen-app" data-site-metadata="feather-tutorial-qwen-v1">
+        <div class="wrap">
+          <aside class="page-takeaway" aria-label="Key takeaway">
+            <span class="takeaway-label">Key takeaway</span>
+            <p>How FEATHER processes different Prefill and decode layers</p>
+          </aside>
+        </div>
 {body}
       </div>
     </main>

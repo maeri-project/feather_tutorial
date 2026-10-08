@@ -64,13 +64,21 @@ function check(value, message) { assert.ok(value, message); checks++; }
       await page.setViewportSize(size);
       for (const file of files) {
         await load(file); await fits(`${file} ${size.width}`); await targets(file);
+        const takeaway=page.locator('.page-takeaway');
+        if(await takeaway.count()) {
+          check(await takeaway.isVisible() && await takeaway.locator('p').isVisible(),`${file}: takeaway is visible without opening Options`);
+          check(await takeaway.locator('p').evaluate(e=>getComputedStyle(e).fontFamily===getComputedStyle(document.body).fontFamily),`${file}: takeaway uses the shared font`);
+        }
         if(await page.locator(".mobile-focus").count()) {
           check(!await page.locator("#mobile-focus-options").evaluate(e=>e.open),`${file}: Options starts closed`);
           check(await page.locator("main button").filter({hasText:/^Play$/}).evaluateAll(nodes=>nodes.filter(e=>e.checkVisibility()).length)===1,`${file}: one visible Play button`);
           const toolbar=await page.locator(".mobile-focus-toolbar").boundingBox(), drawing=await page.locator(".mobile-primary-visual").boundingBox();
           check(drawing.y>=toolbar.y+toolbar.height && drawing.y-toolbar.y-toolbar.height<20,`${file}: visualization immediately follows playback`);
-          check(await page.locator(".mobile-focus-page p").evaluateAll(nodes=>nodes.filter(e=>!e.closest('#isa')).every(e=>!e.checkVisibility())),`${file}: explanations remain hidden except the requested ISA reference`);
+          check(await page.locator(".mobile-focus-page p").evaluateAll(nodes=>nodes.filter(e=>!e.closest('#isa,.page-takeaway')).every(e=>!e.checkVisibility())),`${file}: explanations remain hidden except the ISA and takeaway`);
+          const takeawayBox=await takeaway.boundingBox();
+          check(takeawayBox.y+takeawayBox.height<=toolbar.y,`${file}: takeaway precedes playback`);
           if(file==='FEATHER.html') {
+            check(await page.locator('.page-takeaway a[href="runtime_computing_change.html"]').isVisible(),"FEATHER exposes the runtime animation outside Options");
             check(await page.locator('.mobile-focus-speed #mgSpeedSlider').isVisible(),"speed is beside Play");
             check(await page.locator('#mgIsaList').isVisible() && await page.locator('#isa').isVisible(),"MINISA trace and reference are visible");
             const isa=await page.locator('#mgIsaList').boundingBox();
@@ -194,6 +202,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     check(await page.locator(".mg-app > .mg-left").count()===1,"desktop restores the original configuration panel");
     check(await page.locator("#mg-tab-feather > .mg-view-nav #mgDiagramScale").count()===1,"desktop restores the original diagram controls");
     check(await page.locator("#mobile-focus-play").count()===0,"desktop removes the phone presentation");
+    check(await page.locator('.doc-content > .page-takeaway').isVisible(),"desktop restores the takeaway to its original position");
     await page.setViewportSize({width:390,height:844});
     await page.waitForFunction(()=>document.body.classList.contains("mobile-demo"));
     check(await page.locator("#mgDiagramScale").count()===1,"returning to phone does not duplicate controls");

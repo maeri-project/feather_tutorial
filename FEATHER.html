@@ -30,7 +30,7 @@
       overflow: hidden;
       height: 820px;
       background: var(--bg-card);
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: var(--font-ui);
       font-size: 13px;
       color: var(--text-main);
       margin-top: 24px;
@@ -173,7 +173,7 @@
       min-width: 420px; max-width: 520px; max-height: 80vh; overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3); color: var(--text-main);
     }
-    .mg-modal h3 { margin-bottom: 12px; font-size: 16px; font-family: 'Outfit', sans-serif; }
+    .mg-modal h3 { margin-bottom: 12px; font-size: 16px; font-family: var(--font-ui); }
     .mg-modal .mg-desc {
       background: var(--bg-sidebar); padding: 8px; border-radius: 4px;
       font-size: 11px; margin-bottom: 12px; line-height: 1.5; color: var(--text-muted);
@@ -250,6 +250,7 @@
             <li><a href="FEATHER.html" class="active">FEATHER</a></li>
             <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
             <li><a href="RECONFIGURABLE_COMPUTE.html">Reconfigurable compute</a></li>
+            <li><a href="runtime_computing_change.html">Runtime reconfiguration</a></li>
             <li><a href="FEATHER_VS_SYSTOLIC.html">Systolic Array vs. FEATHER</a></li>
             <li><a href="FEATHER_VS_DPU.html">FEATHER vs. Xilinx DPU</a></li>
           </ul>
@@ -286,6 +287,11 @@
 
       <div class="content-wrapper">
         <article class="doc-content">
+          <aside class="page-takeaway" aria-label="Key takeaway">
+            <span class="takeaway-label">Key takeaway</span>
+            <p>Reconfigurable Accelerator working in the loop, switching mapping and layout per iteration</p>
+            <a class="takeaway-link" href="runtime_computing_change.html">Watch PE reconfiguration: 4×4 → 8×2 → 1×16</a>
+          </aside>
 
           <!-- Hero -->
           <section id="intro" class="hero-section">
@@ -1135,7 +1141,7 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     cv.dataset.networkLinks=AW*stages;cv.dataset.animationFrame=mgCurrentFrame;
     cv.dataset.animationProgress=progress.toFixed(3);cv.dataset.switchMode='PASS';
     function label(text,x,y,color=textColor,size=12,bold=false){
-      ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(bold?'bold ':'')+size+'px sans-serif';ctx.fillText(text,x,y);
+      ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(bold?'bold ':'')+size+'px system-ui, sans-serif';ctx.fillText(text,x,y);
     }
     function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
     function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
@@ -1251,14 +1257,14 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       if(clipBounds){ctx.beginPath();ctx.rect(clipBounds.x,clipBounds.y,clipBounds.width,clipBounds.height);ctx.clip();}
       ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
       ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
-      ctx.font='bold 9px sans-serif';const tw=ctx.measureText(text).width+8;
+      ctx.font='bold 9px system-ui, sans-serif';const tw=ctx.measureText(text).width+8;
       const labelBounds=decorationBounds(x,y-20,tw,13);
       ctx.fillStyle='rgba(255,255,255,0.93)';ctx.fillRect(labelBounds.x,labelBounds.y,labelBounds.width,labelBounds.height);
       label(text,labelBounds.x+labelBounds.width/2,labelBounds.y+10,color,9,true);tokenCount++;
       if(packet){
         const mark=['●','◆','■','▲'][packet.shape];
         const tag=mark+' '+packet.tag;
-        ctx.font='bold 8px sans-serif';const badgeWidth=ctx.measureText(tag).width+8;
+        ctx.font='bold 8px system-ui, sans-serif';const badgeWidth=ctx.measureText(tag).width+8;
         const badgeBounds=decorationBounds(x,y+8,badgeWidth,12);
         ctx.fillStyle=color;ctx.fillRect(badgeBounds.x,badgeBounds.y,badgeBounds.width,badgeBounds.height);
         label(tag,badgeBounds.x+badgeBounds.width/2,badgeBounds.y+9,'#fff',8,true);
@@ -1414,10 +1420,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
       const region={operand:buffer.operand,x:15+index*(panelWidth+15),y:12,width:panelWidth-2,height:heights[buffer.operand]};
       ctx.fillStyle=buffer.fill;ctx.strokeStyle=buffer.color;ctx.lineWidth=1.5;
       mgRR(ctx,region.x,region.y,region.width,region.height,5);ctx.fill();ctx.stroke();
-      ctx.fillStyle=buffer.color;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+      ctx.fillStyle=buffer.color;ctx.font='bold 12px system-ui, sans-serif';ctx.textAlign='center';
       ctx.fillText(buffer.title,region.x+region.width/2,region.y+17);
       cells[buffer.operand]=mgBufferLink.drawBuffer(ctx,buffer.operand,region,windows[buffer.operand]);
-      ctx.font='10px sans-serif';
+      ctx.font='10px system-ui, sans-serif';
       ctx.fillText('Order '+(layouts[buffer.operand].order??'—')+' · same VN rows / scalar lanes as FEATHER',
         region.x+region.width/2,region.y+region.height+18);
     });

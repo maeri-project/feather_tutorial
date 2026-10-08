@@ -210,6 +210,8 @@ document.addEventListener('DOMContentLoaded', () => {
             caption(document.getElementById(`comparison-${id}`).closest('.comparison-array-card').querySelector('.comparison-eyebrow'), text);
           }
         }
+        const takeaway = root.querySelector('.page-takeaway');
+        if (takeaway) { move(takeaway, hero); hero.prepend(takeaway); }
         document.body.classList.add('mobile-demo'); root.classList.add('mobile-focus-page');
         if (title) title.textContent = presentation.title;
         if (presentation.tab) document.getElementById(presentation.tab).click();

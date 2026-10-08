@@ -118,7 +118,7 @@
         return {x: (event.clientX - rect.left) * size.width / rect.width, y: (event.clientY - rect.top) * size.height / rect.height};
     }
     function label(ctx, text, x, y, size, color, align = "left", weight = 400) {
-        ctx.fillStyle = color; ctx.font = `${weight} ${size}px Inter, sans-serif`; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(text, x, y);
+        ctx.fillStyle = color; ctx.font = `${weight} ${size}px system-ui, sans-serif`; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(text, x, y);
     }
     function point(row, col) { return {x: grid.x + col * grid.step + grid.size / 2, y: grid.y + row * grid.step + grid.size / 2}; }
     function line(ctx, points, color, width = 1) {

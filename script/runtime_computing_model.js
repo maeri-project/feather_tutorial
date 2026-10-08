@@ -74,7 +74,7 @@
       <g id="runtime-elements" fill="white" opacity="${s.opacity}">
         ${s.elements.map(e => rect({x: e.x, y: e.y, width: SIZE, height: SIZE}, `id="runtime-element-${e.id}" data-element="${e.id}"`)).join('')}
       </g>
-      <g fill="#a83843" font-family="Georgia, 'Times New Roman', serif" font-size="56" text-anchor="middle">
+      <g fill="#a83843" font-family="system-ui, sans-serif" font-size="56" text-anchor="middle">
         <text id="runtime-left-label" x="267" y="132" opacity="${s.leftLabel}">4x4 Array</text>
         <text id="runtime-middle-label" x="851" y="132" opacity="${s.middleLabel}">8x2 Array</text>
         <text id="runtime-right-label" x="1476" y="132" opacity="${s.rightLabel}">1x16 Array</text>
@@ -83,7 +83,7 @@
       </g>
       <g id="runtime-first-inset" opacity="${s.firstInset}" aria-label="Supporting diagram: two groups of eight">${inset(570, 728, 2)}</g>
       <g id="runtime-second-inset" opacity="${s.secondInset}" aria-label="Supporting diagram: four columns of four">${inset(1388, 728, 1)}</g>
-      <text id="runtime-conclusion" x="1476" y="485" fill="#e7d7da" font-family="Georgia, 'Times New Roman', serif" font-size="28" text-anchor="middle" opacity="${s.conclusion}">16 elements • Different configurations</text>
+      <text id="runtime-conclusion" x="1476" y="485" fill="#e7d7da" font-family="system-ui, sans-serif" font-size="28" text-anchor="middle" opacity="${s.conclusion}">16 elements • Different configurations</text>
     </svg>`;
   }
   return {WIDTH, HEIGHT, SIZE, DURATION, frame, svg};
