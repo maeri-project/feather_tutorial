@@ -90,7 +90,11 @@ function check(value, message) { assert.ok(value, message); checks++; }
             check(await page.locator('#operator').isVisible(),"Qwen workload selector is always visible");
             check(await page.locator('#full-teach-canvas').evaluate(c=>Math.abs(c.width/c.height-720/1220)<.001),"Qwen uses narrow phone geometry");
           }
-          if(file==='RECONFIGURABLE_COMPUTE.html')check(await page.locator('.mobile-focus .rc-chain').isVisible(),"compact layer sequence is visible");
+          if(file==='RECONFIGURABLE_COMPUTE.html') {
+            check(await page.locator('.mobile-focus .rc-chain').isVisible(),"compact layer sequence is visible");
+            check(await page.locator('.mobile-focus #rc-runtime-demo').isVisible(),"runtime reconfiguration is embedded outside Options");
+            check(await page.locator('#runtime-elements rect').count()===16,"embedded runtime keeps sixteen main squares");
+          }
           if(file==='FEATHER_VS_SYSTOLIC.html')check(await page.locator('#comparison-preset').isVisible()&&await page.locator('#comparison-baseline').isVisible(),"comparison selectors are always visible");
         }
         await page.locator("#mobile-menu-btn").tap();
@@ -128,11 +132,19 @@ function check(value, message) { assert.ok(value, message); checks++; }
     }
     await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>ReconfigurableCompute.inspect().step>16);
+    check(await page.evaluate(()=>RuntimeComputingPlayer.inspect().playing && RuntimeComputingPlayer.inspect().seconds>0),"central Play starts the embedded runtime animation");
     await page.locator("#mobile-focus-play").tap();
     check(!(await page.evaluate(()=>ReconfigurableCompute.inspect())).playing,"near-diagram pause controls the original clock");
+    check(!await page.evaluate(()=>RuntimeComputingPlayer.inspect().playing),"central Pause also stops the runtime animation");
     await controls("rc-canvas-reuse").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
     await view("rc-canvas-reuse").screenshot({path:path.join(output,"mapping-phone.png")});
     await maxZoom("rc-canvas-reuse");await maxZoom("rc-canvas-outputs");
+    await page.locator('#mobile-focus-play').tap();
+    await page.setViewportSize({width:1280,height:900});
+    await page.waitForFunction(()=>!document.body.classList.contains('mobile-demo'));
+    check(await page.locator('#rc-runtime-demo').isHidden(),"runtime embed is mobile-only");
+    check(!await page.evaluate(()=>RuntimeComputingPlayer.inspect().playing),"desktop switch pauses the hidden runtime animation");
+    await page.setViewportSize({width:390,height:844});
 
     await load("FEATHER_VS_SYSTOLIC.html");await page.waitForFunction(()=>window.FeatherComparisonView);
     await zoom("comparison-feather");await tapDrawing("comparison-feather",112+2*25+10,126+3*25+10,640,660);

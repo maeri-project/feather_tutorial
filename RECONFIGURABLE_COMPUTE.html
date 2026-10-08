@@ -7,8 +7,11 @@
   <meta name="description" content="Explore how changing PE weight placement and column input streams improves Qwen3 prefill and decode on the same 16×16 FEATHER accelerator.">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="script/reconfigurable_compute.css">
+  <link rel="stylesheet" href="script/runtime_computing_change.css">
   <link rel="stylesheet" href="script/mobile.css">
   <script src="script/mobile.js" defer></script>
+  <script src="script/runtime_computing_model.js" defer></script>
+  <script src="script/runtime_computing_change.js" defer></script>
 </head>
 <body>
   <div class="app-layout">
@@ -84,6 +87,14 @@
             <div class="rc-legend" aria-label="Diagram legend"><span>m: token · n: channel</span><span><i class="rc-key-green"></i>K 0–15</span><span><i class="rc-key-gold"></i>K 16–31</span><span><i class="rc-key-blue"></i>Input</span><span><i class="rc-key-gray"></i>No token</span></div>
             <p class="rc-note">First tile · setup and pipeline gaps omitted</p>
           </section>
+          <div id="rc-runtime-demo" class="rc-runtime-demo" role="region" aria-labelledby="rc-runtime-title">
+            <div class="rc-runtime-heading">
+              <h3 id="rc-runtime-title">Runtime PE reconfiguration</h3>
+              <a href="runtime_computing_change.html">Full view</a>
+            </div>
+            <div id="runtime-stage"></div>
+            <div id="runtime-status" class="runtime-sr-only" role="status"></div>
+          </div>
           <section class="rc-pe-detail" aria-labelledby="rc-pe-title">
             <div class="rc-section-heading"><h2 id="rc-pe-title"></h2><div class="rc-controls"><label>Row<select id="rc-row"></select></label><label>Column<select id="rc-col"></select></label></div></div>
             <p id="rc-pe-change" class="rc-context"></p>

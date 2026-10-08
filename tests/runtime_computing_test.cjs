@@ -53,22 +53,27 @@ function node() {
     setAttribute(key,value) { this.attrs[key]=String(value); },
     addEventListener(type,handler) { this.handlers[type]=handler; }};
 }
-const nodes = new Map(), get = id => { if(!nodes.has(id))nodes.set(id,node());return nodes.get(id); };
-const elements = Array.from({length:16}, (_,i)=>get(`runtime-element-${i}`));
-get('runtime-stage').querySelectorAll=()=>elements;
-let now=0,next=0,domReady;
-const callbacks=new Map(),documentHandlers={};
-const document={hidden:false,getElementById:get,addEventListener(type,handler){
-  if(type==='DOMContentLoaded')domReady=handler;else documentHandlers[type]=handler;
-}};
-vm.runInNewContext(fs.readFileSync(require.resolve('../script/runtime_computing_change.js'),'utf8'),{
-  window:{RuntimeComputing:model},document,performance:{now:()=>now},
-  requestAnimationFrame(fn){callbacks.set(++next,fn);return next;},
-  cancelAnimationFrame(id){callbacks.delete(id);}
-});
-domReady();
+function player(embedded=false) {
+  const nodes = new Map(), get = id => { if(!nodes.has(id))nodes.set(id,node());return nodes.get(id); };
+  const elements = Array.from({length:16}, (_,i)=>get(`runtime-element-${i}`));
+  get('runtime-stage').querySelectorAll=()=>elements;
+  let now=0,next=0,domReady;
+  const callbacks=new Map(),documentHandlers={},window={RuntimeComputing:model};
+  const document={hidden:false,getElementById:id=>embedded&&['runtime-play','runtime-seek','runtime-time'].includes(id)?null:get(id),
+    addEventListener(type,handler){if(type==='DOMContentLoaded')domReady=handler;else documentHandlers[type]=handler;},
+    dispatchEvent(event){documentHandlers[event.type]?.(event);}
+  };
+  vm.runInNewContext(fs.readFileSync(require.resolve('../script/runtime_computing_change.js'),'utf8'),{
+    window,document,Event,performance:{now:()=>now},
+    requestAnimationFrame(fn){callbacks.set(++next,fn);return next;},
+    cancelAnimationFrame(id){callbacks.delete(id);}
+  });
+  domReady();
+  const advance=ms=>{now+=ms;const pending=[...callbacks.values()];callbacks.clear();pending.forEach(fn=>fn(now));};
+  return {get,elements,callbacks,document,documentHandlers,advance,window,api:window.RuntimeComputingPlayer};
+}
+const {get,elements,callbacks,document,documentHandlers,advance}=player();
 const click=()=>get('runtime-play').handlers.click();
-const advance=ms=>{now+=ms;const pending=[...callbacks.values()];callbacks.clear();pending.forEach(fn=>fn(now));};
 click();advance(9000);
 assert.equal(get('runtime-time').value,'0:09 / 0:20');
 assert.equal(get('runtime-play').textContent,'Pause');
@@ -84,4 +89,33 @@ assert.equal(get('runtime-time').value,'0:10 / 0:20');assert.equal(get('runtime-
 click();advance(500);document.hidden=true;documentHandlers.visibilitychange();
 assert.equal(get('runtime-play').textContent,'Play','background pauses');assert.equal(callbacks.size,0);
 assert.deepEqual(elements,Array.from({length:16},(_,i)=>get(`runtime-element-${i}`)),'same DOM elements survive replay and seeking');
-console.log('PASS: 2,401 timeline samples, 16 fixed squares, no collisions, exact layouts/holds, and playback controls.');
+const embedded=player(true),api=embedded.api;
+api.play();embedded.advance(6000);api.play();
+assert.equal(embedded.callbacks.size,1,'repeated start does not schedule duplicate frames');
+api.pause();embedded.advance(2000);assert.equal(api.inspect().seconds,6,'embedded pause retains time without local controls');
+api.play();embedded.advance(14000);assert.equal(api.inspect().seconds,20);assert.equal(api.inspect().playing,false);
+api.reset();assert.equal(api.inspect().seconds,0);
+
+// Exercise the actual shared mobile button with animations of unequal duration.
+const mobile=fs.readFileSync(require.resolve('../script/mobile.js'),'utf8');
+const central=mobile.slice(mobile.indexOf('const runtime = () =>'),mobile.indexOf("    play.id = 'mobile-focus-play'"));
+const sync=mobile.slice(mobile.indexOf('function syncPlay()'),mobile.indexOf('\n    const source = document.getElementById(presentation.state || presentation.play);'));
+const source={textContent:'Stream inputs',disabled:false,clicks:0,click(){
+  this.clicks++;this.textContent=/pause/i.test(this.textContent)?'Stream inputs':'Pause inputs';
+}};
+const sandbox={window:embedded.window,presentation:{play:'rc-play'},phone:{matches:true},
+  document:{getElementById:()=>source},button(label,name,callback){return {...node(),textContent:label,click:callback};}};
+vm.createContext(sandbox);vm.runInContext(`${central}\n${sync}\nthis.playButton=play;this.sync=syncPlay;`,sandbox);
+embedded.documentHandlers['runtime-playback-change']=sandbox.sync;
+const play=sandbox.playButton;
+play.click();assert.equal(source.textContent,'Pause inputs');assert.equal(api.inspect().playing,true);
+embedded.advance(3000);source.textContent='Stream inputs';sandbox.sync();
+assert.equal(play.textContent,'Pause','shorter mapping completion does not stop the 20-second animation');
+const sourceClicks=source.clicks;play.click();
+assert.equal(api.inspect().playing,false);assert.equal(source.clicks,sourceClicks,'pause does not restart the finished mapping');
+play.click();assert.equal(api.inspect().seconds,3,'central Play resumes the runtime animation');
+embedded.advance(17000);assert.equal(api.inspect().playing,false);assert.equal(play.textContent,'Pause','mapping can outlast runtime animation');
+source.textContent='Stream inputs';sandbox.sync();assert.equal(play.textContent,'Play');
+play.click();assert.equal(api.inspect().seconds,0,'central Play replays the completed runtime animation');
+play.click();assert.equal(source.textContent,'Stream inputs');assert.equal(api.inspect().playing,false);
+console.log('PASS: 2,401 timeline samples, 16 fixed squares, standalone/embedded playback, and shared mobile Play/Pause/resume/replay.');

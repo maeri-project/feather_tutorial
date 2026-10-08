@@ -127,8 +127,17 @@ document.addEventListener('DOMContentLoaded', () => {
     hero.className = 'mobile-focus'; options.className = 'mobile-focus-options';
     options.id = 'mobile-focus-options'; summary.textContent = 'Options';
     optionsBody.className = 'mobile-focus-options-body'; options.append(summary, optionsBody);
+    const runtime = () => presentation.play === 'rc-play' && phone.matches ? window.RuntimeComputingPlayer : null;
     const play = button('Play', 'Play', () => {
-      document.getElementById(presentation.play)?.click(); syncPlay();
+      const source = document.getElementById(presentation.play), extra = runtime();
+      if (extra) {
+        const sourcePlaying = /pause/i.test(source?.textContent || '');
+        if (sourcePlaying || extra.inspect().playing) {
+          if (sourcePlaying) source.click();
+          extra.pause();
+        } else { source?.click(); extra.play(); }
+      } else source?.click();
+      syncPlay();
     });
     play.id = 'mobile-focus-play'; play.className = 'mobile-focus-play';
     const toolbar = document.createElement('div'); toolbar.className = 'mobile-focus-toolbar';
@@ -144,13 +153,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function syncPlay() {
       const source = document.getElementById(presentation.state || presentation.play);
-      const label = /pause/i.test(source?.textContent || '') ? 'Pause' : 'Play';
+      const label = /pause/i.test(source?.textContent || '') || runtime()?.inspect().playing ? 'Pause' : 'Play';
       if (play.textContent !== label) play.textContent = label;
       play.setAttribute('aria-label', label); play.setAttribute('aria-pressed', String(label === 'Pause'));
       play.disabled = !source || source.disabled;
     }
     const source = document.getElementById(presentation.state || presentation.play);
     if (source) new MutationObserver(syncPlay).observe(source, {childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
+    if (presentation.play === 'rc-play') {
+      document.addEventListener('runtime-playback-change', syncPlay);
+      document.getElementById('rc-reset').addEventListener('click', () => runtime()?.reset());
+    }
     const title = document.querySelector('.header-title'), originalTitle = title?.textContent;
     const moves = [], textChanges = [];
     let active = false;
@@ -200,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
           hero.insertBefore(workload, toolbar);
         } else if (presentation.play === 'rc-play') {
           const chain = root.querySelector('.rc-chain'); move(chain, hero); hero.insertBefore(chain, toolbar);
+          move(document.getElementById('rc-runtime-demo'), hero);
           for (const [id, text] of [['down','Prefill'],['head','LM head'],['decode','Decode']]) {
             caption(document.querySelector(`#rc-stage-${id} small`), text);
           }
@@ -216,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (title) title.textContent = presentation.title;
         if (presentation.tab) document.getElementById(presentation.tab).click();
       } else {
+        if (presentation.play === 'rc-play') window.RuntimeComputingPlayer?.pause();
         // Restore descendants before their parents, including moved toolbars.
         for (const {node, anchor} of moves.reverse()) anchor.replaceWith(node);
         for (const {node, value} of textChanges) node.textContent = value;
