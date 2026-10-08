@@ -10,6 +10,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||"playwright");
   await page.goto(url);await page.waitForFunction(()=>window.ReconfigurableCompute);
   assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage,"down");
   assert.match(await page.locator("#rc-equation").textContent(),/768 × 3,072/);
+  assert.equal(await page.locator('#rc-workload-title, #rc-chain-title').count(),0);
+  assert.equal(await page.locator('#rc-equation svg [data-matrix]').count(),3);
+  assert.equal(await page.locator('#rc-equation [data-matrix="input"]').getAttribute('data-rows'),'4');
+  for(const id of ['down','head','decode']) {
+   const button=page.locator(`#rc-stage-${id}`);
+   assert.equal(await button.locator('small').isVisible(),false);
+   assert.equal(await button.locator('span').isVisible(),false);
+   assert.ok((await button.boundingBox()).height<=44,'compact desktop layer buttons');
+  }
+  const arrays=await page.locator('.rc-arrays.mobile-comparison').boundingBox();
+  for(const id of ['rc-boundary','rc-layer-details','rc-selection'])assert.ok((await page.locator(`#${id}`).boundingBox()).y>arrays.y+arrays.height,'layer explanations follow the visualization');
   assert.match(await page.locator("#rc-context").textContent(),/768 prompt tokens → choose A/);
   assert.equal(await page.locator("#rc-selection").evaluate(el=>el.open),false);
   assert.equal(await page.locator("#rc-layer-details").evaluate(el=>el.open),false);
@@ -28,6 +39,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||"playwright");
   assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage,"head");
   assert.match(await page.locator("#rc-context").textContent(),/down_proj preferred A.*switch to B/);
   assert.match(await page.locator("#rc-equation").textContent(),/1 × 151,936/);
+  assert.equal(await page.locator('#rc-equation [data-matrix="input"]').getAttribute('data-rows'),'1');
+  assert.equal(await page.locator('#rc-equation [data-matrix="output"]').getAttribute('data-rows'),'1');
   assert.match(await page.locator("#rc-boundary").textContent(),/Z\[767,:\]/);
   assert.match(await page.locator("#rc-badge-reuse").textContent(),/Previous layer/);
   assert.match(await page.locator("#rc-badge-outputs").textContent(),/Selected/);

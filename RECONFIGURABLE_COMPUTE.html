@@ -52,8 +52,7 @@
             <div class="rc-eyebrow">Qwen3-0.6B · FEATHER 16×16</div>
             <h1>Match the mapping <span>to the layer.</span></h1>
           </div>
-          <section aria-labelledby="rc-chain-title">
-            <h2 id="rc-chain-title">Inference flow</h2>
+          <section aria-label="Layer sequence">
             <div class="rc-graph-prefix">Embedding → blocks 1–27 → block 28 attention + MLP</div>
             <div class="rc-chain" aria-label="Inference checkpoints">
               <button id="rc-stage-down" type="button" aria-pressed="true"><small>PREFILL · BLOCK 28</small><strong>down_proj</strong><span>768 tokens → A</span></button>
@@ -65,18 +64,9 @@
             <p id="rc-context" class="rc-context" aria-live="polite"></p>
             <button id="rc-next-stage" class="rc-next-stage" type="button">Next: lm_head →</button>
           </section>
-          <section aria-labelledby="rc-workload-title">
-            <div class="rc-section-heading"><h2 id="rc-workload-title"></h2><span class="rc-chip">FP16 → FP32</span></div>
-            <div id="rc-equation" class="rc-matrices" aria-label="Full matrix multiplication"></div>
-            <p class="rc-note">M: tokens · K: input features · N: output channels</p>
-            <div class="rc-boundary" id="rc-boundary"></div>
-            <details id="rc-layer-details"><summary>Layer details</summary><div class="rc-details-body"><p id="rc-layer-note"></p><p id="rc-shard-note"></p></div></details>
+          <section aria-label="Layer matrix multiplication">
+            <div id="rc-equation" class="rc-matrices"></div>
           </section>
-          <details id="rc-selection"><summary>Why A or B?</summary><div class="rc-details-body">
-            <p id="rc-choice-reason" class="rc-lead"></p>
-            <div class="rc-candidate-scroll"><table class="rc-candidates"><thead><tr><th scope="col">Mapping</th><th scope="col">Tile M×K×N</th><th scope="col">16 columns</th><th scope="col">Predicted cycles</th></tr></thead><tbody id="rc-candidates"></tbody></table></div>
-            <p id="rc-search-note" class="rc-note"></p>
-          </div></details>
           <section aria-labelledby="rc-array-title">
             <div class="rc-section-heading"><h2 id="rc-array-title">Weights stay. Inputs flow.</h2><div class="rc-controls"><button id="rc-weights" type="button" aria-pressed="true">Weights</button><button id="rc-play" type="button">Stream inputs</button></div></div>
             <p class="rc-lead">WO-S · 16 weights/PE · inputs ↓ columns · outputs accumulate</p>
@@ -95,6 +85,15 @@
             </div>
             <div id="runtime-stage"></div>
             <div id="runtime-status" class="runtime-sr-only" role="status"></div>
+          </div>
+          <div class="rc-layer-explanation">
+            <div class="rc-boundary" id="rc-boundary"></div>
+            <details id="rc-layer-details"><summary>Layer details</summary><div class="rc-details-body"><p id="rc-layer-note"></p><p id="rc-shard-note"></p></div></details>
+            <details id="rc-selection"><summary>Why A or B?</summary><div class="rc-details-body">
+              <p id="rc-choice-reason" class="rc-lead"></p>
+              <div class="rc-candidate-scroll"><table class="rc-candidates"><thead><tr><th scope="col">Mapping</th><th scope="col">Tile M×K×N</th><th scope="col">16 columns</th><th scope="col">Predicted cycles</th></tr></thead><tbody id="rc-candidates"></tbody></table></div>
+              <p id="rc-search-note" class="rc-note"></p>
+            </div></details>
           </div>
           <section class="rc-pe-detail" aria-labelledby="rc-pe-title">
             <div class="rc-section-heading"><h2 id="rc-pe-title"></h2><div class="rc-controls"><label>Row<select id="rc-row"></select></label><label>Column<select id="rc-col"></select></label></div></div>

@@ -55,6 +55,41 @@
         }
         text(ctx,`${r.EM.G_r/r.EM.G_c} token replicas × ${r.EM.G_c} output groups × 2 K halves`,x,645,colors.fg,12,"left",true);
     }
+    function matrixEquation(s) {
+        const {M,K,N}=s.shape,rows=M===1?1:4,rowHeight=18,selectedRow=rows===1?0:1;
+        const operands=[
+            {kind:"input",symbol:s.input,name:s.inputName,x:80,rows,cols:6,height:rows*rowHeight,color:"#2385ce",vertical:`M = ${fmt(M)}`,horizontal:`K = ${fmt(K)}`},
+            {kind:"weight",symbol:s.weight,name:s.weightName,x:415,rows:6,cols:6,height:108,color:"#238873",vertical:`K = ${fmt(K)}`,horizontal:`N = ${fmt(N)}`},
+            {kind:"output",symbol:s.output,name:s.outputName,x:750,rows,cols:6,height:rows*rowHeight,color:"#8c64dc",vertical:`M = ${fmt(M)}`,horizontal:`N = ${fmt(N)}`}
+        ];
+        const matrices=operands.map(o=>{
+            const y=128-o.height/2,w=180,cellWidth=w/o.cols;
+            let grid="";
+            for(let col=1;col<o.cols;col++)grid+=`M${o.x+col*cellWidth},${y}v${o.height}`;
+            for(let row=1;row<o.rows;row++)grid+=`M${o.x},${y+row*rowHeight}h${w}`;
+            const highlight=o.kind==="input"
+                ? {x:o.x,y:y+selectedRow*rowHeight,w,h:rowHeight}
+                : o.kind==="weight" ? {x:o.x+2*cellWidth,y,w:cellWidth,h:o.height}
+                : {x:o.x+2*cellWidth,y:y+selectedRow*rowHeight,w:cellWidth,h:rowHeight};
+            return `<g data-matrix="${o.kind}" data-rows="${o.rows}">
+                <text x="${o.x+w/2}" y="23" text-anchor="middle" font-size="19" font-weight="650" fill="currentColor">${o.symbol}</text>
+                <text x="${o.x+w/2}" y="${y-19}" text-anchor="middle" font-size="14" fill="currentColor">${o.horizontal}</text>
+                <path d="M${o.x},${y-5}v-5h${w}v5 M${o.x-5},${y}h-5v${o.height}h5" fill="none" stroke="currentColor" opacity=".5"/>
+                <text transform="translate(${o.x-22},128) rotate(-90)" text-anchor="middle" font-size="14" fill="currentColor">${o.vertical}</text>
+                <rect x="${o.x}" y="${y}" width="${w}" height="${o.height}" fill="${o.color}" fill-opacity=".08" stroke="${o.color}"/>
+                <rect class="rc-matrix-highlight" x="${highlight.x}" y="${highlight.y}" width="${highlight.w}" height="${highlight.h}" fill="${o.color}" fill-opacity=".35"/>
+                <path d="${grid}" fill="none" stroke="${o.color}" stroke-opacity=".4"/>
+                <text x="${o.x+w/2}" y="207" text-anchor="middle" font-size="14" fill="currentColor">${o.name}</text>
+            </g>`;
+        }).join("");
+        return `<svg class="rc-equation-graphic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 245" role="img" aria-labelledby="rc-equation-title rc-equation-desc" font-family="system-ui, sans-serif">
+            <title id="rc-equation-title">${s.input} (${fmt(M)} × ${fmt(K)}) × ${s.weight} (${fmt(K)} × ${fmt(N)}) = ${s.output} (${fmt(M)} × ${fmt(N)})</title>
+            <desc id="rc-equation-desc">Schematic matrix multiplication. M counts tokens, K input features, and N output channels. A highlighted input row and weight column produce one highlighted output cell. Dimensions show the full workload; grid cells are illustrative. FP16 inputs accumulate in FP32.</desc>
+            ${matrices}
+            <g fill="currentColor" text-anchor="middle" font-size="30"><text x="330" y="138">×</text><text x="665" y="138">=</text></g>
+            <text x="500" y="238" text-anchor="middle" font-size="13" fill="currentColor" opacity=".75">Row × column → output cell</text>
+        </svg>`;
+    }
     function context() {
         const s=stage(),prev=s.previous?stages[s.previous]:null;
         for(const item of data.stages)$(`stage-${item.id}`).setAttribute("aria-pressed",item.id===s.id);
@@ -62,13 +97,8 @@
             ? "768 prompt tokens → choose A for weight reuse."
             : s.id==="head" ? "down_proj preferred A. One token remains → switch to B for more channels."
             : "lm_head preferred B. One decode token → keep B; load new weights.";
-        $("workload-title").textContent=s.title;
         $("next-stage").textContent=s.id==="down"?"Next: lm_head →":s.id==="head"?"Next: decode →":"Back to prefill";
-        $("equation").innerHTML=[
-            [s.input,s.inputName,`${fmt(s.shape.M)} × ${fmt(s.shape.K)}`,"M × K","input"],
-            [s.weight,s.weightName,`${fmt(s.shape.K)} × ${fmt(s.shape.N)}`,"K × N","weight"],
-            [s.output,s.outputName,`${fmt(s.shape.M)} × ${fmt(s.shape.N)}`,"M × N","output"]
-        ].map(([symbol,name,dims,axes,kind],i)=>`${i?`<b class="rc-math-sign">${i===1?"×":"="}</b>`:""}<div class="rc-matrix rc-${kind}"><small>${name}</small><strong>${symbol}</strong><code>${dims}</code><span>${axes}</span></div>`).join("");
+        $("equation").innerHTML=matrixEquation(s);
         $("shard-note").textContent=s.programs>1
             ? `${s.programs} sequential N=${fmt(s.programN)} partitions fit the operand-image regions. Every candidate uses the same partitions; cycles cover the full operation. Animation: first tile.`
             : "One complete projection. Animation: first tile.";
