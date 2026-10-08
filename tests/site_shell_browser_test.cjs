@@ -27,6 +27,11 @@ async function main() {
             check((source.match(/href="QWEN3_MINISA_VISUALIZER.html"/g) || []).length === 1, `${file}: one sidebar entry`);
             check((source.match(/href="FEATHER_VS_SYSTOLIC.html"/g) || []).length === 1, `${file}: one comparison-page entry`);
         }
+        for (const file of ["index.html", "ACT.html", "Allo.html", "beginner.html", "hands_on.html", "setup.html", "FEATHER.html",
+            "QWEN3_MINISA_VISUALIZER.html", "RECONFIGURABLE_COMPUTE.html", "FEATHER_VS_SYSTOLIC.html", "FEATHER_VS_DPU.html"]) {
+            const source = await fs.readFile(path.join(root, file), "utf8");
+            check((source.match(/href="FEATHER_VS_DPU.html"/g) || []).length === 1, `${file}: one DPU-race entry`);
+        }
         await page.goto(pathToFileURL(path.join(root, "index.html")).href);
         await page.locator('.sidebar a[href="QWEN3_MINISA_VISUALIZER.html"]').click();
         await page.waitForFunction(() => window.FeatherFullWorkloads);

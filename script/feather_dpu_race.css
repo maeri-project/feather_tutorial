@@ -1,0 +1,49 @@
+.race-playbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 18px; }
+.race-cap { font: 700 .66rem/1.4 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.race-speed { display: flex; align-items: center; gap: 8px; font-size: .76rem; color: var(--text-muted); }
+.race-speed input[type=range] { width: 200px; accent-color: var(--primary-color); }
+.race-rate { font-size: .78rem; color: var(--text-main); font-variant-numeric: tabular-nums; min-width: 15em; }
+.race-est { font-size: .74rem; color: var(--text-muted); font-style: italic; }
+.race-seg { display: inline-flex; border: 1px solid var(--border-color); border-radius: 7px; overflow: hidden; }
+.comparison-page .race-seg button { border: 0; border-radius: 0; padding: 8px 13px; }
+.comparison-page .race-seg button + button { border-left: 1px solid var(--border-color); }
+.comparison-page .race-seg button[aria-pressed="true"] { color: #fff; background: #6544c2; }
+.race-btns { margin-left: auto; display: flex; gap: 8px; }
+
+.race-arena { display: grid; grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr); gap: 16px; align-items: start; }
+.race-side { padding: 18px; }
+.race-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.race-name { font: 700 1.15rem/1.3 'Outfit', sans-serif; }
+.race-side.dpu .race-name { color: var(--race-dpu); }
+.race-side.feather .race-name { color: var(--race-feather); }
+.race-part { font-size: .72rem; color: var(--text-muted); }
+.race-clock { font: 700 2.2rem/1.1 'Outfit', sans-serif; font-variant-numeric: tabular-nums; margin: 8px 0 10px; }
+.race-clock small { font-size: .9rem; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+.race-side canvas { display: block; width: 100%; height: auto; aspect-ratio: 560 / 620; }
+.race-layer { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .76rem; margin-top: 8px; color: var(--text-main); }
+.race-layer .shape { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.race-divider { align-self: center; text-align: center; }
+.race-ratio { font: 800 1.9rem/1.1 'Outfit', sans-serif; font-variant-numeric: tabular-nums; color: var(--text-main); }
+.race-ratio.idle { color: var(--text-muted); }
+.race-ratio.final { color: var(--race-feather); font-size: 2.4rem; }
+.race-ratio-label { margin-top: 6px; font-size: .7rem; line-height: 1.4; color: var(--text-muted); }
+
+:root { --race-feather: #1f5fae; --race-dpu: #a8502a; }
+[data-theme="dark"] { --race-feather: #60a5fa; --race-dpu: #fb923c; }
+
+.race-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.race-terms .comparison-card h3 { margin-bottom: 6px; }
+.race-terms .comparison-card p { margin: 0; font-size: .85rem; line-height: 1.65; color: var(--text-muted); }
+.race-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.race-table th, .race-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+.race-table th { font-weight: 600; color: var(--text-muted); font-size: .74rem; letter-spacing: .04em; }
+
+@media (max-width: 900px) {
+  .race-arena { grid-template-columns: minmax(0, 1fr); }
+  .race-divider { order: -1; display: flex; align-items: baseline; justify-content: center; gap: 12px; }
+  .race-ratio-label br { display: none; }
+  .race-btns { margin-left: 0; }
+  .race-speed input[type=range] { width: 150px; }
+}
+.race-table-wrap { overflow-x: auto; }
+.race-table { min-width: 560px; }
