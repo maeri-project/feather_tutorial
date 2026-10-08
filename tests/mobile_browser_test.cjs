@@ -163,6 +163,21 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await page.screenshot({path:path.join(output,"comparison-phone.png"),animations:"disabled"});
     await maxZoom("comparison-bridge");
 
+    await load("RECONFIGURABLE_LAYOUT.html");await page.waitForFunction(()=>window.ReconfigurableLayoutView);
+    check(await page.locator('#layout-network .layout-switch').count()===64,"layout exposes all BIRRD switches");
+    check(await page.locator('#layout-network [id^="layout-packet-"]').count()===16,"layout routes sixteen values");
+    await page.locator('[data-layout="tiles"]').tap();
+    check((await page.evaluate(()=>ReconfigurableLayoutView.inspect())).layout==='tiles',"phone selects a tiled layout");
+    await page.locator('#layout-element').selectOption('11');
+    check((await page.locator('#layout-route').innerText()).includes('bank 13, row 0'),"phone follows the exact destination bank");
+    await page.locator('#layout-play').tap();await page.waitForFunction(()=>ReconfigurableLayoutView.inspect().step>0);
+    await page.locator('#layout-play').tap();check(!await page.evaluate(()=>ReconfigurableLayoutView.inspect().playing),"phone pauses routing");
+    await page.locator('#layout-seek').focus();await page.keyboard.press('End');
+    check(await page.locator('#layout-destination').getAttribute('data-written')==='true',"completed route writes the buffer");
+    await page.locator('.layout-page details > summary').tap();await targets('layout commands');await fits('layout commands');
+    await page.locator('.layout-page details > summary').tap();
+    await page.screenshot({path:path.join(output,'layout-phone.png'),fullPage:true});
+
     await load("QWEN3_MINISA_VISUALIZER.html");await page.waitForFunction(()=>window.FeatherFullWorkloads);
     await options();
     const cases=await page.locator("#operator option").evaluateAll(nodes=>nodes.map(n=>({value:n.value,text:n.textContent})));

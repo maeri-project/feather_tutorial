@@ -1,0 +1,52 @@
+.layout-content { display:block;max-width:1280px;margin:0 auto;padding:24px;width:100%; }
+.layout-page { max-width:none;padding:0;min-width:0; }
+.layout-presets { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px; }
+.layout-page button { min-height:44px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-main);padding:8px 14px;font:600 14px/1.3 var(--font-ui);cursor:pointer; }
+.layout-page button[aria-pressed=true] { border-color:var(--primary-color);box-shadow:inset 0 0 0 1px var(--primary-color); }
+.layout-page :is(button,input,select):focus-visible { outline:3px solid var(--primary-color);outline-offset:3px; }
+.layout-playback { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px; }
+.layout-playback #layout-play { color:white;background:#6544c2;border-color:#6544c2;min-width:88px; }
+.layout-playback input { flex:1;min-width:80px;height:44px;accent-color:var(--primary-color); }
+.layout-playback output { font-size:13px;min-width:90px;color:var(--text-muted); }
+.layout-panels { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+.layout-panel { min-width:0; }
+.layout-panel h2 { font-size:16px;margin:0 0 6px;padding:0;border:0; }
+.layout-caption { display:block;font-size:12px;color:var(--text-muted);margin-bottom:10px; }
+.layout-cells { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px; }
+.layout-cells .layout-cell { padding:6px 2px;border:1px solid var(--border-color);border-bottom:3px solid var(--element-color);border-radius:6px;text-align:center;background:var(--bg-card); }
+.layout-cells [data-selected=true] { outline:2px solid var(--element-color);outline-offset:-1px; }
+.layout-cells strong { display:block;font-size:20px;line-height:1.2;color:var(--text-main); }
+.layout-cells small { display:block;font-size:11px;line-height:1.5;color:var(--text-muted); }
+#layout-destination[data-written=false] strong { opacity:.55; }
+#layout-destination[data-written=true] .layout-cell { background:color-mix(in srgb,var(--element-color) 10%,var(--bg-card)); }
+.layout-element-control { display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px; }
+.layout-element-control select { flex:1;min-width:0;min-height:44px;font:16px var(--font-ui);color:var(--text-main);background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;padding:8px; }
+.layout-route { display:block;margin:14px 0;font-size:14px;font-weight:600;line-height:1.5;overflow-wrap:anywhere; }
+.layout-network-wrap { max-width:680px;margin:0 auto; }
+#layout-network { display:block;width:100%;height:auto;border:1px solid var(--border-color);border-radius:8px; }
+#layout-network [data-active=true] .layout-switch { stroke:#2465b4;stroke-width:2; }
+.layout-legend { display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted);margin:10px 0; }
+.layout-page details { margin-top:18px;border:1px solid var(--border-color);border-radius:8px; }
+.layout-page summary { padding:12px;font-size:14px;font-weight:600;cursor:pointer; }
+.layout-detail-body { padding:0 12px 12px;font-size:14px;color:var(--text-muted); }
+.layout-command-scroll { overflow:auto; }
+.layout-command-scroll table { min-width:630px;width:100%;font-size:12px;margin:10px 0; }
+.layout-command-scroll :is(th,td) { padding:8px; }
+.layout-command-scroll [data-swap=true] { color:var(--primary-color);font-weight:700; }
+.layout-sr-only { position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap; }
+@media (min-width:1100px) {
+  .layout-visual { display:grid;grid-template-columns:360px minmax(0,1fr);gap:28px;align-items:start; }
+  .layout-panels { grid-template-columns:1fr; }
+  .layout-inspector { position:sticky;top:90px; }
+}
+@media (max-width:600px) {
+  .layout-content { padding:16px 10px; }
+  .layout-presets { gap:6px; }
+  .layout-presets button { flex:1;padding:8px 5px;font-size:12px; }
+  .layout-panels { gap:10px; }
+  .layout-panel h2 { font-size:14px; }
+  .layout-cells { gap:3px; }
+  .layout-cells strong { font-size:16px; }
+  .layout-cells small { font-size:9px; }
+  .layout-playback output { width:100%; }
+}

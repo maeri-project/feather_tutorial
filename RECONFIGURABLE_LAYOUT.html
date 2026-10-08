@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Reconfigurable layout · FEATHER</title>
+  <meta name="description" content="Explore how BIRRD Pass and Swap commands route the same sixteen values into row-major, column-major, and tiled output layouts.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/mobile.css">
+  <link rel="stylesheet" href="script/reconfigurable_layout.css">
+  <script src="script/mobile.js" defer></script>
+  <script src="script/reconfigurable_layout_data.js" defer></script>
+  <script src="script/reconfigurable_layout_model.js" defer></script>
+  <script src="script/reconfigurable_layout_view.js" defer></script>
+</head>
+<body class="sidebar-hidden">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section"><h3 class="nav-title">tutorial</h3><ul class="nav-links"><li><a href="index.html">ASPLOS'26@Pittsburgh</a></li></ul></div>
+        <div class="nav-section"><h3 class="nav-title">docs</h3><ul class="nav-links">
+          <li><a href="FEATHER.html">FEATHER</a></li>
+          <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
+          <li><a href="RECONFIGURABLE_COMPUTE.html">Reconfigurable compute</a></li>
+          <li><a href="RECONFIGURABLE_LAYOUT.html" class="active" aria-current="page">Reconfigurable layout</a></li>
+          <li><a href="runtime_computing_change.html">Runtime reconfiguration</a></li>
+          <li><a href="FEATHER_VS_SYSTOLIC.html">Systolic Array vs. FEATHER</a></li>
+        </ul></div>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg></button>
+        <div class="header-title">Reconfigurable layout</div>
+        <div class="top-actions"><button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+        </button></div>
+      </header>
+      <div class="layout-content">
+        <article class="doc-content layout-page">
+          <aside class="page-takeaway" aria-label="Key takeaway"><span class="takeaway-label">Key takeaway</span><p>BIRRD changes data layout by changing its switch configuration.</p></aside>
+          <h1 class="layout-sr-only">Reconfigurable data layout</h1>
+          <div class="layout-presets" role="group" aria-label="Output layout">
+            <button type="button" data-layout="rows" aria-pressed="false">Row-major</button>
+            <button type="button" data-layout="columns" aria-pressed="true">Column-major</button>
+            <button type="button" data-layout="tiles" aria-pressed="false">2×2 tiles</button>
+          </div>
+          <div class="layout-playback" role="group" aria-label="Animation playback">
+            <button type="button" id="layout-play" aria-pressed="false">Play</button>
+            <button type="button" id="layout-step">Step</button>
+            <label class="layout-sr-only" for="layout-seek">Routing progress</label>
+            <input type="range" id="layout-seek" min="0" max="9" value="0" step="0.01">
+            <output id="layout-phase" for="layout-seek">Ready</output>
+          </div>
+          <div class="layout-visual">
+            <div class="layout-inspector">
+              <div class="layout-panels">
+                <div class="layout-panel"><h2>Source values</h2><span class="layout-caption">C[0:4, 0:4] · fixed input order</span><div id="layout-source" class="layout-cells"></div></div>
+                <div class="layout-panel"><h2>Output buffer</h2><span id="layout-target-label" class="layout-caption"></span><div id="layout-destination" class="layout-cells" data-written="false"></div></div>
+              </div>
+              <label class="layout-element-control" for="layout-element">Follow value<select id="layout-element"></select></label>
+              <output id="layout-route" class="layout-route" for="layout-element"></output>
+              <div class="layout-caption">Values keep their identity and color. B0–B15 are banks in one buffer row.</div>
+            </div>
+            <div class="layout-network-wrap">
+              <div id="layout-mount"></div>
+              <div class="layout-legend"><span>PS · Pass · 00</span><span>SW · Swap · 11</span><span>16 ports · 8 stages</span></div>
+            </div>
+          </div>
+          <details><summary>Switch commands and model details</summary><div class="layout-detail-body">
+            <div id="layout-swap-count"></div>
+            <div class="layout-command-scroll" tabindex="0" role="region" aria-label="Scrollable switch configuration"><table><caption>Configuration by stage and switch</caption><thead><tr><th scope="col">Stage</th><th scope="col">0</th><th scope="col">1</th><th scope="col">2</th><th scope="col">3</th><th scope="col">4</th><th scope="col">5</th><th scope="col">6</th><th scope="col">7</th></tr></thead><tbody id="layout-commands"></tbody></table></div>
+            <p>Routing-only example on the maintained 16-port FP32 BIRRD+ topology. Pass and Swap preserve values; reduction modes are not used. Output port p writes bank p at row 0. The bank grid wraps for display.</p>
+            <p>Commands are generated and checked with the repository's BIRRD compiler. Fixed wiring also permutes lanes, so all-Pass does not mean identity. The animation slows the transfers for teaching; it is not an RTL timing replay.</p>
+            <a href="script/reconfigurable_layout_data.js">Verified switch data</a> · <a href="RECONFIGURABLE_COMPUTE.html">Reconfigurable compute</a>
+          </div></details>
+          <noscript>Enable JavaScript to inspect the BIRRD routes and animate the three layouts.</noscript>
+        </article>
+      </div>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
