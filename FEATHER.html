@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FEATHER - RAIC Tutorial</title>
+  <meta name="description" content="FEATHER reconfigurable AI accelerator documentation and interactive MINISA visualizer.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="script/feather_buffer_popup.css">
+  <link rel="stylesheet" href="script/feather_packet_motion.css">
+
+  <!-- Scoped styles for MINISA interactive tool -->
+  <style>
+    /* ================================================================
+       MINISA GUI Tool – all selectors prefixed with .mg- to avoid
+       collisions with the tutorial site styles.css
+       ================================================================ */
+    .mg-app {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      height: 820px;
+      background: var(--bg-card);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--text-main);
+      margin-top: 24px;
+    }
+    /* left config panel */
+    .mg-left {
+      width: 300px; min-width: 300px; overflow-y: auto;
+      border-right: 1px solid var(--border-color);
+      padding: 10px;
+      background: var(--bg-sidebar);
+    }
+    .mg-right {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+      min-width: 0;
+    }
+    .mg-section {
+      border: 1px solid var(--border-color);
+      border-radius: 8px; margin-bottom: 10px;
+    }
+    .mg-section-title {
+      background: rgba(120,100,255,0.08);
+      padding: 7px 12px; font-weight: 600; font-size: 12px;
+      border-bottom: 1px solid var(--border-color);
+      border-radius: 8px 8px 0 0;
+      color: var(--text-main);
+    }
+    .mg-section-body { padding: 10px; }
+    details.mg-section > summary { cursor: pointer; }
+    details.mg-section:not([open]) > summary { border-bottom: 0; border-radius: 8px; }
+    .mg-trace-tools { margin-top: 8px; }
+    .mg-trace-tools > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; }
+    .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .mg-row label { font-size: 12px; font-weight: 500; min-width: 24px; color: var(--text-muted); }
+    .mg-row input, .mg-row select {
+      padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;
+      font-size: 12px; background: var(--bg-body); color: var(--text-main);
+    }
+    .mg-row input[type=number] { width: 72px; }
+    .mg-row select { min-width: 90px; }
+    .mg-workload-row { gap:5px; margin-bottom:0; }
+    .mg-workload-row label { min-width:14px; }
+    .mg-workload-row input { flex:1; min-width:0; }
+    .mg-playback-speed { margin-top:8px; margin-bottom:0; }
+    #mgSpeedSlider { flex:1; min-width:0; max-width:140px; }
+    #mgFrameInfo { margin-left:auto; font-size:11px; color:var(--text-light); }
+    .mg-btn {
+      padding: 5px 12px; border: 1px solid var(--border-color); border-radius: 4px;
+      background: var(--bg-card); cursor: pointer; font-size: 12px;
+      color: var(--text-main); transition: background 0.15s;
+    }
+    .mg-btn:hover { background: rgba(120,100,255,0.1); }
+    .mg-btn.primary { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+    .mg-btn.primary:hover { filter: brightness(1.15); }
+    .mg-btn.danger { background: #C62828; color: #fff; border-color: #C62828; }
+    .mg-btn.success { background: #2E7D32; color: #fff; border-color: #2E7D32; }
+    .mg-btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    /* ISA list */
+    .mg-isa-list {
+      border: 1px solid var(--border-color); border-radius: 4px;
+      max-height: 180px; overflow-y: auto; background: var(--bg-body);
+    }
+    .mg-isa-item {
+      padding: 5px 10px; font-size: 12px; cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-main);
+    }
+    .mg-isa-item:hover { background: rgba(120,100,255,0.08); }
+    .mg-isa-item.selected { background: rgba(120,100,255,0.18); font-weight: 600; }
+    .mg-isa-item .mg-idx { font-weight: 700; color: var(--text-light); min-width: 18px; }
+    .mg-badge {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 600;
+    }
+    .mg-badge-ivn { background: #E6EDF5; color: #004C99; }
+    .mg-badge-wvn { background: #E6F0EB; color: #006633; }
+    .mg-badge-ovn { background: #F5E6E6; color: #990000; }
+    .mg-badge-em  { background: #FFF8E1; color: #F57C00; }
+    .mg-badge-es  { background: #FFF8E1; color: #F57C00; }
+    .mg-details {
+      background: var(--bg-body); border: 1px solid var(--border-color);
+      border-radius: 4px; padding: 8px; font-size: 11px;
+      min-height: 60px; max-height: 120px; overflow-y: auto;
+      font-family: 'SF Mono','Fira Code','Consolas',monospace;
+      white-space: pre-wrap; color: var(--text-muted);
+    }
+    /* tabs */
+    .mg-tab-bar {
+      display: flex; background: rgba(120,100,255,0.06);
+      align-items:center; flex-wrap:wrap; flex-shrink:0; position:relative;
+      border-bottom: 2px solid var(--primary-color);
+    }
+    .mg-tabs { display:flex; flex-wrap:wrap; }
+    .mg-view-actions { display:flex; gap:6px; margin:4px 8px 4px auto; }
+    .mg-tab {
+      padding: 9px 12px; cursor: pointer; font-weight: 500; font-size: 12px;
+      border: none; background: transparent;
+      border-bottom: 3px solid transparent; transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .mg-tab:hover { background: rgba(120,100,255,0.1); }
+    .mg-tab.active { background: var(--bg-card); border-bottom-color: var(--primary-color); font-weight: 700; color: var(--text-main); }
+    .mg-tab-content { flex:1; display:none; overflow:auto; position:relative; }
+    .mg-tab-content.active { display:block; }
+    .mg-view-nav { position:sticky; top:0; z-index:1; padding:7px 12px; display:flex;
+      gap:6px; align-items:center; flex-wrap:wrap; background:var(--bg-card);
+      border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:11px; }
+    .mg-view-nav select { color:var(--text-main); background:var(--bg-body); font:inherit;
+      padding:5px 7px; border:1px solid var(--border-color); border-radius:4px; max-width:100%; }
+    .mg-view-nav label { display:flex; align-items:center; gap:5px; }
+    .mg-view-nav .mg-btn { font:inherit; white-space:nowrap; }
+    #mgMotionToggle[aria-expanded="true"] { border-color:var(--primary-color); background:rgba(120,100,255,0.1); }
+    .mg-inspect-control { margin-left:auto; }
+    #mgAnimInfo { overflow-wrap:anywhere; line-height:1.5; }
+    .mg-app.mg-expanded { position:fixed; inset:16px; height:auto; margin:0; z-index:1200;
+      box-shadow:0 0 0 100vmax rgba(0,0,0,.5); }
+    #mgWlM, #mgWlK, #mgWlN { width:62px; }
+    #mgFeatherCanvas { min-width:0; min-height:0; }
+    #mgMotionMount { overflow:auto; min-height:0; }
+    .mg-tab:focus-visible, .mg-btn:focus-visible { outline:2px solid var(--primary-color); outline-offset:-2px; }
+    .mg-tab-content canvas { display:block; min-width: 700px; min-height: 600px; }
+    .mg-legend {
+      position:absolute; top:calc(100% + 6px); right:8px; z-index:5;
+      display:grid; gap:12px; padding:16px; width:max-content; max-width:calc(100% - 16px);
+      background: var(--bg-card); border:1px solid var(--border-color); border-radius:8px;
+      box-shadow:0 8px 24px rgba(0,0,0,.18); font-size:12px;
+      color: var(--text-muted);
+    }
+    .mg-legend[hidden] { display:none; }
+    .mg-legend-item { display:flex; align-items:center; gap:4px; }
+    .mg-legend-swatch { width:14px; height:14px; flex-shrink:0; border-radius:3px; border:1px solid #999; }
+    /* modal */
+    .mg-modal-overlay {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.5); z-index:1600; justify-content:center; align-items:center;
+    }
+    .mg-modal-overlay.show { display:flex; }
+    .mg-modal {
+      background: var(--bg-card); border-radius: 10px; padding: 20px;
+      min-width: 420px; max-width: 520px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3); color: var(--text-main);
+    }
+    .mg-modal h3 { margin-bottom: 12px; font-size: 16px; font-family: var(--font-ui); }
+    .mg-modal .mg-desc {
+      background: var(--bg-sidebar); padding: 8px; border-radius: 4px;
+      font-size: 11px; margin-bottom: 12px; line-height: 1.5; color: var(--text-muted);
+    }
+    .mg-modal .mg-param-grid {
+      display: grid; grid-template-columns: auto 1fr auto auto;
+      gap: 6px 10px; align-items: center; margin-bottom: 14px;
+    }
+    .mg-modal .mg-param-grid label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .mg-modal .mg-param-grid input {
+      padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;
+      font-size: 12px; width: 90px; background: var(--bg-body); color: var(--text-main);
+    }
+    .mg-modal .mg-param-grid .mg-range { font-size: 10px; color: var(--text-light); }
+    .mg-modal .mg-param-grid .mg-hint { font-size: 10px; color: var(--primary-color); }
+    .mg-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+    .mg-toast {
+      position:fixed; top:20px; right:20px; padding:12px 20px; border-radius:6px;
+      pointer-events:none;
+      color:white; font-size:13px; z-index:2000; animation: mgFadeIn 0.3s; max-width:400px;
+    }
+    .mg-toast.success { background:#2E7D32; }
+    .mg-toast.error { background:#C62828; }
+    .mg-toast.warning { background:#F57C00; }
+    .mg-toast.info { background: hsl(260,80%,55%); }
+    @keyframes mgFadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+
+    /* Responsive: on small screens stack vertically */
+    @media (max-width: 1440px) {
+      .on-this-page { display:none; }
+      .doc-content { padding-right:0; }
+    }
+    @media (max-width: 1100px) {
+      .mg-app { flex-direction: column-reverse; height: auto; }
+      .mg-left { width: 100%; min-width: unset; border-right: none; border-top: 1px solid var(--border-color); max-height: 400px; overflow-y: auto; }
+      .mg-right { flex:none; height:720px; min-height:0; }
+      .mg-app.mg-expanded { inset:8px; }
+      .mg-expanded .mg-left { width:100%; min-width:0; max-height:35%; flex-shrink:0; }
+      .mg-expanded .mg-right { min-height:0; flex:1; }
+      .mg-tab { padding:9px 8px; }
+      .mg-view-nav { padding:7px; }
+      .mg-inspect-control { margin-left:0; }
+    }
+  </style>
+  <link rel="stylesheet" href="script/mobile.css">
+  <script src="script/mobile.js" defer></script>
+</head>
+
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">RAIC TUTORIAL</div>
+        <button id="mobile-close-btn" class="icon-btn" aria-label="Close Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-title">tutorial</h3>
+          <ul class="nav-links">
+            <li><a href="index.html">ASPLOS'26@Pittsburgh</a></li>
+          </ul>
+        </div>
+
+        <div class="nav-section">
+          <h3 class="nav-title">docs</h3>
+          <ul class="nav-links">
+            <li><a href="FEATHER.html" class="active">FEATHER</a></li>
+            <li><a href="QWEN3_MINISA_VISUALIZER.html">Qwen3 MINISA Explorer</a></li>
+            <li><a href="RECONFIGURABLE_COMPUTE.html">Reconfigurable compute</a></li>
+            <li><a href="runtime_computing_change.html">Runtime reconfiguration</a></li>
+            <li><a href="FEATHER_VS_SYSTOLIC.html">Systolic Array vs. FEATHER</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="mobile-menu-btn" class="icon-btn" aria-label="Open Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
+        </button>
+
+        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+
+        <div class="top-actions">
+          <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
+            <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="5" />
+              <path
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+            <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-wrapper">
+        <article class="doc-content">
+          <aside class="page-takeaway" aria-label="Key takeaway">
+            <span class="takeaway-label">Key takeaway</span>
+            <p>Reconfigurable Accelerator working in the loop, switching mapping and layout per iteration</p>
+            <a class="takeaway-link" href="runtime_computing_change.html">Watch PE reconfiguration: 4×4 → 8×2 → 1×16</a>
+          </aside>
+
+          <!-- Hero -->
+          <section id="intro" class="hero-section">
+            <h1>FEATHER</h1>
+            <p class="subtitle">Reconfigurable AI Accelerator</p>
+            <div class="text-block">
+              <p>FEATHER is a state-of-the-art reconfigurable accelerator architecture that enables low-cost switching between dataflows and layouts, efficiently supporting diverse workload patterns.</p>
+            </div>
+          </section>
+
+          <!-- =========================================================
+               MINISA Interactive Visualizer (Hands-on Tool)
+               ========================================================= -->
+          <section id="minisa-tool">
+            <h2>FEATHER Microarchitecture and MINISA ISA Visualizer</h2>
+            <div class="text-block">
+              <p>Use this interactive tool to explore FEATHER's MINISA instruction set. Configure hardware parameters,
+                build ISA traces, and explore NEST compute connected to the BIRRD network in one FEATHER view,
+                alongside VN buffer layouts. Animation follows individual symbolic elements through a bounded
+                teaching excerpt, not every T dot group or cycle-accurate RTL. BIRRD shows the actual port topology in PASS mode; this
+                editor does not encode switch commands. The tool resets on page refresh.</p>
+            </div>
+
+            <!-- The MINISA GUI application -->
+            <div class="mg-app">
+              <!-- LEFT PANEL -->
+              <div class="mg-left">
+                <!-- HW Config -->
+                <details class="mg-section">
+                  <summary class="mg-section-title">Hardware Configuration</summary>
+                  <div class="mg-section-body">
+                    <div class="mg-row">
+                      <label>NEST Size:</label>
+                      <select id="mgNestSize" onchange="mgOnNestSizeChange()">
+                        <option value="4">4x4</option><option value="8">8x8</option><option value="16">16x16</option>
+                      </select>
+                    </div>
+                    <div class="mg-row">
+                      <label>SRAM (MB):</label>
+                      <input type="number" id="mgSramMB" value="4" min="1" max="4096" step="0.5" onchange="mgOnSramChange()">
+                    </div>
+                  </div>
+                </details>
+                <!-- Workload -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Workload (GEMM)</div>
+                  <div class="mg-section-body">
+                    <div class="mg-row mg-workload-row">
+                      <label>M:</label><input type="number" id="mgWlM" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
+                      <label>K:</label><input type="number" id="mgWlK" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
+                      <label>N:</label><input type="number" id="mgWlN" value="16" min="1" max="65536" readonly style="background:var(--bg-body);opacity:0.8;cursor:default;" title="Derived from Set*VNLayout instructions">
+                    </div>
+                  </div>
+                </div>
+                <!-- ISA Trace -->
+                <div class="mg-section">
+                  <div class="mg-section-title">ISA Trace Sequence</div>
+                  <div class="mg-section-body">
+                    <div class="mg-isa-list" id="mgIsaList"></div>
+                    <details class="mg-trace-tools">
+                      <summary>Edit trace</summary>
+                    <div class="mg-btn-row" style="margin-top:8px;">
+                      <select id="mgIsaTypeSelect" style="font-size:12px;padding:4px;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+                        <option value="SetIVNLayout">SetIVNLayout</option>
+                        <option value="SetWVNLayout" selected>SetWVNLayout</option>
+                        <option value="SetOVNLayout">SetOVNLayout</option>
+                        <option value="ExecuteMapping">ExecuteMapping</option>
+                        <option value="ExecuteStreaming">ExecuteStreaming</option>
+                      </select>
+                      <button class="mg-btn primary" onclick="mgAddInstruction()">Add</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgEditInstruction()">Edit</button>
+                      <button class="mg-btn" onclick="mgDeleteInstruction()">Delete</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(-1)">Up</button>
+                      <button class="mg-btn" onclick="mgMoveInstruction(1)">Down</button>
+                    </div>
+                    <div class="mg-btn-row">
+                      <button class="mg-btn success" onclick="mgValidateTrace()">Validate</button>
+                      <button class="mg-btn" onclick="mgClearAll()">Clear</button>
+                      <button class="mg-btn" onclick="mgResetDefault()">Reset Default</button>
+                    </div>
+                    </details>
+                  </div>
+                </div>
+                <!-- Details -->
+                <details class="mg-section" id="mgInstructionDetails">
+                  <summary class="mg-section-title">Instruction Details</summary>
+                  <div class="mg-section-body">
+                    <div class="mg-details" id="mgDetailsBox">Select an instruction to view details.</div>
+                  </div>
+                </details>
+                <!-- Animation Controls -->
+                <div class="mg-section">
+                  <div class="mg-section-title">Animation Controls</div>
+                  <div class="mg-section-body">
+                    <button class="mg-btn primary" onclick="mgGenerateAnimation()" style="width:100%;margin-bottom:8px;">Generate Animation</button>
+                    <div id="mgAnimInfo" style="font-size:11px;color:var(--text-light);margin-bottom:6px;">No animation generated</div>
+                    <div class="mg-btn-row" style="align-items:center;">
+                      <button class="mg-btn" aria-label="Back 10 frames" onclick="mgStepAnim(-10)">&lt;&lt;</button>
+                      <button class="mg-btn" aria-label="Previous frame" onclick="mgStepAnim(-1)">&lt;</button>
+                      <button class="mg-btn" id="mgPlayBtn" onclick="mgTogglePlay()" style="min-width:50px;">Play</button>
+                      <button class="mg-btn" aria-label="Next frame" onclick="mgStepAnim(1)">&gt;</button>
+                      <button class="mg-btn" aria-label="Forward 10 frames" onclick="mgStepAnim(10)">&gt;&gt;</button>
+                    </div>
+                    <div class="mg-row mg-playback-speed">
+                      <label for="mgSpeedSlider">Speed</label>
+                      <input type="range" id="mgSpeedSlider" min="0.1" max="5" step="0.1" value="1">
+                      <span id="mgFrameInfo">0/0</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- File Ops -->
+                <details class="mg-section">
+                  <summary class="mg-section-title">File Operations</summary>
+                  <div class="mg-section-body">
+                    <div class="mg-btn-row">
+                      <button class="mg-btn" onclick="mgSaveTrace()">Save JSON</button>
+                      <button class="mg-btn" onclick="document.getElementById('mgLoadFile').click()">Load JSON</button>
+                      <input type="file" id="mgLoadFile" accept=".json" style="display:none" onchange="mgLoadTrace(event)">
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- RIGHT PANEL -->
+              <div class="mg-right">
+                <div class="mg-tab-bar">
+                  <div class="mg-tabs" role="tablist" aria-label="FEATHER visualization">
+                    <button class="mg-tab active" id="mg-feather-tab" data-tab="feather" role="tab" aria-selected="true" aria-controls="mg-tab-feather" onclick="mgSwitchTab('feather')">FEATHER</button>
+                    <button class="mg-tab" id="mg-buffer-tab" data-tab="buffer" role="tab" aria-selected="false" aria-controls="mg-tab-buffer" onclick="mgSwitchTab('buffer')">VN Buffers</button>
+                  </div>
+                  <div class="mg-view-actions">
+                    <button class="mg-btn" id="mgLegendBtn" aria-expanded="false" aria-controls="mgLegend" onclick="mgToggleLegend()">Legend</button>
+                    <button class="mg-btn" id="mgExpandBtn" aria-pressed="false" onclick="mgToggleExpanded()">Expand</button>
+                  </div>
+                  <div class="mg-legend" id="mgLegend" role="region" aria-label="Diagram legend" hidden></div>
+                </div>
+                <div class="mg-tab-content active" id="mg-tab-feather" role="tabpanel" aria-labelledby="mg-feather-tab" tabindex="0">
+                  <div class="mg-view-nav">
+                    <select id="mgDiagramScale" aria-label="Diagram scale" onchange="mgDrawActive()">
+                      <option value="width">Fit width</option><option value="fit">Fit diagram</option><option value="actual">Actual size</option>
+                    </select>
+                    <select id="mgDiagramJump" aria-label="Jump to architecture section" onchange="mgScrollDiagram(this.value);this.value=''">
+                      <option value="">Jump to…</option><option value="nest">NEST</option><option value="network">BIRRD</option><option value="output">Output</option>
+                    </select>
+                    <button class="mg-btn" id="mgMotionToggle" type="button" aria-expanded="false" aria-controls="mgMotionMount">Detailed data movement</button>
+                    <label class="mg-inspect-control">Inspect
+                      <select id="mgInspectBuffer" aria-label="Inspect buffer" onchange="if(this.value)mgOpenBuffer(this.value,this);this.value=''">
+                        <option value="">Buffer…</option><option value="I">Streaming</option><option value="W">Stationary</option><option value="O">Output</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="mgMotionMount" tabindex="0" aria-label="Detailed data movement panel" hidden></div>
+                  <canvas id="mgFeatherCanvas" role="img" aria-label="Connected FEATHER dataflow: input and weight buffers feed NEST; each PE's bottom-right output connects diagonally to the vertical bus on its column's right side. Each column bus connects directly to a BIRRD input. Network outputs route illustrative partial results to addressed output-buffer cells. Use Inspect buffer to explore each buffer's scalar layout."></canvas>
+                </div>
+                <div class="mg-tab-content" id="mg-tab-buffer" role="tabpanel" aria-labelledby="mg-buffer-tab" tabindex="0"><canvas id="mgBufferCanvas" role="img" aria-label="Input, weight, and output VN buffer layouts"></canvas></div>
+                <div class="mg-mobile-playback" role="group" aria-label="Animation controls">
+                  <button class="mg-btn primary" id="mgMobileGenerate" type="button" onclick="mgGenerateAnimation()">Generate Animation</button>
+                  <button class="mg-btn" id="mgMobilePlay" type="button" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgTogglePlay()">Play</button>
+                  <button class="mg-btn" type="button" onclick="if(!mgAnimFrames.length)mgGenerateAnimation();mgStepAnim(1)">Step</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Microarchitecture
+          <section id="microarchitecture">
+            <h2>Microarchitecture</h2>
+            <div class="text-block">
+              <p>Details about FEATHER and FEATHER+ microarchitecture...</p>
+            </div>
+          </section> -->
+
+          <!-- MINISA ISA 2.0 Specification -->
+          <section id="isa">
+            <h2>MINISA ISA 2.0 Specification</h2>
+
+            <div class="text-block">
+              <p>MINISA ISA 2.0 defines <strong>8 variable-width instructions</strong> for the FEATHER+ reconfigurable accelerator. Each instruction begins with a 3-bit opcode. Layout and execute instructions scale as O(log&nbsp;AH + log&nbsp;AW) with array size, while DMA instructions are fixed at 33 bits. This compact encoding achieves 24x&ndash;39,681x instruction reduction over direct per-cycle micro-configuration across 9 hardware configurations.</p>
+
+              <p><strong>Design Principles:</strong></p>
+              <ul>
+                <li><strong>Parametric encoding</strong>: Six parameters &theta; = (r<sub>0</sub>, c<sub>0</sub>, G<sub>r</sub>, G<sub>c</sub>, s<sub>r</sub>, s<sub>c</sub>) generate the entire AH&times;AW PE-to-WVN mapping algebraically.</li>
+                <li><strong>Buffer-aware sizing</strong>: Field widths are derived from on-chip buffer depths, not fixed constants.</li>
+                <li><strong>Per-VN variable size</strong>: The <code>vn_size</code> field in ExecuteStreaming supports K dimensions not divisible by AH.</li>
+                <li><strong>Dual dataflow</strong>: A single-bit <code>dataflow</code> field selects WO-S or IO-S. Under IO-S the compiler transposes (M,K,N) to (N,K,M).</li>
+              </ul>
+            </div>
+
+            <h3 id="isa-summary">Instruction Set Summary</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:8px;text-align:left;">Opcode</th><th style="padding:8px;text-align:left;">Instruction</th><th style="padding:8px;text-align:left;">Purpose</th><th style="padding:8px;text-align:left;">Width</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:6px;font-family:monospace;">000</td><td>SetWVNLayout</td><td>Configure stationary buffer (weight) layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">001</td><td>SetIVNLayout</td><td>Configure streaming buffer (input) layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">010</td><td>SetOVNLayout</td><td>Configure output buffer layout</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">011</td><td>ExecuteStreaming</td><td>Configure operand streaming parameters</td><td>Variable</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">100</td><td>Store</td><td>DMA store to off-chip memory</td><td>Fixed 33b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">101</td><td>Load</td><td>DMA load from off-chip memory</td><td>Fixed 33b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">110</td><td>Activation</td><td>Activation function (reserved)</td><td>Fixed 11b</td></tr>
+                <tr><td style="padding:6px;font-family:monospace;">111</td><td>ExecuteMapping</td><td>Configure PE-to-WVN mapping</td><td>Variable</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-buffers">Buffer Architecture</h3>
+            <div class="text-block">
+              <p>MINISA operates on three on-chip SRAM buffers, each banked by AW (one bank per PE column):</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:8px;text-align:left;">Buffer</th><th style="padding:8px;text-align:left;">Controlled By</th><th style="padding:8px;text-align:left;">Stores</th><th style="padding:8px;text-align:left;">Default Alloc</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:6px;"><strong>Streaming</strong> (str)</td><td>SetIVNLayout</td><td>Input activations (IVNs)</td><td>40%</td></tr>
+                <tr><td style="padding:6px;"><strong>Stationary</strong> (sta)</td><td>SetWVNLayout</td><td>Weights (WVNs)</td><td>40%</td></tr>
+                <tr><td style="padding:6px;"><strong>Output</strong> (ob)</td><td>SetOVNLayout</td><td>Partial sums / outputs (OVNs)</td><td>20%</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="text-block">
+              <p>Per-bank scalar depth: D<sub>str</sub> = stream_bytes / (AW &times; in_bytes), etc. VN row count per bank = D / AH. Total VN capacity = vn_rows &times; AW.</p>
+            </div>
+
+            <h3 id="isa-formats">Instruction Formats</h3>
+
+            <div class="text-block">
+              <p><strong>SetWVNLayout</strong> (opcode <code>000</code>) &mdash; Configures stationary buffer layout for weight VNs. Defines the 3-level address mapping WVN(k, n) &rarr; bank address.</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>000</code></td></tr>
+                <tr><td style="padding:4px;">order</td><td>3</td><td>Permutation order (0&ndash;5)</td></tr>
+                <tr><td style="padding:4px;">N_L0</td><td>b<sub>aw</sub></td><td>Inner N-dimension factor (number of banks)</td></tr>
+                <tr><td style="padding:4px;">N_L1</td><td>b<sub>sta_rows</sub></td><td>Middle N-dimension factor</td></tr>
+                <tr><td style="padding:4px;">K_L1</td><td>b<sub>sta_rows</sub></td><td>Outer K-dimension factor</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <div class="text-block">
+              <p><strong>SetIVNLayout</strong> (opcode <code>001</code>) &mdash; Configures streaming buffer layout for input VNs. Fields: opcode(3), order(3), M_L0(b<sub>aw</sub>), M_L1(b<sub>str_rows</sub>), J_L1(b<sub>str_rows</sub>).</p>
+              <p><strong>SetOVNLayout</strong> (opcode <code>010</code>) &mdash; Configures output buffer layout for output VNs. Fields: opcode(3), order(3), P_L0(b<sub>aw</sub>), P_L1(b<sub>str_rows</sub>), Q_L1(b<sub>str_rows</sub>).</p>
+            </div>
+
+            <div class="text-block">
+              <p><strong>ExecuteMapping</strong> (opcode <code>111</code>) &mdash; Configures the PE-to-WVN mapping. The mapping equations:</p>
+              <p style="font-family:monospace;padding-left:20px;">r(a<sub>h</sub>, a<sub>w</sub>) = r<sub>0</sub> + floor(a<sub>w</sub> / G<sub>r</sub>)<br>c(a<sub>h</sub>, a<sub>w</sub>) = c<sub>0</sub> + s<sub>r</sub> &middot; a<sub>h</sub> + s<sub>c</sub> &middot; (a<sub>w</sub> mod G<sub>c</sub>)</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>111</code></td></tr>
+                <tr><td style="padding:4px;">G_r</td><td>b<sub>aw</sub></td><td>Row-sharing group size</td></tr>
+                <tr><td style="padding:4px;">G_c</td><td>b<sub>aw</sub></td><td>Replication period</td></tr>
+                <tr><td style="padding:4px;">r_0</td><td>b<sub>sta_total</sub></td><td>Base WVN row index</td></tr>
+                <tr><td style="padding:4px;">c_0</td><td>b<sub>sta_total</sub></td><td>Base WVN column index</td></tr>
+                <tr><td style="padding:4px;">s_r</td><td>b<sub>sta_total</sub></td><td>Temporal stride per PE row</td></tr>
+                <tr><td style="padding:4px;">s_c</td><td>b<sub>sta_rows</sub></td><td>Spatial stride within one period</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <div class="text-block">
+              <p><strong>ExecuteStreaming</strong> (opcode <code>011</code>) &mdash; Configures operand streaming parameters. Paired with ExecuteMapping.</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:8px 0 16px;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);"><th style="padding:6px;text-align:left;">Field</th><th style="padding:6px;text-align:left;">Width</th><th style="padding:6px;text-align:left;">Description</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">opcode</td><td>3</td><td><code>011</code></td></tr>
+                <tr><td style="padding:4px;">dataflow</td><td>1</td><td>0 = IO-S, 1 = WO-S</td></tr>
+                <tr><td style="padding:4px;">m_0</td><td>b<sub>str_rows</sub></td><td>Base streaming row index</td></tr>
+                <tr><td style="padding:4px;">s_m</td><td>b<sub>str_rows</sub></td><td>Streaming row stride</td></tr>
+                <tr><td style="padding:4px;">T</td><td>b<sub>str_rows</sub></td><td>Number of streaming steps per column</td></tr>
+                <tr><td style="padding:4px;">vn_size</td><td>b<sub>vn_size</sub></td><td>Active VN height &minus; 1</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="text-block">
+              <p><strong>Load</strong> (opcode <code>101</code>) / <strong>Store</strong> (opcode <code>100</code>) &mdash; DMA load/store between off-chip HBM and on-chip buffer. Fixed 33 bits: opcode(3) + target(1) + hbm_addr(29).</p>
+              <p><strong>Activation</strong> (opcode <code>110</code>) &mdash; Reserved. Fixed 11 bits: opcode(3) + tbd(8).</p>
+            </div>
+
+            <h3 id="isa-sram">On-Chip SRAM Capacity</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:6px;text-align:left;">AH</th><th style="padding:6px;">Total SRAM</th><th style="padding:6px;">Streaming (40%)</th><th style="padding:6px;">Stationary (40%)</th><th style="padding:6px;">Output (20%)</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">4</td><td>4 MB</td><td>1.6 MB</td><td>1.6 MB</td><td>0.8 MB</td></tr>
+                <tr><td style="padding:4px;">8</td><td>16 MB</td><td>6.4 MB</td><td>6.4 MB</td><td>3.2 MB</td></tr>
+                <tr><td style="padding:4px;">16</td><td>64 MB</td><td>25.6 MB</td><td>25.6 MB</td><td>12.8 MB</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-widths">Instruction Width Examples (bits)</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:5px;text-align:left;">Instruction</th><th style="padding:5px;">4&times;4</th><th style="padding:5px;">4&times;16</th><th style="padding:5px;">4&times;64</th><th style="padding:5px;">8&times;8</th><th style="padding:5px;">8&times;32</th><th style="padding:5px;">8&times;128</th><th style="padding:5px;">16&times;16</th><th style="padding:5px;">16&times;64</th><th style="padding:5px;">16&times;256</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">SetWVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">SetIVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">SetOVNLayout</td><td>42</td><td>40</td><td>38</td><td>43</td><td>41</td><td>39</td><td>44</td><td>42</td><td>40</td></tr>
+                <tr><td style="padding:4px;">ExecuteMapping</td><td>81</td><td>83</td><td>85</td><td>86</td><td>88</td><td>90</td><td>91</td><td>93</td><td>95</td></tr>
+                <tr><td style="padding:4px;">ExecuteStreaming</td><td>57</td><td>51</td><td>45</td><td>58</td><td>52</td><td>46</td><td>59</td><td>53</td><td>47</td></tr>
+                <tr><td style="padding:4px;">Load / Store</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td><td>33</td></tr>
+                <tr><td style="padding:4px;">Activation</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td><td>11</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-pipeline">6-Stage Compilation Pipeline</h3>
+            <div class="text-block">
+              <p>The MINISA compiler translates a GEMM workload C[M,N] = A[M,K] &times; B[K,N] into MINISA instructions through six stages:</p>
+              <ul>
+                <li><strong>Pre-stage &mdash; Dataflow Selection:</strong> Choose WO-S (weights stationary, search over M,K,N) or IO-S (inputs stationary, transposes to N,K,M). Auto mode runs both and picks lower latency.</li>
+                <li><strong>Stage 1 &mdash; Tile:</strong> Enumerate legal tiling choices (M<sub>t</sub>, K<sub>t</sub>, N<sub>t</sub>) that fit on-chip buffers. Power-of-2 values, up to 512 candidates sorted by tile volume.</li>
+                <li><strong>Stage 2 &mdash; Lower:</strong> Deterministic lowering into VN structure. Computes K<sub>g</sub> = ceil(K<sub>t</sub>/AH) K-groups, per-group vn_sizes, and n_col_types = ceil(N<sub>t</sub>/AH).</li>
+                <li><strong>Stage 3 &mdash; Group:</strong> Form VN groups VG(m<sub>t</sub>, k<sub>g</sub>, n<sub>t</sub>). Knob: WVN column stride &isin; {block, strided}.</li>
+                <li><strong>Stage 4 &mdash; Combine:</strong> Combine VN groups sharing the same WVN set. Knob: duplication factor d &isin; [1, d<sub>max</sub>]. Controls trade-off between M-parallelism and K-packing.</li>
+                <li><strong>Stage 5 &mdash; Map:</strong> Derive (ExecuteMapping, ExecuteStreaming) parameter pairs. Knob: IVN distribution &isin; {interleaved, consecutive}.</li>
+                <li><strong>Stage 6 &mdash; Layout:</strong> Search for bank-conflict-free buffer address permutation orders. Exhaustive (216 combos) or sequential mode. Falls back to Stage 3 with alternative design choices on failure.</li>
+              </ul>
+            </div>
+
+            <h3 id="isa-execution">Execution Model</h3>
+            <div class="text-block">
+              <p><strong>Per EM/ES pair timing</strong> (with vn_size):</p>
+              <ol>
+                <li>WVN load to PE registers: vn_size<sup>2</sup> cycles</li>
+                <li>IVN streaming: T &times; vn_size cycles</li>
+                <li>Pipeline fill: vn_size cycles</li>
+                <li>BIRRD drain: 2&lceil;log<sub>2</sub>(AW)&rceil; cycles</li>
+              </ol>
+              <p><strong>Inter-EM Pipelining:</strong> WVN load for the next EM overlaps with the current EM's IVN streaming. The effective period: em_period = max(nest_time, vn_size<sup>2</sup> &minus; vn_size). For K<sub>g</sub> consecutive EMs: C = vn_size<sub>0</sub><sup>2</sup> + &Sigma; em_period<sub>i</sub> + nest_time<sub>last</sub> + birrd_drain.</p>
+            </div>
+
+            <h3 id="isa-sequence">Typical Instruction Sequence</h3>
+            <pre><code>SetOVNLayout  order, P_L0, P_L1, Q_L1     ; configure output buffer
+
+for each K-step:
+    SetIVNLayout  order, M_L0, M_L1, J_L1  ; configure streaming buffer
+    Load          target=1, hbm_addr        ; DMA load inputs
+    SetWVNLayout  order, N_L0, N_L1, K_L1  ; configure stationary buffer
+    Load          target=0, hbm_addr        ; DMA load weights
+
+    for each EM in tile:
+        ExecuteMapping   G_r, G_c, r_0, c_0, s_r, s_c
+        ExecuteStreaming  dataflow, m_0, s_m, T, vn_size
+
+Store  target=0, hbm_addr                   ; DMA store output</code></pre>
+
+            <h3 id="isa-eval">Evaluation Results (450 workload-config pairs)</h3>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:16px 0;">
+              <thead><tr style="border-bottom:2px solid var(--border-color);">
+                <th style="padding:6px;text-align:left;">Config</th><th style="padding:6px;">Avg Compression</th><th style="padding:6px;">Inst Reduction</th><th style="padding:6px;">Avg Utilization</th><th style="padding:6px;">Avg Latency</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px;">4&times;4</td><td>7,684x</td><td>24x</td><td>92.1%</td><td>40,045,201</td></tr>
+                <tr><td style="padding:4px;">4&times;16</td><td>7,608x</td><td>54x</td><td>89.2%</td><td>10,117,115</td></tr>
+                <tr><td style="padding:4px;">4&times;64</td><td>11,782x</td><td>184x</td><td>91.6%</td><td>2,510,426</td></tr>
+                <tr><td style="padding:4px;">8&times;8</td><td>12,407x</td><td>196x</td><td>80.1%</td><td>10,470,460</td></tr>
+                <tr><td style="padding:4px;">8&times;32</td><td>14,216x</td><td>600x</td><td>82.0%</td><td>2,617,074</td></tr>
+                <tr><td style="padding:4px;">8&times;128</td><td>30,250x</td><td>2,465x</td><td>82.4%</td><td>710,018</td></tr>
+                <tr><td style="padding:4px;">16&times;16</td><td>21,363x</td><td>2,176x</td><td>69.3%</td><td>2,833,058</td></tr>
+                <tr><td style="padding:4px;">16&times;64</td><td>34,634x</td><td>10,275x</td><td>69.3%</td><td>841,181</td></tr>
+                <tr><td style="padding:4px;">16&times;256</td><td>32,443x</td><td>39,681x</td><td>69.0%</td><td>215,097</td></tr>
+              </tbody>
+            </table>
+            </div>
+
+            <h3 id="isa-search-opt">Search Optimizations</h3>
+            <div class="text-block">
+              <p>The MINISA compilation search uses 11 optimizations to scale to large workloads (up to M=65536) across all 9 array configurations:</p>
+              <ul>
+                <li><strong>Analytical Fast-Path:</strong> Derives EM parameters directly from tile dimensions in O(n_EMs) time and O(1) memory, replacing O(M<sub>t</sub>&times;K<sub>g</sub>&times;n_col_types) Python object materialization. Reduces ~13 GB to negligible.</li>
+                <li><strong>WVN Bank Conflict Deduplication:</strong> When G<sub>r</sub> &ge; AW, changing r<sub>0</sub> only shifts all addresses by a constant offset. Groups EMs by (G<sub>r</sub>,G<sub>c</sub>,s<sub>r</sub>,s<sub>c</sub>,c<sub>0</sub>) and checks one representative per group. 1024 EMs &rarr; 1 check.</li>
+                <li><strong>IVN Single-Address Skip:</strong> When actual_k<sub>g</sub> &times; effective_reps &le; 1, each PE column group reads at most one IVN address per step &mdash; no conflict possible regardless of layout.</li>
+                <li><strong>OB Conflict Deduplication:</strong> OB conflict depends only on (effective_reps, n_col_types), not K-group index. Tracks checked tuples, skipping duplicates.</li>
+                <li><strong>Factored Layout &times; Conflict Search:</strong> Pre-filters valid order<sub>o</sub> values (6 &rarr; 2&ndash;4), then valid (order<sub>w</sub>, order<sub>i</sub>) pairs (36 &rarr; 4&ndash;8), then cross-products survivors. 216 full checks &rarr; ~42 total.</li>
+                <li><strong>EM Parameter Signature Deduplication:</strong> Different dup_factor values often produce identical EM parameter sets. Hashes signatures into a seen set. AW=256: 256 evaluations &rarr; 8&ndash;12.</li>
+                <li><strong>Tile Enumeration Bounds:</strong> Power-of-2 tile sizes with buffer capacity filtering, capped at 512. 4096&sup3; &rarr; ~200 candidates.</li>
+                <li><strong>Design Choice Fallback:</strong> When layout search fails, retries Stages 3&ndash;6 with (block/strided) &times; (interleaved/consecutive) combinations. Critical for rectangular configs (AW >> AH).</li>
+                <li><strong>Early Termination:</strong> Stops after first valid tile (sorted largest-first by volume). 100&ndash;500 tiles &rarr; 1&ndash;5.</li>
+                <li><strong>Dual-Dataflow with Transposition:</strong> Runs both WO-S and IO-S (transposed M,K,N &rarr; N,K,M), picks lower latency.</li>
+                <li><strong>Batch Info Pre-computation:</strong> Computes per-batch metadata once, reused across WVN/IVN/OB conflict checks.</li>
+              </ul>
+              <p>Together, these optimizations reduced 53 previously-failing benchmark points (K=2048&ndash;4096, OOM/timeout) to complete successfully while keeping all 450/450 points passing both ISA-level and Config-level verification.</p>
+            </div>
+          </section>
+
+          <!-- Mapper -->
+          <!-- <section id="mapper">
+            <h2>Mapper</h2>
+            <div class="text-block">
+              <p>FEATHER's mapper for mapping and layout search...</p>
+            </div>
+          </section> -->
+
+          <!-- LayoutLoop -->
+          <!-- <section id="layoutloop">
+            <h2>LayoutLoop</h2>
+            <div class="text-block">
+              <p>FEATHER's analytical modeling with LayoutLoop...</p>
+            </div>
+          </section> -->
+
+          <!-- RTL Simulation -->
+          <!-- <section id="rtl-simulation">
+            <h2>RTL Simulation</h2>
+            <div class="text-block">
+              <p>RTL simulation flow for FEATHER(+)...</p>
+            </div>
+          </section> -->
+
+
+        </article>
+
+        <aside class="on-this-page">
+          <h4>On this page</h4>
+          <ul>
+            <li><a href="#intro">Introduction</a></li>
+            <li><a href="#minisa-tool">Microarchitecture and ISA Visualizer</a></li>
+            <!-- <li><a href="#microarchitecture">Microarchitecture</a></li> -->
+            <li><a href="#isa">MINISA ISA 2.0</a></li>
+            <li style="padding-left:12px;"><a href="#isa-summary">Instruction Set</a></li>
+            <li style="padding-left:12px;"><a href="#isa-formats">Instruction Formats</a></li>
+            <li style="padding-left:12px;"><a href="#isa-pipeline">Compilation Pipeline</a></li>
+            <li style="padding-left:12px;"><a href="#isa-execution">Execution Model</a></li>
+            <li style="padding-left:12px;"><a href="#isa-search-opt">Search Optimizations</a></li>
+            <!-- <li><a href="#mapper">Mapper</a></li>
+            <li><a href="#layoutloop">LayoutLoop</a></li>
+            <li><a href="#rtl-simulation">RTL Simulation</a></li> -->
+          </ul>
+        </aside>
+      </div>
+
+      <section id="sponsors" class="sponsors-section">
+        <div class="sponsors-container">
+          <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo">
+          <img src="fig/uiuc.png" alt="UIUC" class="sponsor-logo">
+          <img src="fig/cornell.png" alt="Cornell University" class="sponsor-logo">
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 FEATHER Tutorial.</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Modal for ISA Config -->
+  <div class="mg-modal-overlay" id="mgModalOverlay">
+    <div class="mg-modal" id="mgModalContent"></div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="script/feather_buffer_model.js"></script>
+  <script src="script/feather_buffer_view.js"></script>
+  <script src="script/feather_buffer_popup.js"></script>
+  <script src="script/feather_buffer_integration.js"></script>
+  <script src="script/feather_packet_motion.js"></script>
+
+  <script>
+  // ============================================================================
+  // MINISA GUI – all globals/functions prefixed mg to avoid collisions
+  // ============================================================================
+  const MG_ORDER_PERMS = {
+    0:{W:"kL1 -> nL0 -> nL1",I:"jL1 -> mL0 -> mL1",O:"pL1 -> pL0 -> qL1"},
+    1:{W:"kL1 -> nL1 -> nL0",I:"jL1 -> mL1 -> mL0",O:"pL1 -> qL1 -> pL0"},
+    2:{W:"nL0 -> kL1 -> nL1",I:"mL0 -> jL1 -> mL1",O:"pL0 -> pL1 -> qL1"},
+    3:{W:"nL0 -> nL1 -> kL1",I:"mL0 -> mL1 -> jL1",O:"pL0 -> qL1 -> pL1"},
+    4:{W:"nL1 -> kL1 -> nL0",I:"mL1 -> jL1 -> mL0",O:"qL1 -> pL1 -> pL0"},
+    5:{W:"nL1 -> nL0 -> kL1",I:"mL1 -> mL0 -> jL1",O:"qL1 -> pL0 -> pL1"},
+  };
+  const MG_PERM_TABLE = {
+    0:{W:["kL1","nL0","nL1"],I:["jL1","mL0","mL1"],O:["pL1","pL0","qL1"]},
+    1:{W:["kL1","nL1","nL0"],I:["jL1","mL1","mL0"],O:["pL1","qL1","pL0"]},
+    2:{W:["nL0","kL1","nL1"],I:["mL0","jL1","mL1"],O:["pL0","pL1","qL1"]},
+    3:{W:["nL0","nL1","kL1"],I:["mL0","mL1","jL1"],O:["pL0","qL1","pL1"]},
+    4:{W:["nL1","kL1","nL0"],I:["mL1","jL1","mL0"],O:["qL1","pL1","pL0"]},
+    5:{W:["nL1","nL0","kL1"],I:["mL1","mL0","jL1"],O:["qL1","pL0","pL1"]},
+  };
+  // Data identity colors are shared by the diagram, moving packets and legends.
+  // Light surface tints retain readable labels; PE/BIRRD values stay partials
+  // until they leave the network for the output buffer.
+  const MG_DATA_COLORS = {input:'#004C99',weight:'#006633',result:'#990000',partial:'#4C0099'};
+  const MG_DATA_FILLS = {input:'#E6EDF5',weight:'#E6F0EB',result:'#F5E6E6',partial:'#EDE6F5'};
+  const MG_PE_COLORS = {idle:'#E8EAED',loading:MG_DATA_FILLS.weight,ready:'#B3D1C2',computing:'#FFE082',outputting:MG_DATA_FILLS.partial,input:MG_DATA_FILLS.input};
+  const MG_EGG_MODES = {0:{name:'Pass',bg:'#E8F5E9',edge:'#2E7D32'},3:{name:'Swap',bg:'#FFF3E0',edge:'#E65100'},1:{name:'Add-L',bg:'#E3F2FD',edge:'#1565C0'},2:{name:'Add-R',bg:'#F3E5F5',edge:'#7B1FA2'}};
+
+  let mgHW = {AH:4,AW:4,sram_mb:4,frac_stream:0.4,frac_stationary:0.4,frac_output:0.2};
+  let mgInstructions = [];
+  let mgSelectedIdx = -1;
+  let mgAnimFrames = [], mgCurrentFrame = 0, mgPlaying = false, mgTimer = null;
+  let mgActiveTab = 'feather';
+  let mgFrameProgress=1,mgLastTick=null,mgTraceSignature='';
+  let mgMotionLink=null,mgMotionPackets=[],mgReplayFrameIndex=null;
+  const mgReducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+
+  function mgCD(a,b){return Math.ceil(a/b);}
+  function mgCL2(x){return x<=1?0:Math.ceil(Math.log2(x));}
+  function mgGetWL(d){return parseInt(document.getElementById('mgWl'+d).value)||16;}
+
+  // ---------- Derive M,K,N from Set*VNLayout ----------
+  function mgDeriveWorkload(){
+    let M=null,K=null,N=null;
+    const AH=mgHW.AH;
+    mgInstructions.forEach(ins=>{
+      if(ins.type==='SetIVNLayout'){
+        M=Math.max(1,(ins.params.M_L0||1)*(ins.params.M_L1||1));
+        K=Math.max(1,(ins.params.J_L1||1)*AH);
+      }else if(ins.type==='SetWVNLayout'){
+        N=Math.max(1,(ins.params.N_L0||1)*(ins.params.N_L1||1));
+        if(K===null)K=Math.max(1,(ins.params.K_L1||1)*AH);
+      }else if(ins.type==='SetOVNLayout'){
+        if(M===null)M=Math.max(1,(ins.params.P_L0||1)*(ins.params.P_L1||1));
+        if(N===null)N=Math.max(1,(ins.params.Q_L1||1)*AH);
+      }
+    });
+    if(M!==null)document.getElementById('mgWlM').value=M;
+    if(K!==null)document.getElementById('mgWlK').value=K;
+    if(N!==null)document.getElementById('mgWlN').value=N;
+  }
+
+  // ---------- Short/Full Desc ----------
+  function mgShortDesc(ins){const p=ins.params;switch(ins.type){
+    case 'SetIVNLayout':return`IVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].I})`;
+    case 'SetWVNLayout':return`WVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].W})`;
+    case 'SetOVNLayout':return`OVN(O=${p.order}, ${MG_ORDER_PERMS[p.order].O})`;
+    case 'ExecuteMapping':return`Map(r0=${p.r0},c0=${p.c0},Gr=${p.Gr},Gc=${p.Gc})`;
+    case 'ExecuteStreaming':return`ES(T=${p.T},vn=${p.vn_size},df=${p.dataflow===0?'IO-S':'WO-S'})`;
+  }return ins.type;}
+  function mgFullDesc(ins){const p=ins.params;switch(ins.type){
+    case 'SetIVNLayout':return`SetIVNLayout(Order=${p.order},M_L0=${p.M_L0},M_L1=${p.M_L1},J_L1=${p.J_L1})`;
+    case 'SetWVNLayout':return`SetWVNLayout(Order=${p.order},N_L0=${p.N_L0},N_L1=${p.N_L1},K_L1=${p.K_L1})`;
+    case 'SetOVNLayout':return`SetOVNLayout(Order=${p.order},P_L0=${p.P_L0},P_L1=${p.P_L1},Q_L1=${p.Q_L1})`;
+    case 'ExecuteMapping':return`ExecuteMapping(r0=${p.r0},c0=${p.c0},Gr=${p.Gr},Gc=${p.Gc},sr=${p.sr},sc=${p.sc})`;
+    case 'ExecuteStreaming':return`ExecuteStreaming(df=${p.dataflow===0?'IO-S':'WO-S'},m_0=${p.m_0},s_m=${p.s_m},T=${p.T},vn=${p.vn_size})`;
+  }return ins.type;}
+  function mgBadgeCls(t){return{SetIVNLayout:'mg-badge-ivn',SetWVNLayout:'mg-badge-wvn',SetOVNLayout:'mg-badge-ovn',ExecuteMapping:'mg-badge-em',ExecuteStreaming:'mg-badge-es'}[t]||'';}
+
+  // ---------- Validation ----------
+  function mgBufDepths(){const t=mgHW.sram_mb*1024*1024,AH=mgHW.AH;return{D_str:Math.max(1,Math.floor(t*mgHW.frac_stream/Math.max(1,AH))),D_sta:Math.max(1,Math.floor(t*mgHW.frac_stationary/Math.max(1,AH))),D_out:Math.max(1,Math.floor(t*mgHW.frac_output/Math.max(1,AH*4)))};}
+  function mgValInstr(ins){const e=[],p=ins.params,AH=mgHW.AH,AW=mgHW.AW,M=mgGetWL('M'),K=mgGetWL('K'),N=mgGetWL('N'),bd=mgBufDepths();
+    if(ins.type==='SetIVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.M_L0<1||p.M_L0>AW)e.push(`M_L0 must be [1,${AW}]`);if(p.M_L0>0&&p.M_L1*p.J_L1>bd.D_str/p.M_L0)e.push(`M_L1*J_L1 exceeds buffer`);}
+    else if(ins.type==='SetWVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.N_L0<1||p.N_L0>AW)e.push(`N_L0 must be [1,${AW}]`);if(p.N_L0>0&&p.N_L1*p.K_L1>bd.D_sta/p.N_L0)e.push(`N_L1*K_L1 exceeds buffer`);}
+    else if(ins.type==='SetOVNLayout'){if(p.order<0||p.order>5)e.push(`Order must be 0-5`);if(p.P_L0<1||p.P_L0>AW)e.push(`P_L0 must be [1,${AW}]`);if(p.P_L0>0&&p.P_L1*p.Q_L1>bd.D_out/p.P_L0)e.push(`P_L1*Q_L1 exceeds buffer`);}
+    else if(ins.type==='ExecuteMapping'){const mR=mgCD(K,AH);if(p.r0<0||p.r0>=mR)e.push(`r0 must be [0,${mR-1}]`);if(p.c0<0||p.c0>=N)e.push(`c0 must be [0,${N-1}]`);if(p.Gr<1||p.Gr>AH)e.push(`Gr must be [1,${AH}]`);if(p.Gc<1||p.Gc>AW)e.push(`Gc must be [1,${AW}]`);}
+    else if(ins.type==='ExecuteStreaming'){if(p.dataflow!==0&&p.dataflow!==1)e.push(`dataflow must be 0 or 1`);if(p.m_0<0)e.push(`m_0>=0`);if(p.s_m<1)e.push(`s_m>=1`);if(p.T<1)e.push(`T>=1`);if(p.vn_size<0||p.vn_size>=AH)e.push(`vn_size must be [0,${AH-1}]`);}
+    return e;}
+  function mgValSeq(){const e=[];let hI=0,hW=0,hO=0,mc=0,sc=0,lm=0;
+    for(let i=0;i<mgInstructions.length;i++){const ins=mgInstructions[i];mgValInstr(ins).forEach(x=>e.push(`Instr ${i+1}: ${x}`));
+      if(ins.type==='SetIVNLayout'){hI=1;lm=0;}else if(ins.type==='SetWVNLayout'){hW=1;lm=0;}else if(ins.type==='SetOVNLayout'){hO=1;lm=0;}
+      else if(ins.type==='ExecuteMapping'){mc++;if(!hI||!hW||!hO)e.push(`Instr ${i+1}: EM before layouts`);lm=1;}
+      else if(ins.type==='ExecuteStreaming'){sc++;if(!lm)e.push(`Instr ${i+1}: ES must follow EM`);lm=0;}}
+    if(sc===0&&mgInstructions.length>0)e.push('Warning: No ExecuteStreaming');
+    if(mc!==sc&&mc>0&&sc>0)e.push(`Warning: Mismatched EM/ES (${mc} vs ${sc})`);return e;}
+
+  // ---------- Toast ----------
+  function mgToast(msg,type='info',dur=3000){const t=document.createElement('div');t.className=`mg-toast ${type}`;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},dur);}
+
+  // ---------- ISA List UI ----------
+  function mgRenderList(){
+    const signature=JSON.stringify([mgHW,mgInstructions]);
+    if(signature!==mgTraceSignature){mgTraceSignature=signature;mgInvalidateAnimation();}
+    const l=document.getElementById('mgIsaList');l.innerHTML='';
+    mgInstructions.forEach((ins,i)=>{const d=document.createElement('div');d.className=`mg-isa-item${i===mgSelectedIdx?' selected':''}`;
+      d.innerHTML=`<span class="mg-idx">${i+1}.</span><span class="mg-badge ${mgBadgeCls(ins.type)}">${ins.type.replace('Set','').replace('Layout','').replace('Execute','')}</span><span>${mgShortDesc(ins)}</span>`;
+      d.onclick=()=>{mgSelectedIdx=i;mgRenderList();mgShowDetails(i);};d.ondblclick=()=>{mgSelectedIdx=i;mgEditInstruction();};l.appendChild(d);});mgDeriveWorkload();mgDrawActive();}
+  function mgShowDetails(idx){const b=document.getElementById('mgDetailsBox');if(idx<0||idx>=mgInstructions.length){b.textContent='Select an instruction.';return;}
+    const ins=mgInstructions[idx];let t=`Instruction ${idx+1}: ${ins.type}\n\nParameters:\n`;
+    for(const[k,v]of Object.entries(ins.params))t+=`  ${k}: ${v}\n`;
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(ins.type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[ins.type];t+=`\nLoop Order: ${MG_ORDER_PERMS[ins.params.order][op]}\n`;}
+    const errs=mgValInstr(ins);t+=`\nValidation: ${errs.length===0?'OK':'ERRORS\n'+errs.map(e=>'  * '+e).join('\n')}`;b.textContent=t;}
+
+  // ---------- Modal ----------
+  function mgOpenModal(type,existing,onSave){const ov=document.getElementById('mgModalOverlay'),co=document.getElementById('mgModalContent');
+    const AH=mgHW.AH,AW=mgHW.AW,M=mgGetWL('M'),K=mgGetWL('K'),N=mgGetWL('N');const p=existing||{};let desc='',fields=[];
+    if(type==='SetIVNLayout'){desc=`Input VN layout. Order(0-5) | M_L0:[1,${AW}] | M_L1:rows/M_L0 | J_L1:reduction/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'M_L0',l:'M_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'M_L1',l:'M_L1',d:1,mn:1,mx:Math.max(1,mgCD(M,AW)),h:'Rows'},{k:'J_L1',l:'J_L1',d:1,mn:1,mx:Math.max(1,mgCD(K,AH)),h:'Red/AH'}];}
+    else if(type==='SetWVNLayout'){desc=`Weight VN layout. Order(0-5) | N_L0:[1,${AW}] | N_L1:cols/N_L0 | K_L1:rows/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'N_L0',l:'N_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'N_L1',l:'N_L1',d:1,mn:1,mx:Math.max(1,mgCD(N,AW)),h:'Cols'},{k:'K_L1',l:'K_L1',d:1,mn:1,mx:Math.max(1,mgCD(K,AH)),h:'Rows/AH'}];}
+    else if(type==='SetOVNLayout'){desc=`Output VN layout. Order(0-5) | P_L0:[1,${AW}] | P_L1:rows/P_L0 | Q_L1:cols/AH`;
+      fields=[{k:'order',l:'Order',d:0,mn:0,mx:5,h:'Perm'},{k:'P_L0',l:'P_L0',d:1,mn:1,mx:AW,h:'Inner'},{k:'P_L1',l:'P_L1',d:1,mn:1,mx:Math.max(1,mgCD(M,AW)),h:'Rows'},{k:'Q_L1',l:'Q_L1',d:1,mn:1,mx:Math.max(1,mgCD(N,AH)),h:'Cols/AH'}];}
+    else if(type==='ExecuteMapping'){const mR=Math.max(1,mgCD(K,AH));
+      desc=`Map tile to PEs. r0,c0:start | Gr:[1,${AH}] | Gc:[1,${AW}] | sr,sc:strides`;
+      fields=[{k:'r0',l:'r0',d:0,mn:0,mx:mR-1,h:'Row'},{k:'c0',l:'c0',d:0,mn:0,mx:Math.max(0,N-1),h:'Col'},{k:'Gr',l:'Gr',d:1,mn:1,mx:AH,h:'RowMC'},{k:'Gc',l:'Gc',d:1,mn:1,mx:AW,h:'ColGrp'},{k:'sr',l:'sr',d:0,mn:0,mx:Math.max(AH,Math.floor(mR/2)),h:'StrR'},{k:'sc',l:'sc',d:0,mn:0,mx:Math.max(AW,Math.floor(N/2)),h:'StrC'}];}
+    else if(type==='ExecuteStreaming'){desc=`Stream inputs. dataflow:0=IO-S,1=WO-S | T:steps | vn_size:[0,${AH-1}]`;
+      fields=[{k:'dataflow',l:'dataflow',d:1,mn:0,mx:1,h:'0/1'},{k:'m_0',l:'m_0',d:0,mn:0,mx:Math.max(0,M-1),h:'Base'},{k:'s_m',l:'s_m',d:1,mn:1,mx:Math.max(1,M),h:'Stride'},{k:'T',l:'T',d:AH,mn:1,mx:Math.max(1,M),h:'Steps'},{k:'vn_size',l:'vn_size',d:AH-1,mn:0,mx:AH-1,h:`AH-1`}];}
+    let h=`<h3>Configure ${type}</h3><div class="mg-desc">${desc}</div><div class="mg-param-grid">`;
+    fields.forEach(f=>{const v=p[f.k]!==undefined?p[f.k]:f.d;h+=`<label>${f.l}:</label><input type="number" id="mgm_${f.k}" value="${v}" min="${f.mn}" max="${f.mx}"><span class="mg-range">[${f.mn},${f.mx}]</span><span class="mg-hint">${f.h}</span>`;});
+    h+=`</div>`;
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[type];h+=`<div id="mgOrderPrev" style="font-size:11px;color:var(--primary-color);margin-bottom:10px;">Order: ${MG_ORDER_PERMS[p.order||0][op]}</div>`;}
+    h+=`<div class="mg-modal-btns"><button class="mg-btn" onclick="mgModalVal('${type}')">Validate</button><button class="mg-btn" onclick="mgCloseModal()">Cancel</button><button class="mg-btn primary" id="mgModalOk">OK</button></div>`;
+    co.innerHTML=h;ov.classList.add('show');
+    if(['SetIVNLayout','SetWVNLayout','SetOVNLayout'].includes(type)){const op={SetIVNLayout:'I',SetWVNLayout:'W',SetOVNLayout:'O'}[type];
+      document.getElementById('mgm_order').addEventListener('input',function(){const o=parseInt(this.value);if(o>=0&&o<=5)document.getElementById('mgOrderPrev').textContent='Order: '+MG_ORDER_PERMS[o][op];});}
+    document.getElementById('mgModalOk').onclick=()=>{const r={};fields.forEach(f=>{r[f.k]=parseInt(document.getElementById('mgm_'+f.k).value)||f.d;});mgCloseModal();onSave(r);};}
+  function mgModalVal(type){const fs=document.querySelectorAll('.mg-param-grid input');const p={};fs.forEach(f=>{p[f.id.replace('mgm_','')]=parseInt(f.value)||0;});
+    const e=mgValInstr({type,params:p});if(e.length===0)mgToast('Valid!','success');else mgToast('Errors: '+e.join('; '),'error',5000);}
+  function mgCloseModal(){document.getElementById('mgModalOverlay').classList.remove('show');}
+
+  // ---------- List Operations ----------
+  function mgAddInstruction(){const t=document.getElementById('mgIsaTypeSelect').value;mgOpenModal(t,null,p=>{const ins={type:t,params:p};
+    if(mgSelectedIdx>=0&&mgSelectedIdx<mgInstructions.length)mgInstructions.splice(mgSelectedIdx+1,0,ins);else mgInstructions.push(ins);mgSelectedIdx=mgInstructions.length-1;mgRenderList();mgToast('Added '+t,'success');});}
+  function mgEditInstruction(){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length){mgToast('Select first','warning');return;}const ins=mgInstructions[mgSelectedIdx];
+    mgOpenModal(ins.type,{...ins.params},p=>{mgInstructions[mgSelectedIdx]={type:ins.type,params:p};mgRenderList();mgShowDetails(mgSelectedIdx);mgToast('Updated','success');});}
+  function mgDeleteInstruction(){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length){mgToast('Select first','warning');return;}
+    if(confirm(`Delete instruction ${mgSelectedIdx+1}?\n\n${mgFullDesc(mgInstructions[mgSelectedIdx])}`)){mgInstructions.splice(mgSelectedIdx,1);if(mgSelectedIdx>=mgInstructions.length)mgSelectedIdx=mgInstructions.length-1;mgRenderList();mgToast('Deleted','info');}}
+  function mgMoveInstruction(dir){if(mgSelectedIdx<0||mgSelectedIdx>=mgInstructions.length)return;const n=mgSelectedIdx+dir;if(n<0||n>=mgInstructions.length)return;
+    [mgInstructions[mgSelectedIdx],mgInstructions[n]]=[mgInstructions[n],mgInstructions[mgSelectedIdx]];mgSelectedIdx=n;mgRenderList();}
+  function mgClearAll(){if(!mgInstructions.length)return;if(confirm('Clear all?')){mgInstructions=[];mgSelectedIdx=-1;mgRenderList();mgToast('Cleared','info');}}
+  function mgValidateTrace(){if(!mgInstructions.length){mgToast('No instructions','warning');return;}const e=mgValSeq();
+    if(e.length===0)mgToast(`Valid! (${mgInstructions.length} instrs, ${mgHW.AH}x${mgHW.AW})`,'success',4000);
+    else{mgToast(`${e.length} error(s)`,'error',4000);alert('Errors:\n\n'+e.map((x,i)=>`${i+1}. ${x}`).join('\n'));}}
+  function mgResetDefault(){if(mgInstructions.length&&!confirm('Reset to default?'))return;const AH=mgHW.AH;
+    mgInstructions=[{type:'SetOVNLayout',params:{order:0,P_L0:4,P_L1:4,Q_L1:2}},{type:'SetIVNLayout',params:{order:5,M_L0:4,M_L1:4,J_L1:3}},{type:'SetWVNLayout',params:{order:2,N_L0:4,N_L1:2,K_L1:3}},
+      {type:'ExecuteMapping',params:{r0:0,c0:0,Gr:2,Gc:2,sr:1,sc:4}},{type:'ExecuteStreaming',params:{dataflow:1,m_0:0,s_m:1,T:16,vn_size:AH-1}},
+      {type:'ExecuteMapping',params:{r0:2,c0:0,Gr:4,Gc:2,sr:1,sc:4}},{type:'ExecuteStreaming',params:{dataflow:1,m_0:0,s_m:2,T:8,vn_size:AH-1}}];
+    mgSelectedIdx=-1;mgRenderList();mgToast('Reset','success');}
+
+  // ---------- Save/Load ----------
+  function mgSaveTrace(){if(!mgInstructions.length){mgToast('Nothing to save','warning');return;}
+    const d={version:'1.0',hardware:{AH:mgHW.AH,AW:mgHW.AW,sram_mb:mgHW.sram_mb},workload:{M:mgGetWL('M'),K:mgGetWL('K'),N:mgGetWL('N')},instructions:mgInstructions.map(i=>({type:i.type,params:i.params}))};
+    const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='minisa_trace.json';a.click();mgToast('Saved','success');}
+  function mgLoadTrace(ev){
+    const f=ev.target.files[0];if(!f)return;ev.target.value='';
+    if(f.size>1024*1024){mgToast('Load failed: trace exceeds 1 MiB','error');return;}
+    const r=new FileReader();r.onload=e=>{try{
+      const d=JSON.parse(e.target.result),hardware=d.hardware||mgHW;
+      if(![4,8,16].includes(hardware.AH)||hardware.AW!==hardware.AH)
+        throw Error('Use a square 4×4, 8×8, or 16×16 array');
+      if(!Number.isFinite(hardware.sram_mb)||hardware.sram_mb<1||hardware.sram_mb>4096)
+        throw Error('SRAM must be between 1 and 4096 MiB');
+      if(!Array.isArray(d.instructions)||d.instructions.length>4096)
+        throw Error('Expected an instruction array of at most 4096 entries');
+      const fields={SetIVNLayout:['order','M_L0','M_L1','J_L1'],
+        SetWVNLayout:['order','N_L0','N_L1','K_L1'],SetOVNLayout:['order','P_L0','P_L1','Q_L1'],
+        ExecuteMapping:['r0','c0','Gr','Gc','sr','sc'],ExecuteStreaming:['dataflow','m_0','s_m','T','vn_size']};
+      const instructions=d.instructions.map((ins,index)=>{
+        if(!ins||!Object.hasOwn(fields,ins.type)||!ins.params)throw Error('Unknown instruction '+(index+1));
+        const params={};for(const key of fields[ins.type]){
+          const value=ins.params[key];
+          if(!Number.isSafeInteger(value)||value<0||value>65536)throw Error('Invalid '+key+' in instruction '+(index+1));
+          params[key]=value;
+        }
+        if('order' in params&&(params.order>5||Object.entries(params).some(([k,v])=>k!=='order'&&v<1)))
+          throw Error('Invalid VN layout in instruction '+(index+1));
+        return{type:ins.type,params};
+      });
+      // Validate before assigning, so a malformed import leaves the editor intact.
+      mgStopAnim();mgHW={...mgHW,AH:hardware.AH,AW:hardware.AW,sram_mb:hardware.sram_mb};
+      mgInstructions=instructions;document.getElementById('mgNestSize').value=mgHW.AH;
+      document.getElementById('mgSramMB').value=mgHW.sram_mb;mgSelectedIdx=-1;mgRenderList();
+      mgToast('Loaded '+mgInstructions.length+' instrs','success');
+    }catch(err){mgToast('Load failed: '+err.message,'error');}};
+    r.readAsText(f);
+  }
+
+  // ---------- HW Changes ----------
+  function mgOnNestSizeChange(){const s=Number(document.getElementById('mgNestSize').value);
+    if(![4,8,16].includes(s))return;mgInvalidateAnimation();mgHW.AH=s;mgHW.AW=s;mgDeriveWorkload();mgDrawActive();}
+  function mgOnSramChange(){mgHW.sram_mb=parseFloat(document.getElementById('mgSramMB').value)||4;mgDrawActive();mgBufferLink?.refresh();}
+
+  // ---------- Tabs ----------
+  function mgSwitchTab(name){
+    if(!['feather','buffer'].includes(name))return;
+    mgStopAnim();mgActiveTab=name;
+    document.querySelectorAll('.mg-tab').forEach(t=>{
+      const selected=t.dataset.tab===name;t.classList.toggle('active',selected);
+      t.setAttribute('aria-selected',String(selected));
+    });
+    document.querySelectorAll('.mg-tab-content').forEach(t=>t.classList.toggle('active',t.id==='mg-tab-'+name));
+    mgUpdateLegend();mgDrawActive();
+  }
+  function mgUpdateLegend(){const l=document.getElementById('mgLegend');
+    const items=mgActiveTab==='feather'
+      ?[['Input elements',MG_DATA_COLORS.input,MG_DATA_COLORS.input],['Weight elements',MG_DATA_COLORS.weight,MG_DATA_COLORS.weight],
+        ['MAC','#FFE082','#D97706'],['Partial results · PE → column buses → BIRRD',MG_DATA_COLORS.partial,MG_DATA_COLORS.partial],['Output OVN',MG_DATA_COLORS.result,MG_DATA_COLORS.result]]
+      :[['Streaming (IVN)',MG_DATA_COLORS.input,MG_DATA_COLORS.input],['Stationary (WVN)',MG_DATA_COLORS.weight,MG_DATA_COLORS.weight],['Output (OVN)',MG_DATA_COLORS.result,MG_DATA_COLORS.result]];
+    l.innerHTML=items.map(([n,c,e])=>'<div class="mg-legend-item"><div class="mg-legend-swatch" style="background:'+c+';border-color:'+e+'"></div>'+n+'</div>').join('');
+  }
+  function mgToggleLegend(open=document.getElementById('mgLegend').hidden){
+    document.getElementById('mgLegend').hidden=!open;
+    document.getElementById('mgLegendBtn').setAttribute('aria-expanded',String(open));
+  }
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('#mgLegend, #mgLegendBtn'))mgToggleLegend(false);
+  });
+  function mgDrawActive(){
+    if(mgActiveTab==='feather')mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
+    else mgDrawBuffer();
+  }
+
+  // ---------- Canvas Helpers ----------
+  function mgPrepareCanvas(cv,width,height,scale=1){
+    const displayWidth=width*scale,displayHeight=height*scale;
+    // Supersample at least 2x, and match denser displays without changing
+    // the logical coordinates used by animation paths and buffer hit targets.
+    const requested=Math.max(2,window.devicePixelRatio||1);
+    const density=window.FeatherMobile?.canvasScale(displayWidth,displayHeight,requested)??requested;
+    const pixelWidth=Math.ceil(displayWidth*density),pixelHeight=Math.ceil(displayHeight*density);
+    cv.style.width=displayWidth+'px';cv.style.height=displayHeight+'px';
+    if(cv.width!==pixelWidth)cv.width=pixelWidth;
+    if(cv.height!==pixelHeight)cv.height=pixelHeight;
+    const ctx=cv.getContext('2d');
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.setTransform(pixelWidth/width,0,0,pixelHeight/height,0,0);
+    return ctx;
+  }
+  function mgRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function mgArrow(ctx,x1,y1,x2,y2,color,lw){const hl=8,a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();}
+
+  // ---------- Connected FEATHER microarchitecture ----------
+  // This topology is the original tutorial BIRRD wiring. AW=4 skips one
+  // first-half stage; every switch consumes the exact two indexed wires below.
+  function mgBirrdInputs(st,sw,AW=mgHW.AW){
+    const LV=mgCL2(AW),NS=AW/2,skip=AW===4?1:0;
+    const lls=(v,w)=>w<=1?v:((v<<1)|((v>>(w-1))&1))&((1<<w)-1);
+    const lrs=(v,w)=>w<=1?v:((v>>1)|((v&1)<<(w-1)))&((1<<w)-1);
+    const br=(v,w)=>{let r=0;for(let i=0;i<w;i++)if(v&(1<<i))r|=1<<(w-1-i);return r;};
+    if(st===0)return[2*sw,2*sw+1];
+    const logical=st+skip*(LV-1);
+    if(logical<LV){const per=NS>>(st-1),group=Math.floor(sw/per),local=sw%per;
+      const offset=group*(AW>>(st-1)),bits=LV-st+1;
+      return[lls(local*2,bits)+offset,lls(local*2+1,bits)+offset];}
+    if(logical===LV)return[br(sw*2,LV),br(sw*2+1,LV)];
+    const exponent=(2*LV-1)-logical,per=exponent>=0?NS>>exponent:NS;
+    const group=Math.floor(sw/per),local=sw%per,offset=exponent>=0?group*(AW>>exponent):0;
+    const bits=exponent>=0?LV-exponent:LV;
+    return[lrs(local*2,bits)+offset,lrs(local*2+1,bits)+offset];
+  }
+
+  let mgFeatherGeometry=null;
+  let mgBufferLink=null;
+  function mgOpenBuffer(operand,opener){mgBufferLink?.open(operand,opener);}
+  let mgPriorOverflow='';
+  function mgToggleExpanded(){
+    const app=document.querySelector('.mg-app'),expanded=app.classList.toggle('mg-expanded');
+    const button=document.getElementById('mgExpandBtn');
+    button.textContent=expanded?'Restore':'Expand';button.setAttribute('aria-pressed',String(expanded));
+    if(expanded){mgPriorOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    else document.body.style.overflow=mgPriorOverflow;
+    requestAnimationFrame(mgDrawActive);
+  }
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    if(!document.getElementById('mgLegend').hidden){
+      mgToggleLegend(false);document.getElementById('mgLegendBtn').focus();return;
+    }
+    if(!mgBufferLink?.popup.isOpen()&&document.querySelector('.mg-app').classList.contains('mg-expanded'))mgToggleExpanded();
+  });
+  function mgScrollDiagram(section){
+    if(!mgFeatherGeometry)return;const pane=document.getElementById('mg-tab-feather');
+    const positions={nest:0,network:mgFeatherGeometry.nestBottom-30,output:mgFeatherGeometry.outputY-120};
+    const offset=section==='nest'?0:document.getElementById('mgFeatherCanvas').offsetTop;
+    const toolbarHeight=pane.querySelector('.mg-view-nav').offsetHeight;
+    const top=Math.max(0,offset+(positions[section]||0)*mgFeatherGeometry.scale-toolbarHeight);
+    const behavior=mgReducedMotion.matches?'instant':'smooth';
+    if(window.matchMedia('(max-width:900px)').matches){
+      const app=document.querySelector('.mg-app');
+      if(app.classList.contains('mg-expanded')){
+        app.scrollTo({top:app.scrollTop+pane.getBoundingClientRect().top-app.getBoundingClientRect().top+top,behavior});
+      }else{
+        const headerHeight=document.querySelector('.top-bar').getBoundingClientRect().height;
+        window.scrollTo({top:window.scrollY+pane.getBoundingClientRect().top+top-headerHeight,behavior});
+      }
+    }else pane.scrollTo({top,behavior});
+  }
+  function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
+    const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
+    const phone=window.matchMedia('(max-width:900px)').matches;
+    const AH=mgHW.AH,AW=mgHW.AW,stages=AW===4?3:2*mgCL2(AW);
+    const bufferView=mgBufferLink.prepare(frame,progress);
+    const bufferHeights=Object.fromEntries(['I','W','O'].map(operand=>[operand,
+      FeatherBufferView.height(mgBufferLink.getLayout(operand),mgBufferLink.windowFor(operand))]));
+    const cell=AW>8?48:58,pitch=cell+18,cardWidth=AW*(phone?22:44)+58;
+    const bufferTop=12,top=bufferTop+Math.max(bufferHeights.I,bufferHeights.W)+48;
+    const width=Math.max(phone?0:700,ct.clientWidth,100+AW*pitch+32,2*cardWidth+80);
+    const left=(width-((AW-1)*pitch+cell))/2;
+    const columnX=c=>left+c*pitch+cell/2;
+    // One output bus in the whitespace to each column's right. The BIRRD
+    // ports share its x coordinate, so no selector block or bus jog is drawn.
+    const busX=c=>left+c*pitch+cell+(pitch-cell)/2;
+    const portX=busX,busTapFraction=.25;
+    const nestBottom=top+(AH-1)*pitch+cell,networkTop=nestBottom+100;
+    const stageY=s=>networkTop+80+s*72,outputY=stageY(stages-1)+108,eggHeight=28;
+    const height=outputY+60+bufferHeights.O+78;
+    const sizing=document.getElementById('mgDiagramScale').value,fit=sizing==='fit';
+    const motionMount=document.getElementById('mgMotionMount');
+    // Phone panels grow with the drawing. Fit uses the screen height instead
+    // of feeding the auto-sized panel's height back into its canvas scale.
+    const availableHeight=()=>phone?Math.max(320,window.innerHeight*.8)-ct.parentElement.querySelector('.mg-tab-bar').offsetHeight-ct.parentElement.querySelector('.mg-mobile-playback').offsetHeight:ct.clientHeight;
+    motionMount.style.maxHeight=Math.max(110,Math.floor(availableHeight()*.45))+'px';
+    const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
+      Math.max(1,availableHeight()-ct.querySelector('.mg-view-nav').offsetHeight-motionMount.offsetHeight-12)/height);
+    let scale=fit?fittedScale():sizing==='width'?Math.min(1,Math.max(1,ct.clientWidth-12)/width):1;
+    cv.style.margin=sizing==='actual'?'0':'0 auto';
+    const ctx=mgPrepareCanvas(cv,width,height,scale);
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#333';
+    const muted=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';
+    const center=(columnX(0)+columnX(AW-1))/2;
+    const inputX=center-cardWidth/2-16,weightX=center+cardWidth/2+16;
+    const outputWidth=phone?cardWidth:(AW-1)*pitch+cell;
+    const bufferRegions=[{operand:'I',x:inputX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.I},
+      {operand:'W',x:weightX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.W},
+      {operand:'O',x:(portX(0)+portX(AW-1)-outputWidth)/2,y:outputY+60,width:outputWidth,height:bufferHeights.O}];
+    const columnLinks=Array.from({length:AW},(_,c)=>({column:c,input:c,
+      from:[busX(c),top],to:[busX(c),networkTop]}));
+    const peBusLinks=Array.from({length:AH*AW},(_,index)=>{
+      const row=Math.floor(index/AW),column=index%AW,bottom=top+row*pitch+cell;
+      return{row,column,from:[left+column*pitch+cell,bottom],
+        to:[busX(column),bottom+(pitch-cell)/2]};
+    });
+    const inputSlot=(s,p)=>{
+      for(let sw=0;sw<AW/2;sw++){const pair=mgBirrdInputs(s,sw,AW);
+        if(pair[0]===p)return 2*sw;if(pair[1]===p)return 2*sw+1;}
+      throw Error('Unconnected BIRRD port');
+    };
+    const networkPath=(s,p)=>{
+      const slot=inputSlot(s,p),start=s===0?networkTop:stageY(s-1)+eggHeight/2;
+      const end=stageY(s)-eggHeight/2,mid=(start+end)/2;
+      return[[portX(p),start],[portX(p),mid-4],[portX(slot),mid+4],[portX(slot),end]];
+    };
+    mgFeatherGeometry={width,height,scale,cell,pitch,left,top,nestBottom,networkTop,outputY,
+      stages,columnLinks,peBusLinks,busTapFraction,bufferRegions,busX:Array.from({length:AW},(_,c)=>busX(c)),
+      portX:Array.from({length:AW},(_,c)=>portX(c)),
+      stageY:Array.from({length:stages},(_,s)=>stageY(s))};
+    cv.dataset.arrayWidth=AW;cv.dataset.stages=stages;cv.dataset.columnLinks=AW;
+    cv.dataset.peBusLinks=peBusLinks.length;
+    cv.dataset.networkLinks=AW*stages;cv.dataset.animationFrame=mgCurrentFrame;
+    cv.dataset.animationProgress=progress.toFixed(3);cv.dataset.switchMode='PASS';
+    function label(text,x,y,color=textColor,size=12,bold=false){
+      ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(bold?'bold ':'')+size+'px system-ui, sans-serif';ctx.fillText(text,x,y);
+    }
+    function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
+    function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
+      points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
+    box(bufferRegions[0].x,bufferTop,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label(phone?'Streaming buffer':'Streaming buffer (IVN)',inputX,bufferTop+17,MG_DATA_COLORS.input,11,true);
+    box(bufferRegions[1].x,bufferTop,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label(phone?'Stationary buffer':'Stationary buffer (WVN)',weightX,bufferTop+17,MG_DATA_COLORS.weight,11,true);
+    mgArrow(ctx,inputX,bufferTop+bufferHeights.I,inputX,top-14,MG_DATA_COLORS.input,2);
+    mgArrow(ctx,weightX,bufferTop+bufferHeights.W,weightX,top-14,MG_DATA_COLORS.weight,2);
+    label('NEST · '+AH+' × '+AW+' PE array',center,top-9,textColor,12,true);
+    for(let r=0;r<AH;r++){
+      const y=top+r*pitch;
+      label('Row '+r,43,y+cell/2,muted,11,true);
+      for(let c=0;c<AW;c++){
+        const x=left+c*pitch,key=r+','+c,phase=frame?frame.pp[key]:'idle';
+        const colors={loading_weights:MG_PE_COLORS.loading,weights_ready:MG_PE_COLORS.ready,
+          computing:MG_PE_COLORS.computing,dp_done:MG_PE_COLORS.outputting,outputting:MG_PE_COLORS.outputting};
+        const edge=phase==='outputting'||phase==='dp_done'?MG_DATA_COLORS.partial:
+          phase==='loading_weights'||phase==='weights_ready'?MG_DATA_COLORS.weight:'#607D8B';
+        box(x,y,cell,cell,colors[phase]||MG_PE_COLORS.idle,edge);
+        label('PE('+r+','+c+')',x+cell/2,y+14,'#263238',9,true);
+        label('W: '+(frame?frame.pWI[key]||0:0)+' / '+AH,x+cell/2,y+28,'#37474F',9);
+        label('MAC: '+(frame?frame.pMC[key]||0:0),x+cell/2,y+42,'#37474F',9);
+        if(r<AH-1)mgArrow(ctx,columnX(c),y+cell+1,columnX(c),y+pitch-2,'#90A4AE',1);
+      }
+    }
+    // Every PE has a diagonal output tap; each vertical bus continues straight
+    // into its BIRRD input. Keep the full bus visible without an overlay block.
+    peBusLinks.forEach(link=>path([link.from,link.to],MG_DATA_COLORS.partial,1.3));
+    columnLinks.forEach(link=>{
+      path([link.from,link.to],MG_DATA_COLORS.partial,1.8);
+    });
+    label('Column',44,nestBottom+32,MG_DATA_COLORS.partial,10,true);
+    label('buses',44,nestBottom+47,MG_DATA_COLORS.partial,10,true);
+    label('BIRRD',44,networkTop+32,MG_DATA_COLORS.partial,11,true);
+    label(stages+' stages',44,networkTop+47,muted,9);
+    for(let p=0;p<AW;p++){
+      label('In'+p,portX(p)-14,networkTop-8,MG_DATA_COLORS.partial,9);
+      ctx.beginPath();ctx.arc(portX(p),networkTop,4,0,Math.PI*2);ctx.fillStyle=MG_DATA_COLORS.partial;ctx.fill();
+    }
+    for(let s=0;s<stages;s++){
+      for(let p=0;p<AW;p++)path(networkPath(s,p),MG_DATA_COLORS.partial,1.1);
+      label('Stage '+s,42,stageY(s)+4,muted,10,true);
+      for(let sw=0;sw<AW/2;sw++){
+        const x=portX(2*sw)-10,w=pitch+20,y=stageY(s);
+        box(x,y-eggHeight/2,w,eggHeight,MG_DATA_FILLS.partial,MG_DATA_COLORS.partial);
+        const [lo,hi]=mgBirrdInputs(s,sw,AW);
+        // Distinct input/output ports and local PASS paths are visible.
+        path([[portX(2*sw),y-eggHeight/2],[portX(2*sw),y+eggHeight/2]],MG_DATA_COLORS.partial,1);
+        path([[portX(2*sw+1),y-eggHeight/2],[portX(2*sw+1),y+eggHeight/2]],MG_DATA_COLORS.partial,1);
+        label('E'+sw+' · PASS',x+w/2,y+3,MG_DATA_COLORS.partial,9,true);
+        label(lo,portX(2*sw),y-19,muted,8);label(hi,portX(2*sw+1),y-19,muted,8);
+      }
+    }
+    for(let p=0;p<AW;p++){
+      mgArrow(ctx,portX(p),stageY(stages-1)+eggHeight/2,portX(p),outputY,MG_DATA_COLORS.result,1.5);
+      path([[portX(p),outputY],[portX(p),outputY+18]],MG_DATA_COLORS.result,1);
+      label('Out'+p,portX(p),outputY-9,MG_DATA_COLORS.result,9);
+      // These are BIRRD output ports, not SRAM banks or a second buffer.
+      ctx.beginPath();ctx.arc(portX(p),outputY+18,3,0,Math.PI*2);ctx.fillStyle=MG_DATA_COLORS.result;ctx.fill();
+      label('Port '+p,portX(p),outputY+34,MG_DATA_COLORS.result,9,true);
+    }
+    const outputRegion=bufferRegions[2];
+    box(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height,MG_DATA_FILLS.result,MG_DATA_COLORS.result);
+    label(phone?'Output buffer':'Output buffer (OVN) · physical banks',outputRegion.x+outputRegion.width/2,outputRegion.y+17,MG_DATA_COLORS.result,11,true);
+    mgBufferLink?.drawMini(ctx,mgFeatherGeometry);
+    label(phone?'Tap a buffer to inspect cells.':'Both tabs share VN rows and scalar lanes. Click a buffer for exact addresses.',center,outputRegion.y+outputRegion.height+24,textColor,11,true);
+    label(phone?'PASS routing preview · partial sums':'PASS topology: output writes show intended partial-sum destinations, not reduced GEMM values.',center,outputRegion.y+outputRegion.height+46,muted,10);
+    let tokenCount=0,networkTokens=0;const resultTokens=[],bufferTokens=[],motionPackets=[];
+    const snapshot=frame?.snapshotIndex??frame?.iteration??0;
+    const selectedKey=mgMotionLink?.selectedKey();
+    function scalarPacket(access){
+      const operand=access.operand,forward=access.phase==='forward';
+      const origin=(operand==='W'?'Stationary':'Streaming')+' bank '+access.bank+' · scalar row '+access.scalarRow;
+      return {key:operand+':'+snapshot+':'+access.bank+':'+access.scalarRow+':'+access.peCol,
+        tag:operand+access.bank+'.'+access.scalarRow,label:access.label,operand,bank:access.bank,scalarRow:access.scalarRow,
+        peRow:access.peRow,peCol:access.peCol,originLabel:origin,
+        sourceLabel:forward?'PE['+(access.peRow-1)+','+access.peCol+'] (forwarded)':origin,
+        destinationLabel:'PE['+access.peRow+','+access.peCol+']',
+        stageLabel:forward?'Forward the same input to the next PE row':operand==='W'?'Load stationary weight':'Read streaming input',
+        phase:access.phase,shape:(access.bank+access.scalarRow)%4,valid:access.valid};
+    }
+    function token(points,text,color,position=progress,packet=null){
+      const lengths=points.slice(1).map((point,i)=>Math.hypot(point[0]-points[i][0],point[1]-points[i][1]));
+      let remaining=lengths.reduce((a,b)=>a+b,0)*Math.max(0,Math.min(1,position)),x=points[0][0],y=points[0][1];
+      const trail=[points[0]];
+      for(let i=0;i<lengths.length;i++){
+        const t=lengths[i]?Math.min(1,remaining/lengths[i]):1;
+        x=points[i][0]+(points[i+1][0]-points[i][0])*t;y=points[i][1]+(points[i+1][1]-points[i][1])*t;
+        trail.push([x,y]);
+        if(remaining<=lengths[i])break;remaining-=lengths[i];
+      }
+      // Retain the requested semantic color; address tags and shape marks
+      // distinguish scalars, including multicast copies of the same element.
+      const focused=packet?.key===selectedKey;
+      ctx.save();ctx.globalAlpha=focused ? .85 : .32;
+      path(trail,color,focused?4:2);
+      ctx.setLineDash([3,3]);ctx.strokeStyle=color;ctx.lineWidth=1;
+      ctx.strokeRect(points[0][0]-7,points[0][1]-7,14,14);ctx.setLineDash([]);
+      if(progress>=1){ctx.beginPath();ctx.arc(x,y,focused?11:8,0,Math.PI*2);ctx.stroke();}
+      ctx.restore();
+      const landed=packet?.phase==='preview-write'&&packet.valid&&
+        x>=outputRegion.x&&x<=outputRegion.x+outputRegion.width&&y>=outputRegion.y;
+      const clipBounds=landed?outputRegion:null;
+      function decorationBounds(cx,cy,w,h){
+        if(!clipBounds)return{x:cx-w/2,y:cy,width:w,height:h};
+        w=Math.min(w,clipBounds.width-4);
+        return{x:Math.max(clipBounds.x+2,Math.min(cx-w/2,clipBounds.x+clipBounds.width-w-2)),
+          y:Math.max(clipBounds.y+2,Math.min(cy,clipBounds.y+clipBounds.height-h-2)),width:w,height:h};
+      }
+      // A packet's identity remains in the detail view. Its local annotations
+      // must fit inside the SRAM card once the packet enters that card.
+      ctx.save();
+      if(clipBounds){ctx.beginPath();ctx.rect(clipBounds.x,clipBounds.y,clipBounds.width,clipBounds.height);ctx.clip();}
+      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+      ctx.font='bold 9px system-ui, sans-serif';const tw=ctx.measureText(text).width+8;
+      const labelBounds=decorationBounds(x,y-20,tw,13);
+      ctx.fillStyle='rgba(255,255,255,0.93)';ctx.fillRect(labelBounds.x,labelBounds.y,labelBounds.width,labelBounds.height);
+      label(text,labelBounds.x+labelBounds.width/2,labelBounds.y+10,color,9,true);tokenCount++;
+      if(packet){
+        const mark=['●','◆','■','▲'][packet.shape];
+        const tag=mark+' '+packet.tag;
+        ctx.font='bold 8px system-ui, sans-serif';const badgeWidth=ctx.measureText(tag).width+8;
+        const badgeBounds=decorationBounds(x,y+8,badgeWidth,12);
+        ctx.fillStyle=color;ctx.fillRect(badgeBounds.x,badgeBounds.y,badgeBounds.width,badgeBounds.height);
+        label(tag,badgeBounds.x+badgeBounds.width/2,badgeBounds.y+9,'#fff',8,true);
+        const x0=Math.min(x-11,labelBounds.x,badgeBounds.x),y0=Math.min(y-11,labelBounds.y,badgeBounds.y);
+        const x1=Math.max(x+11,labelBounds.x+labelBounds.width,badgeBounds.x+badgeBounds.width);
+        const y1=Math.max(y+11,labelBounds.y+labelBounds.height,badgeBounds.y+badgeBounds.height);
+        const renderedBounds={x:x0,y:y0,width:x1-x0,height:y1-y0};
+        motionPackets.push({...packet,color,points,x,y,progress:Math.max(0,Math.min(1,progress)),focused,
+          labelBounds,badgeBounds,renderedBounds,clipBounds:clipBounds?{...clipBounds}:null});
+      }
+      ctx.restore();
+      return{x,y};
+    }
+    if(frame){
+      for(const r of frame.aWR||[])for(let c=0;c<AW;c++){
+        const element=frame.pLE[r+','+c];
+        const access=mgBufferLink?.read('W',r,c);
+        if(element>=0&&access?.valid){
+          const start=mgBufferLink.point('W',access.cell,mgFeatherGeometry);
+          if(!start)continue;
+          const points=[start,[columnX(c),top-26],[columnX(c),top+r*pitch+cell/2]];
+          const point=token(points,access.label,MG_DATA_COLORS.weight,progress,scalarPacket(access));
+          const {cell:scalarCell,...metadata}=access;bufferTokens.push({...metadata,...point,points});
+        }
+      }
+      for(const r of frame.aIR||[]){
+        const key=r+',0',lane=Math.max(0,(frame.pMC[key]||1)-1)%AH;
+        if(frame.pp[key]==='computing'||frame.pp[key]==='dp_done'||frame.pp[key]==='outputting')
+          for(let c=0;c<AW;c++){
+            const access=r===0?mgBufferLink?.read('I',r,c):mgBufferLink?.forward(r,c);
+            if(!access?.valid)continue;
+            const start=r===0?mgBufferLink.point('I',access.cell,mgFeatherGeometry):[columnX(c),top+(r-1)*pitch+cell];
+            if(!start)continue;
+            const points=r===0?[start,[columnX(c),top-17],[columnX(c),top+r*pitch+cell/2]]:[start,[columnX(c),top+r*pitch+cell/2]];
+            const point=token(points,access.label,MG_DATA_COLORS.input,progress,scalarPacket(access));
+            const {cell:scalarCell,...metadata}=access;bufferTokens.push({...metadata,...point,points});
+          }
+      }
+      // Each issued row is tracked independently through the real stage wiring.
+      // PASS preview preserves token identity; it does not invent a reduction.
+      for(let age=0;age<=stages+1;age++){
+        const source=mgAnimFrames[mgCurrentFrame-age];
+        if(!source||source.aOR<0||source.iteration!==frame.iteration)continue;
+        for(let col=0;col<AW;col++){
+          const name='R'+source.aOR+'·C'+col;
+          const target=mgBufferLink?.result(age,col),dot=source.outputDot??target?.t??0;
+          const sourcePE='PE['+source.aOR+','+col+']';
+          const destination=target?.valid?'Output bank '+target.bank+' · scalar row '+target.scalarRow:'Unmapped output (no SRAM write)';
+          const packet={key:'P:'+snapshot+':'+(mgCurrentFrame-age)+':'+col,
+            tag:'P'+(snapshot+1)+':'+source.aOR+'.'+col+'·d'+dot,label:target?.valid?'partial '+target.label:name+' partial',
+            operand:'O',bank:target?.bank??null,scalarRow:target?.scalarRow??null,peRow:source.aOR,peCol:col,
+            originLabel:sourcePE+' · dot '+dot+' → '+destination,sourceLabel:sourcePE,
+            destinationLabel:'BIRRD input '+col,stageLabel:'PE result → diagonal tap → column bus',
+            phase:'partial',age,shape:(source.aOR+col+dot)%4,valid:Boolean(target?.valid)};
+          let points,point;
+          if(age===0){
+            const tap=peBusLinks[source.aOR*AW+col];
+            points=[tap.from,tap.to,columnLinks[col].to];
+            // Give the short diagonal tap a visible quarter of the teaching
+            // step, then follow the vertical bus. This is not RTL timing.
+            const diagonal=Math.hypot(tap.to[0]-tap.from[0],tap.to[1]-tap.from[1]);
+            const vertical=networkTop-tap.to[1],p=Math.max(0,Math.min(1,progress));
+            const distance=p<busTapFraction?diagonal*p/busTapFraction:
+              diagonal+vertical*(p-busTapFraction)/(1-busTapFraction);
+            path(points,MG_DATA_COLORS.partial,2.5);
+            point=token(points,name,MG_DATA_COLORS.partial,distance/(diagonal+vertical),packet);
+          }else{
+            let port=col;
+            for(let s=0;s<Math.min(age-1,stages);s++)port=inputSlot(s,port);
+            if(age<=stages){
+              const s=age-1,slot=inputSlot(s,port);points=networkPath(s,port);
+              points.push([portX(slot),stageY(s)+eggHeight/2]);
+              packet.sourceLabel=s===0?'BIRRD input '+port:'Stage '+(s-1)+' output '+port;
+              packet.destinationLabel='Stage '+s+' output '+slot;
+              packet.stageLabel='BIRRD stage '+s+' · PASS preserves this partial';
+              point=token(points,name,MG_DATA_COLORS.partial,progress,packet);networkTokens++;
+            }else{
+              points=[[portX(port),stageY(stages-1)+eggHeight/2],[portX(port),outputY+18]];
+              packet.sourceLabel='BIRRD output '+port;packet.destinationLabel=destination;
+              packet.stageLabel='Preview partial writeback · not a reduced GEMM result';packet.phase='preview-write';
+              if(target?.valid){
+                const destination=mgBufferLink.point('O',target.cell,mgFeatherGeometry);
+                if(!destination)continue;
+                points.push([destination[0],outputY+48],destination);
+                path(points,MG_DATA_COLORS.result,1);
+              }
+              point=token(points,name,MG_DATA_COLORS.result,progress,packet);
+              if(target?.valid){const {cell,...metadata}=target;bufferTokens.push({...metadata,...point,points,
+                status:progress>=1?'preview-written':'in-flight'});}
+              networkTokens++;
+            }
+          }
+          resultTokens.push({row:source.aOR,column:col,age,identity:name,points,...point});
+        }
+      }
+    }
+    cv.dataset.tokenCount=tokenCount;cv.dataset.networkTokens=networkTokens;
+    cv.dataset.resultTokens=JSON.stringify(resultTokens);
+    cv.dataset.bufferEvents=JSON.stringify((bufferView?.events||[]).map(({cell,...event})=>event));
+    cv.dataset.bufferTokens=JSON.stringify(bufferTokens);
+    cv.dataset.bufferWindows=JSON.stringify(mgFeatherGeometry.bufferWindows);
+    cv.dataset.bufferCells=JSON.stringify(mgFeatherGeometry.bufferCells);
+    mgMotionPackets=motionPackets;
+    mgSyncMotion(progress);
+    // A wrapping transfer label can change the available height. Resize the
+    // display immediately, then refresh its backing pixels at the final scale.
+    if(fit){
+      const nextScale=fittedScale();
+      if(nextScale!==scale){
+        scale=nextScale;cv.style.width=(width*scale)+'px';cv.style.height=(height*scale)+'px';
+        mgFeatherGeometry.scale=scale;requestAnimationFrame(mgDrawActive);
+      }
+    }
+    // The detailed view can choose a new scalar at a frame boundary. Mark its
+    // physical endpoints immediately, even while paused on that first frame.
+    const tracked=motionPackets.find(packet=>packet.key===mgMotionLink?.selectedKey());
+    motionPackets.forEach(packet=>{packet.focused=packet===tracked;});
+    if(tracked){
+      ctx.save();ctx.strokeStyle=tracked.color;ctx.lineWidth=2;ctx.setLineDash([4,3]);
+      const endpoints=[tracked.points[0],tracked.points[tracked.points.length-1]];
+      endpoints.forEach((point,index)=>{
+        ctx.save();
+        if(index===1&&tracked.phase==='preview-write'&&tracked.valid){
+          ctx.beginPath();ctx.rect(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height);ctx.clip();
+        }
+        ctx.strokeRect(point[0]-10,point[1]-10,20,20);
+        ctx.restore();
+      });
+      if(tracked.clipBounds){ctx.beginPath();ctx.rect(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height);ctx.clip();}
+      ctx.setLineDash([]);ctx.beginPath();ctx.arc(tracked.x,tracked.y,10,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    cv.dataset.motionPackets=JSON.stringify(motionPackets);
+    mgBufferLink?.refresh();
+  }
+  // Keep callable aliases for saved tutorial snippets, not separate tabs.
+  function mgDrawNest(frame){mgDrawFeather(frame);}
+  function mgDrawBirrd(){mgDrawFeather();}
+
+  // ---------- Buffer Visualization ----------
+  function mgDrawBuffer(){
+    const cv=document.getElementById('mgBufferCanvas'),ct=document.getElementById('mg-tab-buffer');
+    const buffers=[{operand:'I',title:'Input (IVN)',color:MG_DATA_COLORS.input,fill:MG_DATA_FILLS.input},
+      {operand:'W',title:'Weight (WVN)',color:MG_DATA_COLORS.weight,fill:MG_DATA_FILLS.weight},
+      {operand:'O',title:'Output (OVN)',color:MG_DATA_COLORS.result,fill:MG_DATA_FILLS.result}];
+    const windows=Object.fromEntries(buffers.map(buffer=>[buffer.operand,mgBufferLink.windowFor(buffer.operand)]));
+    const layouts=Object.fromEntries(buffers.map(buffer=>[buffer.operand,mgBufferLink.getLayout(buffer.operand)]));
+    const heights=Object.fromEntries(buffers.map(buffer=>[buffer.operand,
+      FeatherBufferView.height(layouts[buffer.operand],windows[buffer.operand])]));
+    const width=Math.max(ct.clientWidth,3*(mgHW.AW*54+78)+40);
+    const height=Math.max(600,ct.clientHeight,...Object.values(heights).map(height=>height+48));
+    const ctx=mgPrepareCanvas(cv,width,height),panelWidth=Math.floor(width/3)-20,cells={};
+    buffers.forEach((buffer,index)=>{
+      const region={operand:buffer.operand,x:15+index*(panelWidth+15),y:12,width:panelWidth-2,height:heights[buffer.operand]};
+      ctx.fillStyle=buffer.fill;ctx.strokeStyle=buffer.color;ctx.lineWidth=1.5;
+      mgRR(ctx,region.x,region.y,region.width,region.height,5);ctx.fill();ctx.stroke();
+      ctx.fillStyle=buffer.color;ctx.font='bold 12px system-ui, sans-serif';ctx.textAlign='center';
+      ctx.fillText(buffer.title,region.x+region.width/2,region.y+17);
+      cells[buffer.operand]=mgBufferLink.drawBuffer(ctx,buffer.operand,region,windows[buffer.operand]);
+      ctx.font='10px system-ui, sans-serif';
+      ctx.fillText('Order '+(layouts[buffer.operand].order??'—')+' · same VN rows / scalar lanes as FEATHER',
+        region.x+region.width/2,region.y+region.height+18);
+    });
+    cv.dataset.bufferWindows=JSON.stringify(windows);
+    cv.dataset.bufferCells=JSON.stringify(cells);
+  }
+
+  // ---------- Animation Engine ----------
+  function mgGenerateAnimation(){mgStopAnim();if(!mgInstructions.length){mgToast('No instructions','warning');return;}
+    const errs=mgValSeq();if(errs.length>0&&!confirm(`${errs.length} error(s). Generate anyway?`))return;
+    const AH=mgHW.AH,AW=mgHW.AW;
+    const snapshots=mgBufferLink.getProgram().snapshots.filter(snapshot=>snapshot.em&&snapshot.es);
+    if(!snapshots.length){mgToast('Add an ExecuteMapping / ExecuteStreaming pair to animate buffer transfers.','warning');return;}
+    const drain=(AW===4?3:2*mgCL2(AW))+2;
+    const estimated=snapshots.reduce((sum,snapshot)=>sum+AH*AH+Math.max(AH,snapshot.es.T)+2*AH+drain,0);
+    if(!Number.isFinite(estimated)||estimated>4096){mgToast('Animation preview is limited to 4,096 illustrative steps. Shorten T or the trace.','warning',6000);return;}
+    let all=[];const iters=snapshots.length;
+    for(let it=0;it<iters;it++){
+      const snapshot=snapshots[it],ep=snapshot.es;
+      // Each teaching iteration loads its own configured weights. Do not infer
+      // a hidden prefetch: it would skip reads that this diagram must show.
+      const fs=mgGenFrames(AH,AW,Math.max(AH,ep.T),ep.vn_size+1,ep.s_m,ep.m_0,0);
+      fs.forEach(f=>{f.iteration=it;f.snapshotIndex=snapshot.index;});
+      // Flush the displayed BIRRD pipeline before changing mapping iterations.
+      const tail=fs[fs.length-1];
+      for(let step=1;step<=drain;step++)fs.push({...tail,cycle:tail.cycle+step,
+        phase:'BIRRD pipeline → output buffer',aOR:-1,aWR:[],aIR:[],
+        pp:Object.fromEntries(Object.keys(tail.pp).map(key=>[key,'weights_ready']))});
+      if(it>0&&all.length>0){const off=all[all.length-1].cycle+1;fs.forEach(f=>f.cycle+=off);}
+      all=all.concat(fs);}
+    mgAnimFrames=all;mgCurrentFrame=0;mgFrameProgress=1;mgMotionLink?.reset();mgUpdateAnimDisplay();mgToast(`${all.length} frames (${iters} iter, ${AH}\u00d7${AW})`,'success',4000);}
+
+  function mgGenFrames(AH,AW,nI,vS,s_m,m_0,wvnPre){
+    vS=Math.max(1,Math.min(vS,AH));nI=Math.max(nI,AH);
+    wvnPre=wvnPre||0;wvnPre=Math.max(0,Math.min(wvnPre,AH));
+    const fs=[];
+    const pWC={},pMC={},pPS={};const rDC={},rDO={};
+    for(let r=0;r<AH;r++){rDC[r]=0;rDO[r]=0;for(let c=0;c<AW;c++){const k=`${r},${c}`;pWC[k]=0;pMC[k]=0;pPS[k]=0;}}
+    /* Pre-initialize weights for pre-loaded rows */
+    for(let r=0;r<wvnPre;r++)for(let c=0;c<AW;c++)pWC[`${r},${c}`]=AH;
+    let nOR=0,pO=[];const rIQ={};for(let r=0;r<AH;r++)rIQ[r]=[];
+    /* Only remaining (non-preloaded) rows need weight loading */
+    const remRows=AH-wvnPre;
+    const tWC=remRows*AH;
+    /* Input start: when last row begins loading (adjusted for preloaded rows) */
+    const iSC=remRows<=0?0:(remRows-1)*AH;
+    const tC=tWC+nI+AH+AH;
+    for(let cy=0;cy<tC;cy++){
+      /* Which row is loading weights? Only remaining rows (indices wvnPre..AH-1) */
+      const remIdx=cy<tWC?Math.floor(cy/AH):-1;
+      const lR=remIdx>=0?(wvnPre+remIdx):-1;
+      const wE=cy<tWC?cy%AH:-1;
+      const iWL=lR>=0&&lR<AH;
+      const iIS=cy>=iSC&&cy<iSC+nI;const iII=iIS?cy-iSC:-1;
+      for(let r=0;r<AH;r++){const ii=cy-iSC-r;if(ii>=0&&ii<nI&&!rIQ[r].some(q=>q[0]===ii))rIQ[r].push([ii,cy]);}
+      const aIR=[],rII={};for(let r=0;r<AH;r++)if(rIQ[r].length>0){aIR.push(r);rII[r]=rIQ[r][0][0];}
+      const pp=[];if(iWL)pp.push(`Weight lane ${wE}\u2192R${lR}`);if(iIS)pp.push('Stream scalar\u2192R0');
+      const cR=[];for(const r of aIR)if(pWC[`${r},0`]>=AH&&rIQ[r].length>0)cR.push(r);
+      if(cR.length)pp.push(`MAC@R[${cR}]`);if(vS<AH&&(iIS||cR.length))pp.push(`vn=${vS}`);
+      const fr={cycle:cy,phase:pp.length?pp.join(' | '):'Idle',pp:{},pWI:{},pMC:{},pPS:{},pWA:{},pLE:{},rI:{},aOR:-1,aWR:iWL?[lR]:[],aIR:[...aIR]};
+      for(let r=0;r<AH;r++)for(let c=0;c<AW;c++){const k=`${r},${c}`;if(r===lR&&iWL)pWC[k]=wE+1;const wL=pWC[k];fr.pWI[k]=wL;
+        if(wL===0)fr.pWA[k]=`WVN(${r},${c})[-]`;else if(wL>=AH)fr.pWA[k]=`WVN(${r},${c})[0:${AH-1}]\u2713`;else fr.pWA[k]=`WVN(${r},${c})[0:${wL-1}]`;
+        fr.pLE[k]=(r===lR&&iWL)?wE:-1;
+        if(wL>=AH&&rIQ[r].length>0){pMC[k]++;fr.pMC[k]=pMC[k];fr.pp[k]=pMC[k]%AH===0?'dp_done':'computing';if(pMC[k]%AH===0&&c===0)rDC[r]++;}
+        else if(r===lR&&iWL)fr.pp[k]='loading_weights';else if(wL>=AH)fr.pp[k]='weights_ready';else if(wL>0)fr.pp[k]='loading_weights';else fr.pp[k]='idle';
+        if(!fr.pMC[k])fr.pMC[k]=pMC[k];}
+      for(const r of cR)if(pMC[`${r},0`]>0&&pMC[`${r},0`]%AH===0&&rIQ[r].length>0)rIQ[r].shift();
+      for(const r of aIR){const count=Math.max(0,pMC[`${r},0`]-1);fr.rI[r]=`dot ${Math.floor(count/AH)}, lane ${count%AH}`;}
+      for(let r=0;r<AH;r++)if(rDC[r]>rDO[r]&&!pO.includes(r))pO.push(r);
+      if(pO.length){let oR=null;for(let t=0;t<AH;t++){if(pO.includes(nOR)){oR=nOR;break;}nOR=(nOR+1)%AH;}
+        if(oR!==null){fr.aOR=oR;rDO[oR]++;fr.outputDot=rDO[oR]-1;pO=pO.filter(r=>r!==oR);nOR=(oR+1)%AH;for(let c=0;c<AW;c++)fr.pp[`${oR},${c}`]='outputting';}}
+      fs.push(fr);
+      const awD=cy>=tWC,aiD=cy>=iSC+nI+AH-1,aoD=Object.keys(rDC).every(r=>rDC[r]===rDO[r]);if(awD&&aiD&&aoD&&!pO.length)break;}return fs;}
+
+  // ---------- Animation Playback ----------
+  function mgSyncMotion(progress=mgReducedMotion.matches?1:mgFrameProgress){
+    mgMotionLink?.render({packets:mgMotionPackets,progress,playing:mgPlaying,
+      reduced:mgReducedMotion.matches,frame:mgCurrentFrame});
+  }
+  function mgScrubMotion(progress){
+    mgStopAnim();mgFrameProgress=Math.max(0,Math.min(1,Number(progress)||0));
+    mgUpdateAnimDisplay();
+  }
+  function mgReplayMotion(){
+    mgStopAnim();if(!mgAnimFrames.length)mgGenerateAnimation();
+    if(!mgAnimFrames.length)return;
+    if(mgActiveTab!=='feather')mgSwitchTab('feather');
+    mgFrameProgress=mgReducedMotion.matches?1:0;
+    if(mgReducedMotion.matches){mgUpdateAnimDisplay();return;}
+    mgReplayFrameIndex=mgCurrentFrame;mgPlaying=true;mgLastTick=null;
+    document.getElementById('mgPlayBtn').textContent='Pause';
+    mgUpdateAnimDisplay();mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgStopAnim(){
+    mgPlaying=false;if(mgTimer!==null){cancelAnimationFrame(mgTimer);mgTimer=null;}
+    mgReplayFrameIndex=null;
+    document.getElementById('mgPlayBtn').textContent='Play';
+    mgBufferLink?.refresh();
+    mgSyncMotion();
+  }
+  function mgInvalidateAnimation(){
+    mgStopAnim();mgAnimFrames=[];mgCurrentFrame=0;mgFrameProgress=1;mgMotionLink?.reset();mgMotionPackets=[];mgUpdateAnimDisplay();
+  }
+  function mgStepAnim(d){
+    mgStopAnim();if(!mgAnimFrames.length)return;
+    mgCurrentFrame=Math.max(0,Math.min(mgAnimFrames.length-1,mgCurrentFrame+d));
+    mgFrameProgress=1;mgUpdateAnimDisplay();
+  }
+  function mgTogglePlay(){
+    if(mgPlaying){mgStopAnim();return;}
+    if(!mgAnimFrames.length){mgToast('Generate an animation first','info');return;}
+    if(mgActiveTab!=='feather')mgSwitchTab('feather');
+    if(mgCurrentFrame===mgAnimFrames.length-1){mgCurrentFrame=0;mgFrameProgress=0;}
+    if(mgFrameProgress>=1)mgFrameProgress=0;
+    mgReplayFrameIndex=null;
+    mgPlaying=true;mgLastTick=null;document.getElementById('mgPlayBtn').textContent='Pause';
+    mgBufferLink?.prepare(mgAnimFrames[mgCurrentFrame],mgReducedMotion.matches?1:mgFrameProgress);
+    mgBufferLink?.refresh();
+    mgSyncMotion();
+    mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgRunAnim(now){
+    mgTimer=null;if(!mgPlaying)return;
+    if(mgLastTick===null)mgLastTick=now;
+    const speed=Math.max(.1,Math.min(5,Number(document.getElementById('mgSpeedSlider').value)||1));
+    mgFrameProgress+=Math.min(100,now-mgLastTick)*speed/1000;mgLastTick=now;
+    if(mgFrameProgress>=1){
+      // Replay visibly reaches the destination and holds there, without
+      // advancing the shared clock into the next scalar transfer.
+      if(mgReplayFrameIndex===mgCurrentFrame){mgFrameProgress=1;mgStopAnim();mgUpdateAnimDisplay();return;}
+      mgFrameProgress=0;
+      if(mgCurrentFrame===mgAnimFrames.length-1){mgFrameProgress=1;mgStopAnim();mgUpdateAnimDisplay();return;}
+      mgCurrentFrame++;mgUpdateAnimDisplay();
+    }
+    if(!mgReducedMotion.matches)mgDrawFeather(mgAnimFrames[mgCurrentFrame],mgFrameProgress);
+    if(mgPlaying)mgTimer=requestAnimationFrame(mgRunAnim);
+  }
+  function mgUpdateAnimDisplay(){
+    if(!mgAnimFrames.length){
+      document.getElementById('mgAnimInfo').textContent='Generate an illustrative dataflow animation.';
+      document.getElementById('mgFrameInfo').textContent='0/0';mgDrawActive();return;
+    }
+    const fr=mgAnimFrames[mgCurrentFrame];
+    mgBufferLink?.prepare(fr,mgReducedMotion.matches?1:mgFrameProgress);
+    document.getElementById('mgAnimInfo').textContent='Preview step '+fr.cycle+': '+fr.phase+
+      (fr.aOR>=0?' · PE row '+fr.aOR+' → column buses → BIRRD':'');
+    document.getElementById('mgFrameInfo').textContent=mgCurrentFrame+'/'+(mgAnimFrames.length-1);
+    if(mgActiveTab==='feather')mgDrawFeather(fr,mgReducedMotion.matches?1:mgFrameProgress);
+    else {mgDrawBuffer();mgBufferLink?.refresh();}
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)mgStopAnim();});
+  mgReducedMotion.addEventListener('change',()=>{mgStopAnim();mgFrameProgress=1;mgDrawActive();});
+
+  // ---------- Resize ----------
+  let mgResizeT;window.addEventListener('resize',()=>{clearTimeout(mgResizeT);mgResizeT=setTimeout(mgDrawActive,100);});
+
+  // ---------- Init ----------
+  mgMotionLink=FeatherPacketMotion.create({onSelect:()=>mgDrawActive(),onReplay:mgReplayMotion,
+    onScrub:mgScrubMotion,onPlayPause:mgTogglePlay,onRedraw:mgDrawActive});
+  mgBufferLink=FeatherBufferIntegration.create({hardware:()=>mgHW,instructions:()=>mgInstructions,
+    signature:()=>mgTraceSignature,frames:()=>mgAnimFrames,frame:()=>mgAnimFrames[mgCurrentFrame],
+    index:()=>mgCurrentFrame,progress:()=>mgReducedMotion.matches?1:mgFrameProgress,playing:()=>mgPlaying,
+    reduced:()=>mgReducedMotion.matches,birrdInputs:mgBirrdInputs,canvas:()=>document.getElementById('mgFeatherCanvas'),
+    geometry:()=>mgFeatherGeometry,playPause:mgTogglePlay,step:mgStepAnim,redraw:mgDrawActive,
+    onSelectCell:cell=>mgMotionLink?.selectAddress(cell)});
+  mgResetDefault();mgUpdateLegend();setTimeout(mgDrawActive,100);
+  </script>
+</body>
+</html>
