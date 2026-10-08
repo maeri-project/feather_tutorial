@@ -256,8 +256,12 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         await page.setViewportSize({width: 390, height: 844});
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.body.scrollWidth <= innerWidth), "mobile layout has no horizontal document overflow");
         const mobileBoxes = await Promise.all(["sa", "feather"].map(id => page.locator(`#comparison-${id}`).boundingBox()));
-        check(mobileBoxes[1].x >= mobileBoxes[0].x + mobileBoxes[0].width && Math.abs(mobileBoxes[1].y - mobileBoxes[0].y) < 2,
-            "mobile arrays stay side by side with aligned canvases");
+        check(mobileBoxes[1].y >= mobileBoxes[0].y + mobileBoxes[0].height && Math.abs(mobileBoxes[1].x - mobileBoxes[0].x) < 2,
+            "mobile shows systolic above FEATHER at the same width");
+        check(mobileBoxes[1].y - mobileBoxes[0].y - mobileBoxes[0].height < 45,
+            "only a short label separates the mobile visualizations");
+        check(await page.locator("#comparison-preset").isVisible() && await page.locator("#comparison-baseline").isVisible(),
+            "workload and systolic selectors are visible before opening Options");
         await checkResolution();
         await page.locator("#mobile-focus-options > summary").click();
         const bridgeViewer = page.locator('.mobile-diagram[data-diagram="comparison-bridge"]');

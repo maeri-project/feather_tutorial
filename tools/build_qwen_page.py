@@ -19,6 +19,69 @@ MARKER = '<meta name="generator" content="feather-tutorial-qwen-packager-v1">'
 SCOPE = ".qwen-app"
 
 
+def compact_phone_drawing(script):
+    """Narrow drawing boxes on phones without changing numerical state or hit coordinates."""
+    def edit(old, new):
+        nonlocal script
+        if script.count(old) != 1:
+            raise ValueError(f"Phone drawing adapter expected one occurrence: {old[:80]}")
+        script = script.replace(old, new)
+
+    edit('''            // Preserve logical coordinates and bound zoomed phone canvas memory.
+            const requested = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
+                (canvas.clientWidth || geom.width) / geom.width));
+            const scale = global.FeatherMobile?.canvasScale(geom.width, geom.height, requested) ?? requested;
+            const width = geom.width * scale, height = geom.height * scale;''', '''            // Compress horizontal geometry, but keep values uncompressed and
+            // retain the original logical coordinates for packets and clicks.
+            const phone = global.matchMedia("(max-width:900px)").matches;
+            const displayWidth = phone ? 720 : geom.width, horizontalScale = displayWidth / geom.width;
+            geom.pw = phone ? 30 : geom.dx - 22;
+            canvas.style.aspectRatio = `${displayWidth} / ${geom.height}`;
+            const requested = Math.max(2, Math.ceil((global.devicePixelRatio || 1) *
+                (canvas.clientWidth || displayWidth) / displayWidth));
+            const scale = global.FeatherMobile?.canvasScale(displayWidth, geom.height, requested) ?? requested;
+            const width = displayWidth * scale, height = geom.height * scale;''')
+    edit('ctx.setTransform(scale, 0, 0, scale, 0, 0);',
+         'ctx.setTransform(scale * horizontalScale, 0, 0, scale, 0, 0);')
+    edit('''            function line(points, color = C.line, width = 1, dash = []) {''', '''            function shortValue(value) {
+                if (!Number.isFinite(value)) return String(value);
+                const rounded = Number(value.toPrecision(2));
+                const label = String(rounded).replace(/^(-?)0\\./, "$1.");
+                return label.length <= 4 ? label : value.toExponential(0).replace("e+", "e");
+            }
+            function cellText(x, y, label, width, color, align = "center") {
+                ctx.save(); ctx.translate(x, y); ctx.scale(1 / horizontalScale, 1);
+                ctx.fillStyle = color; ctx.font = "11px ui-monospace, monospace"; ctx.textAlign = align;
+                ctx.fillText(label, 0, 0, width * horizontalScale); ctx.restore();
+            }
+            function line(points, color = C.line, width = 1, dash = []) {''')
+    edit('''                    const caption = `${record.identity}=${compact(value)}`;
+                    const tx = Math.max(8, Math.min(880, x + 7)), ty = Math.max(14, y - 6);
+                    ctx.font = "11px ui-monospace, monospace";
+                    ctx.fillStyle = "#fffffff2"; ctx.fillRect(tx - 3, ty - 12, Math.min(230, ctx.measureText(caption).width + 6), 17);
+                    text(tx, ty, caption, 11, color);''', '''                    const caption = phone ? shortValue(value) : `${record.identity}=${compact(value)}`;
+                    const tx = Math.max(8, Math.min(phone ? geom.width - 85 : 880, x + 7)), ty = Math.max(14, y - 6);
+                    ctx.font = "11px ui-monospace, monospace";
+                    const labelWidth = phone ? Math.min(70, ctx.measureText(caption).width / horizontalScale + 6) : Math.min(230, ctx.measureText(caption).width + 6);
+                    ctx.fillStyle = "#fffffff2"; ctx.fillRect(tx - 3, ty - 12, labelWidth, 17);
+                    if (phone) cellText(tx, ty, caption, labelWidth - 6, color, "left");
+                    else text(tx, ty, caption, 11, color);''')
+    edit('''                    ctx.fillRect(cx + .5, cy + .2, cw - 1, Math.max(.8, ch - .4));''',
+         '''                    const inset = phone ? 2.5 : .5;
+                    ctx.fillRect(cx + inset, cy + .2, cw - 2 * inset, Math.max(.8, ch - .4));''')
+    edit('''                    text(x + geom.pw / 2, y + geom.ph - 4, compact(value), 8, active ? "#3b3150" : "#7c858b", "center");''',
+         '''                    if (phone) cellText(x + geom.pw / 2, y + geom.ph - 3, shortValue(value), geom.pw - 2, active ? "#3b3150" : "#7c858b");
+                    else text(x + geom.pw / 2, y + geom.ph - 4, compact(value), 8, active ? "#3b3150" : "#7c858b", "center");''')
+    edit('''                    box(Math.min(...outX) - 6, sy, Math.abs(outX[1] - outX[0]) + 12, 17, "#ad99c4", "#f5f0fa");
+                    text(center, sy + 12, mode?.label || mode?.name || String(node.command), 8, C.P, "center");''',
+         '''                    const switchWidth = phone ? 40 : Math.abs(outX[1] - outX[0]) + 12;
+                    box(center - switchWidth / 2, sy, switchWidth, 17, "#ad99c4", "#f5f0fa");
+                    const modeLabel = mode?.label || mode?.name || String(node.command);
+                    if (phone) cellText(center, sy + 12, modeLabel, switchWidth - 4, C.P);
+                    else text(center, sy + 12, modeLabel, 8, C.P, "center");''')
+    return script
+
+
 def prepare_tutorial_catalog(source):
     """Package upgraded ACT programs and recorded prefill cases for the tutorial.
 
@@ -210,6 +273,7 @@ def prepare_tutorial_catalog(source):
             ctx.setTransform(scale, 0, 0, scale, 0, 0);
             ctx.clearRect(0, 0, geom.width, geom.height);
             ctx.fillStyle = "#fafcfc"; ctx.fillRect(0, 0, geom.width, geom.height);''')
+            script = compact_phone_drawing(script)
             script = script.replace('* canvas.width / rect.width', '* geom.width / rect.width')
             script = script.replace('* canvas.height / rect.height', '* geom.height / rect.height')
             script = replace_one(script, r'        reduced.addEventListener\("change", updateReducedMotion\);',

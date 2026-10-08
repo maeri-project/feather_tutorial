@@ -130,7 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const play = button('Play', 'Play', () => {
       document.getElementById(presentation.play)?.click(); syncPlay();
     });
-    play.id = 'mobile-focus-play'; play.className = 'mobile-focus-play'; hero.append(play);
+    play.id = 'mobile-focus-play'; play.className = 'mobile-focus-play';
+    const toolbar = document.createElement('div'); toolbar.className = 'mobile-focus-toolbar';
+    toolbar.append(play); hero.append(toolbar);
+    let speedControl, instructionDetailsOpen;
+    if (presentation.tab) {
+      speedControl = document.createElement('label'); speedControl.className = 'mobile-focus-speed';
+      speedControl.htmlFor = 'mgSpeedSlider'; speedControl.append('Speed');
+      const value = document.createElement('output'), input = document.getElementById('mgSpeedSlider');
+      value.htmlFor = input.id;
+      const update = () => { value.value = `${Number(input.value)}×`; };
+      input.addEventListener('input', update); update(); speedControl.append(value);
+    }
     function syncPlay() {
       const source = document.getElementById(presentation.state || presentation.play);
       const label = /pause/i.test(source?.textContent || '') ? 'Pause' : 'Play';
@@ -141,11 +152,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const source = document.getElementById(presentation.state || presentation.play);
     if (source) new MutationObserver(syncPlay).observe(source, {childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
     const title = document.querySelector('.header-title'), originalTitle = title?.textContent;
-    const moves = [];
+    const moves = [], textChanges = [];
     let active = false;
     function move(node, parent) {
       const anchor = document.createComment('Mobile presentation position');
       node.before(anchor); moves.push({node, anchor}); parent.append(node);
+    }
+    function caption(node, value) {
+      textChanges.push({node, value:node.textContent}); node.textContent = value;
     }
     function arrange() {
       if (phone.matches === active) return;
@@ -156,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         root.prepend(hero, options);
         content.forEach(node => move(node, optionsBody));
         move(drawing, hero);
+        drawing.classList.add('mobile-primary-visual');
         if (presentation.controls) drawing.querySelectorAll(presentation.controls).forEach(node => move(node, optionsBody));
         // Leave the nav container in place for the architecture's size and
         // hit-testing code; only move its controls into the Options panel.
@@ -174,12 +189,38 @@ document.addEventListener('DOMContentLoaded', () => {
           group.append(legend); optionsBody.prepend(group);
           move(viewer.querySelector('.mobile-diagram-tools'), group);
         }
+        if (presentation.tab) {
+          toolbar.append(speedControl); move(document.getElementById('mgSpeedSlider'), speedControl);
+          move(document.getElementById('mgIsaList').closest('.mg-section'), hero);
+          const details = document.getElementById('mgInstructionDetails');
+          instructionDetailsOpen = details.open; details.open = true; move(details, hero);
+          move(document.getElementById('isa'), hero);
+        } else if (presentation.play === 'full-teach-play') {
+          const workload = root.querySelector('.selection'); move(workload, hero);
+          hero.insertBefore(workload, toolbar);
+        } else if (presentation.play === 'rc-play') {
+          const chain = root.querySelector('.rc-chain'); move(chain, hero); hero.insertBefore(chain, toolbar);
+          for (const [id, text] of [['down','Prefill'],['head','LM head'],['decode','Decode']]) {
+            caption(document.querySelector(`#rc-stage-${id} small`), text);
+          }
+        } else if (presentation.play === 'comparison-play') {
+          const controls = root.querySelector('.comparison-controls'); move(controls, hero);
+          hero.insertBefore(controls, toolbar);
+          for (const [id, text] of [['sa','Systolic array'],['feather','FEATHER']]) {
+            caption(document.getElementById(`comparison-${id}`).closest('.comparison-array-card').querySelector('.comparison-eyebrow'), text);
+          }
+        }
         document.body.classList.add('mobile-demo'); root.classList.add('mobile-focus-page');
         if (title) title.textContent = presentation.title;
         if (presentation.tab) document.getElementById(presentation.tab).click();
       } else {
         // Restore descendants before their parents, including moved toolbars.
         for (const {node, anchor} of moves.reverse()) anchor.replaceWith(node);
+        for (const {node, value} of textChanges) node.textContent = value;
+        textChanges.length = 0; drawing.classList.remove('mobile-primary-visual');
+        if (speedControl) {
+          speedControl.remove(); document.getElementById('mgInstructionDetails').open = instructionDetailsOpen;
+        }
         moves.length = 0; optionsBody.replaceChildren(); hero.remove(); options.remove();
         document.body.classList.remove('mobile-demo'); root.classList.remove('mobile-focus-page');
         if (title) title.textContent = originalTitle;

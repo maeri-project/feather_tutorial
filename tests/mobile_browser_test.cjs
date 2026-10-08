@@ -67,9 +67,23 @@ function check(value, message) { assert.ok(value, message); checks++; }
         if(await page.locator(".mobile-focus").count()) {
           check(!await page.locator("#mobile-focus-options").evaluate(e=>e.open),`${file}: Options starts closed`);
           check(await page.locator("main button").filter({hasText:/^Play$/}).evaluateAll(nodes=>nodes.filter(e=>e.checkVisibility()).length)===1,`${file}: one visible Play button`);
-          const play=await page.locator("#mobile-focus-play").boundingBox(), drawing=await page.locator(".mobile-focus > :last-child").boundingBox();
-          check(drawing.y>=play.y+play.height && drawing.y-play.y-play.height<20,`${file}: visualization immediately follows Play`);
-          check(await page.locator(".mobile-focus-page p").evaluateAll(nodes=>nodes.every(e=>!e.checkVisibility())),`${file}: explanatory paragraphs are hidden`);
+          const toolbar=await page.locator(".mobile-focus-toolbar").boundingBox(), drawing=await page.locator(".mobile-primary-visual").boundingBox();
+          check(drawing.y>=toolbar.y+toolbar.height && drawing.y-toolbar.y-toolbar.height<20,`${file}: visualization immediately follows playback`);
+          check(await page.locator(".mobile-focus-page p").evaluateAll(nodes=>nodes.filter(e=>!e.closest('#isa')).every(e=>!e.checkVisibility())),`${file}: explanations remain hidden except the requested ISA reference`);
+          if(file==='FEATHER.html') {
+            check(await page.locator('.mobile-focus-speed #mgSpeedSlider').isVisible(),"speed is beside Play");
+            check(await page.locator('#mgIsaList').isVisible() && await page.locator('#isa').isVisible(),"MINISA trace and reference are visible");
+            const isa=await page.locator('#mgIsaList').boundingBox();
+            check(isa.y>=drawing.y+drawing.height,"MINISA trace follows the architecture");
+            const geometry=await page.evaluate(()=>({width:mgHW.AW,regions:mgFeatherGeometry.bufferRegions}));
+            check(geometry.regions.every(r=>r.width===geometry.width*22+58),"all three phone buffers use narrow scalar columns");
+          }
+          if(file==='QWEN3_MINISA_VISUALIZER.html') {
+            check(await page.locator('#operator').isVisible(),"Qwen workload selector is always visible");
+            check(await page.locator('#full-teach-canvas').evaluate(c=>Math.abs(c.width/c.height-720/1220)<.001),"Qwen uses narrow phone geometry");
+          }
+          if(file==='RECONFIGURABLE_COMPUTE.html')check(await page.locator('.mobile-focus .rc-chain').isVisible(),"compact layer sequence is visible");
+          if(file==='FEATHER_VS_SYSTOLIC.html')check(await page.locator('#comparison-preset').isVisible()&&await page.locator('#comparison-baseline').isVisible(),"comparison selectors are always visible");
         }
         await page.locator("#mobile-menu-btn").tap();
         check(await page.locator(".sidebar").evaluate(e=>e.classList.contains("open")&&!e.inert),`${file}: touch menu opens`);
@@ -152,7 +166,10 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await view("full-teach-canvas").screenshot({path:path.join(output,"qwen-phone.png")});
     await maxZoom("full-teach-canvas");
 
-    await load("FEATHER.html");await page.locator("#mobile-focus-play").tap();
+    await load("FEATHER.html");
+    await page.locator('#mgSpeedSlider').focus();await page.keyboard.press('End');
+    check(await page.locator('.mobile-focus-speed output').innerText()==='5×',"speed control updates the visible multiplier");
+    await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>document.getElementById("mgPlayBtn").textContent==="Pause");
     await page.locator("#mobile-focus-play").tap();
     check((await page.locator("#mgPlayBtn").innerText())==="Play","generic editor starts and pauses from the diagram");

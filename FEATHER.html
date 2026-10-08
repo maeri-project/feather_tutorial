@@ -1072,13 +1072,14 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
   }
   function mgDrawFeather(frame=mgAnimFrames[mgCurrentFrame],progress=mgFrameProgress){
     const cv=document.getElementById('mgFeatherCanvas'),ct=document.getElementById('mg-tab-feather');
+    const phone=window.matchMedia('(max-width:900px)').matches;
     const AH=mgHW.AH,AW=mgHW.AW,stages=AW===4?3:2*mgCL2(AW);
     const bufferView=mgBufferLink.prepare(frame,progress);
     const bufferHeights=Object.fromEntries(['I','W','O'].map(operand=>[operand,
       FeatherBufferView.height(mgBufferLink.getLayout(operand),mgBufferLink.windowFor(operand))]));
-    const cell=AW>8?48:58,pitch=cell+18,cardWidth=AW*44+58;
+    const cell=AW>8?48:58,pitch=cell+18,cardWidth=AW*(phone?22:44)+58;
     const bufferTop=12,top=bufferTop+Math.max(bufferHeights.I,bufferHeights.W)+48;
-    const width=Math.max(700,ct.clientWidth,100+AW*pitch+32,2*cardWidth+80);
+    const width=Math.max(phone?0:700,ct.clientWidth,100+AW*pitch+32,2*cardWidth+80);
     const left=(width-((AW-1)*pitch+cell))/2;
     const columnX=c=>left+c*pitch+cell/2;
     // One output bus in the whitespace to each column's right. The BIRRD
@@ -1092,7 +1093,6 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const motionMount=document.getElementById('mgMotionMount');
     // Phone panels grow with the drawing. Fit uses the screen height instead
     // of feeding the auto-sized panel's height back into its canvas scale.
-    const phone=window.matchMedia('(max-width:900px)').matches;
     const availableHeight=()=>phone?Math.max(320,window.innerHeight*.8)-ct.parentElement.querySelector('.mg-tab-bar').offsetHeight-ct.parentElement.querySelector('.mg-mobile-playback').offsetHeight:ct.clientHeight;
     motionMount.style.maxHeight=Math.max(110,Math.floor(availableHeight()*.45))+'px';
     const fittedScale=()=>Math.min(1,Math.max(1,ct.clientWidth-12)/width,
@@ -1104,9 +1104,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     const muted=getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim()||'#666';
     const center=(columnX(0)+columnX(AW-1))/2;
     const inputX=center-cardWidth/2-16,weightX=center+cardWidth/2+16;
+    const outputWidth=phone?cardWidth:(AW-1)*pitch+cell;
     const bufferRegions=[{operand:'I',x:inputX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.I},
       {operand:'W',x:weightX-cardWidth/2,y:bufferTop,width:cardWidth,height:bufferHeights.W},
-      {operand:'O',x:portX(0)-cell/2,y:outputY+60,width:(AW-1)*pitch+cell,height:bufferHeights.O}];
+      {operand:'O',x:(portX(0)+portX(AW-1)-outputWidth)/2,y:outputY+60,width:outputWidth,height:bufferHeights.O}];
     const columnLinks=Array.from({length:AW},(_,c)=>({column:c,input:c,
       from:[busX(c),top],to:[busX(c),networkTop]}));
     const peBusLinks=Array.from({length:AH*AW},(_,index)=>{
@@ -1138,8 +1139,8 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     function box(x,y,w,h,fill,edge){ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=1.5;mgRR(ctx,x,y,w,h,5);ctx.fill();ctx.stroke();}
     function path(points,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
       points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();}
-    box(bufferRegions[0].x,bufferTop,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label('Streaming buffer (IVN)',inputX,bufferTop+17,MG_DATA_COLORS.input,11,true);
-    box(bufferRegions[1].x,bufferTop,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label('Stationary buffer (WVN)',weightX,bufferTop+17,MG_DATA_COLORS.weight,11,true);
+    box(bufferRegions[0].x,bufferTop,cardWidth,bufferHeights.I,MG_DATA_FILLS.input,MG_DATA_COLORS.input);label(phone?'Streaming buffer':'Streaming buffer (IVN)',inputX,bufferTop+17,MG_DATA_COLORS.input,11,true);
+    box(bufferRegions[1].x,bufferTop,cardWidth,bufferHeights.W,MG_DATA_FILLS.weight,MG_DATA_COLORS.weight);label(phone?'Stationary buffer':'Stationary buffer (WVN)',weightX,bufferTop+17,MG_DATA_COLORS.weight,11,true);
     mgArrow(ctx,inputX,bufferTop+bufferHeights.I,inputX,top-14,MG_DATA_COLORS.input,2);
     mgArrow(ctx,weightX,bufferTop+bufferHeights.W,weightX,top-14,MG_DATA_COLORS.weight,2);
     label('NEST · '+AH+' × '+AW+' PE array',center,top-9,textColor,12,true);
@@ -1197,10 +1198,10 @@ Store  target=0, hbm_addr                   ; DMA store output</code></pre>
     }
     const outputRegion=bufferRegions[2];
     box(outputRegion.x,outputRegion.y,outputRegion.width,outputRegion.height,MG_DATA_FILLS.result,MG_DATA_COLORS.result);
-    label('Output buffer (OVN) · physical banks',outputRegion.x+outputRegion.width/2,outputRegion.y+17,MG_DATA_COLORS.result,11,true);
+    label(phone?'Output buffer':'Output buffer (OVN) · physical banks',outputRegion.x+outputRegion.width/2,outputRegion.y+17,MG_DATA_COLORS.result,11,true);
     mgBufferLink?.drawMini(ctx,mgFeatherGeometry);
-    label('Both tabs share VN rows and scalar lanes. Click a buffer for exact addresses.',center,outputRegion.y+outputRegion.height+24,textColor,11,true);
-    label('PASS topology: output writes show intended partial-sum destinations, not reduced GEMM values.',center,outputRegion.y+outputRegion.height+46,muted,10);
+    label(phone?'Tap a buffer to inspect cells.':'Both tabs share VN rows and scalar lanes. Click a buffer for exact addresses.',center,outputRegion.y+outputRegion.height+24,textColor,11,true);
+    label(phone?'PASS routing preview · partial sums':'PASS topology: output writes show intended partial-sum destinations, not reduced GEMM values.',center,outputRegion.y+outputRegion.height+46,muted,10);
     let tokenCount=0,networkTokens=0;const resultTokens=[],bufferTokens=[],motionPackets=[];
     const snapshot=frame?.snapshotIndex??frame?.iteration??0;
     const selectedKey=mgMotionLink?.selectedKey();
