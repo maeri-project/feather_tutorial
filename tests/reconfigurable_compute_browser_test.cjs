@@ -8,7 +8,16 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||"playwright");
   page.on("pageerror",e=>errors.push(e.message));
   const url=process.env.RECONFIGURABLE_URL||pathToFileURL(path.resolve(__dirname,"../RECONFIGURABLE_COMPUTE.html")).href;
   await page.goto(url);await page.waitForFunction(()=>window.ReconfigurableCompute);
-  assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage,"down");
+  assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage,"head");
+  assert.match(await page.locator('#rc-util-reuse').textContent(),/64\/256 PEs · 25%/);
+  assert.match(await page.locator('#rc-util-outputs').textContent(),/128\/256 PEs · 50%/);
+  await page.locator('#rc-stage-down').click();
+  assert.match(await page.locator('#rc-util-reuse').textContent(),/256\/256 PEs · 100%/);
+  const replicaColors=await page.locator('#rc-canvas-reuse').evaluate(canvas=>{
+   const ctx=canvas.getContext('2d'),scale=canvas.width/680;
+   return [0,2,4,6].map(col=>Array.from(ctx.getImageData((84+col*32+6)*scale,(116+6)*scale,1,1).data).join(','));
+  });
+  assert.equal(new Set(replicaColors).size,4,'four distinct weight-replica fills');
   assert.match(await page.locator("#rc-equation").textContent(),/768 × 3,072/);
   assert.equal(await page.locator('#rc-workload-title, #rc-chain-title').count(),0);
   assert.equal(await page.locator('#rc-equation svg [data-matrix]').count(),3);

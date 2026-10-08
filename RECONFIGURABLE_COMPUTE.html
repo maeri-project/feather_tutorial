@@ -55,14 +55,14 @@
           <section aria-label="Layer sequence">
             <div class="rc-graph-prefix">Embedding → blocks 1–27 → block 28 attention + MLP</div>
             <div class="rc-chain" aria-label="Inference checkpoints">
-              <button id="rc-stage-down" type="button" aria-pressed="true"><small>PREFILL · BLOCK 28</small><strong>down_proj</strong><span>768 tokens → A</span></button>
+              <button id="rc-stage-down" type="button" aria-pressed="false"><small>PREFILL · BLOCK 28</small><strong>down_proj</strong><span>768 tokens → A</span></button>
               <div class="rc-bridge"><b>→</b><span>Last token</span></div>
-              <button id="rc-stage-head" type="button" aria-pressed="false"><small>LM HEAD</small><strong>lm_head</strong><span>1 token → switch to B</span></button>
+              <button id="rc-stage-head" type="button" aria-pressed="true"><small>LM HEAD</small><strong>lm_head</strong><span>1 token → switch to B</span></button>
               <div class="rc-bridge"><b>→</b><span>Next token</span></div>
               <button id="rc-stage-decode" type="button" aria-pressed="false"><small>DECODE · BLOCK 1</small><strong>q_proj</strong><span>1 token → keep B</span></button>
             </div>
             <p id="rc-context" class="rc-context" aria-live="polite"></p>
-            <button id="rc-next-stage" class="rc-next-stage" type="button">Next: lm_head →</button>
+            <button id="rc-next-stage" class="rc-next-stage" type="button">Next: decode →</button>
           </section>
           <section aria-label="Layer matrix multiplication">
             <div id="rc-equation" class="rc-matrices"></div>
@@ -72,10 +72,10 @@
             <p class="rc-lead">WO-S · 16 weights/PE · inputs ↓ columns · outputs accumulate</p>
             <div class="rc-playback"><button id="rc-step" type="button">Step</button><button id="rc-reset" type="button">Reset</button><label>Speed<select id="rc-speed"><option value="2">2 steps/s</option><option value="6" selected>6 steps/s</option><option value="16">16 steps/s</option></select></label><label class="rc-scrubber">Input step <output id="rc-step-label"></output><input id="rc-scrub" type="range" min="0" max="31" value="15"></label></div>
             <div class="rc-arrays mobile-comparison">
-              <div class="rc-card" id="rc-card-reuse"><div class="rc-card-head"><h3>A · Token parallel</h3><span id="rc-badge-reuse" class="rc-badge"></span></div><p>4 weight replicas · 32 channels</p><div id="rc-specs-reuse" class="rc-specs"></div><canvas id="rc-canvas-reuse" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping A stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-reuse" class="rc-schedule"></div></div>
-              <div class="rc-card" id="rc-card-outputs"><div class="rc-card-head"><h3>B · Channel parallel</h3><span id="rc-badge-outputs" class="rc-badge"></span></div><p>2 weight replicas · 64 channels</p><div id="rc-specs-outputs" class="rc-specs"></div><canvas id="rc-canvas-outputs" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping B stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-outputs" class="rc-schedule"></div></div>
+              <div class="rc-card" id="rc-card-reuse"><div class="rc-card-head"><div><h3>A · Token parallel</h3><span id="rc-util-reuse" class="rc-utilization"></span></div><span id="rc-badge-reuse" class="rc-badge"></span></div><p>4 weight replicas · 32 channels</p><div id="rc-specs-reuse" class="rc-specs"></div><canvas id="rc-canvas-reuse" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping A stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-reuse" class="rc-schedule"></div></div>
+              <div class="rc-card" id="rc-card-outputs"><div class="rc-card-head"><div><h3>B · Channel parallel</h3><span id="rc-util-outputs" class="rc-utilization"></span></div><span id="rc-badge-outputs" class="rc-badge"></span></div><p>2 weight replicas · 64 channels</p><div id="rc-specs-outputs" class="rc-specs"></div><canvas id="rc-canvas-outputs" width="1360" height="1360" tabindex="0" role="img" aria-label="Mapping B stationary weights and column input streams. Arrow keys select a PE."></canvas><div id="rc-schedule-outputs" class="rc-schedule"></div></div>
             </div>
-            <div class="rc-legend" aria-label="Diagram legend"><span>m: token · n: channel</span><span><i class="rc-key-green"></i>K 0–15</span><span><i class="rc-key-gold"></i>K 16–31</span><span><i class="rc-key-blue"></i>Input</span><span><i class="rc-key-gray"></i>No token</span></div>
+            <div id="rc-legend" class="rc-legend" aria-label="Diagram legend"></div>
             <p class="rc-note">First tile · setup and pipeline gaps omitted</p>
           </section>
           <div id="rc-runtime-demo" class="rc-runtime-demo" role="region" aria-labelledby="rc-runtime-title">

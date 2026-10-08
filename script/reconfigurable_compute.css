@@ -47,6 +47,7 @@
 .rc-card[data-preferred=true] { border-color:var(--rc-purple); }
 .rc-card-head { display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px; }
 .rc-card-head h3 { font-size:1.03rem; }
+.rc-utilization { display:block;font-size:.83rem;font-weight:600;margin-top:4px; }
 .rc-badge { color:var(--primary-color);font-size:.6rem;white-space:nowrap; }
 .rc-card > p { font-size:.76rem;color:var(--text-muted);line-height:1.6; }
 .rc-specs { display:flex;gap:5px 13px;flex-wrap:wrap;font-size:.68rem;color:var(--text-muted);padding:12px 0;margin-top:8px;border-bottom:1px solid var(--border-color); }
@@ -63,8 +64,6 @@
 .rc-legend { display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:14px;font-size:.7rem;color:var(--text-muted); }
 .rc-legend span { display:flex;align-items:center;gap:6px; }
 .rc-legend i { display:inline-block;width:10px;height:10px;border-radius:3px; }
-.rc-key-green { background:#238873; }
-.rc-key-gold { background:#cc9a32; }
 .rc-key-blue { background:var(--rc-blue); }
 .rc-key-gray { background:#8892a4; }
 .rc-pe-detail .rc-context { margin-bottom:15px; }

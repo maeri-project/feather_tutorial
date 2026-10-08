@@ -68,6 +68,13 @@ for(const layouts of Object.values(data.layouts)) for(const l of Object.values(l
     }
 }
 const head=data.stages[1];
+assert.equal(head.records.reuse.mappedPEs,64);
+assert.equal(head.records.outputs.mappedPEs,128,'opening example has different PE utilization');
+const prefill=data.stages[0].records.reuse;
+const copies=Array.from({length:4},()=>new Set());
+for(const cell of model.frame(prefill,15))copies[cell.replica].add(`${cell.n}/${cell.kStart}`);
+for(const copy of copies){assert.equal(copy.size,64);assert.deepEqual(copy,copies[0],'each replica stores the same complete set of stationary weight vectors');}
+for(let col=0;col<8;col++)assert.equal(model.owner(prefill,0,col).replica,model.owner(prefill,0,col+8).replica,'both K halves share the replica color');
 const a=model.at(head.records.reuse,0,2,15),b=model.at(head.records.outputs,0,2,15);
 assert.deepEqual([a.m,a.n,a.valid],[1,0,false]);
 assert.deepEqual([b.m,b.n,b.valid],[0,32,true]);

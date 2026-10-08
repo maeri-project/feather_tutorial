@@ -112,6 +112,9 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await page.locator('.sidebar a[href="RECONFIGURABLE_COMPUTE.html"]').tap();
     await page.waitForFunction(()=>window.ReconfigurableCompute);
     check(await page.locator(".sidebar").evaluate(e=>!e.classList.contains("open")),"touch navigation arrives with menu closed");
+    check((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage==='head',"phone opens on the utilization comparison");
+    check(await page.locator('#rc-util-reuse').isVisible()&&await page.locator('#rc-util-outputs').isVisible(),"both PE utilization counts are visible on phone");
+    await page.locator('#rc-stage-down').tap();
     await options();await page.locator("#rc-next-stage").tap();
     check((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage==="head","touch advances the inference graph");
     await zoom("rc-canvas-reuse");

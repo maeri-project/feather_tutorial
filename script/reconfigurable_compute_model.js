@@ -7,10 +7,11 @@
     const weight = (k, n) => ((k * 5 + n * 3 + 1) % 7) - 3;
     function owner(record, row, col, dot = 0) {
         const {EM: e, ES: s, tile} = record;
-        const m = s.m_0 + s.s_m * dot + Math.floor((col % e.G_r) / e.G_c);
+        const replica = Math.floor((col % e.G_r) / e.G_c);
+        const m = s.m_0 + s.s_m * dot + replica;
         const n = e.c_0 + e.s_r * row + e.s_c * (col % e.G_c);
         const kg = e.r_0 + Math.floor(col / e.G_r);
-        return {row, col, m, n, kg, kStart: kg * SIZE,
+        return {row, col, m, n, kg, replica, kStart: kg * SIZE,
             valid: dot >= 0 && dot < s.T && m < tile.M && n < tile.N && kg * SIZE < tile.K};
     }
     function at(record, row, col, step) {

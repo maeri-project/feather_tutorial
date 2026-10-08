@@ -3,7 +3,13 @@
     const data = window.ReconfigurableComputeData, model = window.ReconfigurableComputeModel;
     const $ = id => document.getElementById(`rc-${id}`), fmt = n => n.toLocaleString("en-US");
     const keys = ["reuse", "outputs"], stages = Object.fromEntries(data.stages.map(s => [s.id,s]));
-    const state = {stage:"down", row:0, col:2, step:15, mode:"weights", playing:false, speed:6, operand:"W"};
+    const state = {stage:"head", row:0, col:2, step:15, mode:"weights", playing:false, speed:6, operand:"W"};
+    const replicas = [
+        {light:"#c5eade",dark:"#204d43",accent:"#238873"},
+        {light:"#ffe1ac",dark:"#584222",accent:"#bd801b"},
+        {light:"#ddcff8",dark:"#43315e",accent:"#8658c4"},
+        {light:"#f8ccdc",dark:"#542b40",accent:"#bb4f7a"}
+    ];
     const geometry = {w:680,h:680,x:84,y:116,pitch:32};
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     let raf = 0, lastTime = 0, lastInteger = -1;
@@ -25,24 +31,29 @@
         if(canvas.width!==w*scale||canvas.height!==h*scale){canvas.width=w*scale;canvas.height=h*scale;}
         ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,w,h);
         const dark=document.documentElement.dataset.theme==="dark";
-        const colors=dark ? {fg:"#e7eef8",muted:"#a9b8ce",green:"#173f37",gold:"#48391e",blue:"#71bbff",idle:"#252d3c",dim:"#8892a4",select:"#c1a0ff"}
-            : {fg:"#24334a",muted:"#55677e",green:"#d4efe5",gold:"#f5e8c4",blue:"#0874be",idle:"#edf0f4",dim:"#7b8594",select:"#7040c1"};
+        const colors=dark ? {fg:"#e7eef8",muted:"#a9b8ce",blue:"#71bbff",idle:"#252d3c",dim:"#8892a4",select:"#f5f8ff"}
+            : {fg:"#24334a",muted:"#55677e",blue:"#0874be",idle:"#edf0f4",dim:"#7b8594",select:"#24334a"};
         text(ctx,`Stationary: ${s.weight}[k, n]`,x,16,colors.fg,14,"left",true);
         text(ctx,`Stream: ${s.input}[m, k] ↓`,x,37,colors.blue,12);
         for(let kg=0;kg<2;kg++) {
-            box(ctx,x+kg*256,54,253,22,kg?colors.gold:colors.green);
+            box(ctx,x+kg*256,54,253,22,colors.idle);
             text(ctx,`K half ${kg}: k=${kg*16}…${kg*16+15}`,x+kg*256+126,65,colors.fg,11,"center",true);
         }
         const dot=Math.min(r.ES.T-1,Math.floor(state.step/16));
         for(let col=0;col<16;col++) {
             const o=model.owner(r,0,col,dot),cx=x+col*pitch+14;
-            text(ctx,`m${o.m}${o.valid?"":"×"}`,cx,89,o.valid?colors.blue:colors.dim,11,"center",true);
+            if(col%r.EM.G_c===0) {
+                const width=r.EM.G_c*pitch-3;
+                box(ctx,x+col*pitch,79,width,3,replicas[o.replica].accent);
+                text(ctx,`R${o.replica+1} · m${o.m}${o.valid?"":"×"}`,x+col*pitch+width/2,92,o.valid?colors.fg:colors.dim,10,"center",true);
+            }
             text(ctx,`c${col}`,cx,106,colors.muted,9,"center");
         }
         const frames=model.frame(r,state.step);
         for(const cell of frames) {
             const px=x+cell.col*pitch,py=y+cell.row*pitch,selected=cell.row===state.row&&cell.col===state.col;
-            box(ctx,px+1,py+1,28,28,!cell.valid?colors.idle:cell.kg?colors.gold:colors.green,selected?colors.select:null,2.8);
+            const replica=replicas[cell.replica];
+            box(ctx,px+1,py+1,28,28,cell.valid?replica[dark?"dark":"light"]:colors.idle,selected?colors.select:null,2.8);
             text(ctx,`n${cell.n}`,px+15,py+14,cell.valid?colors.fg:colors.dim,11,"center",true);
             if(cell.col===0)text(ctx,`r${cell.row}`,x-16,py+15,colors.muted,10,"right");
             if(cell.row===0&&cell.col&&cell.col%r.EM.G_c===0) {
@@ -119,10 +130,12 @@
         }).join("")+`<tr class="rc-rejected"><th scope="row">1 replica · 128 channels</th><td>… × 32 × 128</td><td>StaB: 4,096 scalars &gt; 2,048 capacity</td><td>Does not fit</td></tr>`;
         const stats=s.search.stats;
         $("search-note").textContent=`Bounded search: ${stats.tile_proposals} proposed · ${stats.tiles_searched} searched · ${stats.tiles_pruned} pruned. Selected tile and mapping match its winner. Cycles exclude boundary operations and repacking.`;
+        $("legend").innerHTML='<span>Weight replicas</span>'+replicas.map((color,i)=>`<span><i style="background:${color.accent}"></i>R${i+1}</span>`).join("")+`<span><i class="rc-key-blue"></i>Input</span><span><i class="rc-key-gray"></i>Idle · no token</span><span>m: token · n: channel</span>`;
         for(const key of keys) {
             const r=record(key);
             $(`card-${key}`).dataset.preferred=key===s.preferred;
             $(`badge-${key}`).textContent=key===s.preferred?"Selected":prev&&prev.preferred===key?"Previous layer":"Alternative";
+            $(`util-${key}`).textContent=`${r.mappedPEs}/256 PEs · ${100*r.mappedPEs/256}%`;
             $(`specs-${key}`).innerHTML=`<span>Tile M×K×N <b>${shape(r.tile)}</b></span><span>W/I/O orders <b>${r.orders.W}/${r.orders.I}/${r.orders.O}</b></span>`;
             $(`schedule-${key}`).innerHTML=`<strong>${r.mappedPEs}/256 useful PEs</strong><span>${r.ES.T} dot groups · ${r.tile.M} tokens/tile</span>`;
         }
@@ -184,5 +197,5 @@
     for(const key of keys){const canvas=$(`canvas-${key}`);canvas.addEventListener("click",e=>{const rect=canvas.getBoundingClientRect(),col=Math.floor(((e.clientX-rect.left)*680/rect.width-geometry.x)/32),row=Math.floor(((e.clientY-rect.top)*680/rect.height-geometry.y)/32);if(row>=0&&row<16&&col>=0&&col<16)choose(row,col);});canvas.addEventListener("keydown",e=>{const move={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];if(move){e.preventDefault();choose(Math.max(0,Math.min(15,state.row+move[0])),Math.max(0,Math.min(15,state.col+move[1])));}});new ResizeObserver(()=>render()).observe(canvas);}
     new MutationObserver(()=>render()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
     document.addEventListener("visibilitychange",()=>{if(document.hidden)stop();});reduced.addEventListener("change",()=>{stop();render();});
-    selectStage("down");window.ReconfigurableCompute={inspect:()=>({...state}),selectStage};
+    selectStage(state.stage);window.ReconfigurableCompute={inspect:()=>({...state}),selectStage};
 })();
