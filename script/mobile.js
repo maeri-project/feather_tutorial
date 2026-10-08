@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const centerX = (scroll.scrollLeft + scroll.clientWidth / 2) / old;
       const centerY = (scroll.scrollTop + scroll.clientHeight / 2) / old;
       zoomIndex = Math.max(0, Math.min(zooms.length - 1, index));
+      wrapper.classList.toggle('mobile-diagram-zoomed', zoomIndex > 0);
       size();
       output.value = `${Math.round(zooms[zoomIndex] * 100)}%`;
       minus.disabled = zoomIndex === 0; plus.disabled = zoomIndex === zooms.length - 1;
@@ -108,5 +109,87 @@ document.addEventListener('DOMContentLoaded', () => {
   if (nativePlay && phonePlay) {
     const sync = () => { phonePlay.textContent = nativePlay.textContent; phonePlay.setAttribute('aria-pressed', String(/pause/i.test(nativePlay.textContent))); };
     new MutationObserver(sync).observe(nativePlay, {childList:true}); sync();
+  }
+
+  // Present the existing live drawing first on phones; restore every node to
+  // its original location on desktop so controls, listeners and models survive.
+  const presentations = [
+    {drawing:'.mg-app', root:'.doc-content', play:'mgMobilePlay', state:'mgPlayBtn', title:'FEATHER', controls:'.mg-left', tab:'mg-feather-tab'},
+    {drawing:'.rc-arrays.mobile-comparison', root:'.rc-page', play:'rc-play', title:'Reconfigurable compute'},
+    {drawing:'.comparison-array-grid', root:'.comparison-page', play:'comparison-play', title:'Systolic vs. FEATHER'},
+    {drawing:'#full-act-teaching', root:'.qwen-app', play:'full-teach-play', title:'Qwen3 on FEATHER', controls:':scope > :not(.act-teach-viewport)'}
+  ];
+  const presentation = presentations.find(item => document.querySelector(item.drawing));
+  if (presentation) {
+    const root = document.querySelector(presentation.root), drawing = document.querySelector(presentation.drawing);
+    const hero = document.createElement('div'), options = document.createElement('details');
+    const summary = document.createElement('summary'), optionsBody = document.createElement('div');
+    hero.className = 'mobile-focus'; options.className = 'mobile-focus-options';
+    options.id = 'mobile-focus-options'; summary.textContent = 'Options';
+    optionsBody.className = 'mobile-focus-options-body'; options.append(summary, optionsBody);
+    const play = button('Play', 'Play', () => {
+      document.getElementById(presentation.play)?.click(); syncPlay();
+    });
+    play.id = 'mobile-focus-play'; play.className = 'mobile-focus-play'; hero.append(play);
+    function syncPlay() {
+      const source = document.getElementById(presentation.state || presentation.play);
+      const label = /pause/i.test(source?.textContent || '') ? 'Pause' : 'Play';
+      if (play.textContent !== label) play.textContent = label;
+      play.setAttribute('aria-label', label); play.setAttribute('aria-pressed', String(label === 'Pause'));
+      play.disabled = !source || source.disabled;
+    }
+    const source = document.getElementById(presentation.state || presentation.play);
+    if (source) new MutationObserver(syncPlay).observe(source, {childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
+    const title = document.querySelector('.header-title'), originalTitle = title?.textContent;
+    const moves = [];
+    let active = false;
+    function move(node, parent) {
+      const anchor = document.createComment('Mobile presentation position');
+      node.before(anchor); moves.push({node, anchor}); parent.append(node);
+    }
+    function arrange() {
+      if (phone.matches === active) return;
+      active = phone.matches;
+      if (active) {
+        if (drawing.matches('.mg-expanded')) document.getElementById('mgExpandBtn').click();
+        const content = [...root.childNodes].filter(node => !node.matches?.('script,style'));
+        root.prepend(hero, options);
+        content.forEach(node => move(node, optionsBody));
+        move(drawing, hero);
+        if (presentation.controls) drawing.querySelectorAll(presentation.controls).forEach(node => move(node, optionsBody));
+        // Leave the nav container in place for the architecture's size and
+        // hit-testing code; only move its controls into the Options panel.
+        const nav = drawing.querySelector('.mg-view-nav');
+        if (nav) {
+          const controls = document.createElement('div'); controls.className = 'mg-view-nav';
+          optionsBody.prepend(controls);
+          [...nav.childNodes].forEach(node => move(node, controls));
+        }
+        // Keep detailed zoom available below the drawing without repeating Play.
+        const names = {'rc-canvas-reuse':'Mapping A','rc-canvas-outputs':'Mapping B','comparison-sa':'Systolic array','comparison-feather':'FEATHER'};
+        for (const viewer of drawing.querySelectorAll('.mobile-diagram')) {
+          const group = document.createElement('fieldset'), legend = document.createElement('legend');
+          group.className = 'mobile-focus-zoom'; group.dataset.diagram = viewer.dataset.diagram;
+          legend.textContent = names[viewer.dataset.diagram] || 'Diagram zoom';
+          group.append(legend); optionsBody.prepend(group);
+          move(viewer.querySelector('.mobile-diagram-tools'), group);
+        }
+        document.body.classList.add('mobile-demo'); root.classList.add('mobile-focus-page');
+        if (title) title.textContent = presentation.title;
+        if (presentation.tab) document.getElementById(presentation.tab).click();
+      } else {
+        // Restore descendants before their parents, including moved toolbars.
+        for (const {node, anchor} of moves.reverse()) anchor.replaceWith(node);
+        moves.length = 0; optionsBody.replaceChildren(); hero.remove(); options.remove();
+        document.body.classList.remove('mobile-demo'); root.classList.remove('mobile-focus-page');
+        if (title) title.textContent = originalTitle;
+      }
+      syncPlay();
+      requestAnimationFrame(() => {
+        viewers.forEach(view => view.size()); window.dispatchEvent(new Event('resize'));
+      });
+    }
+    options.addEventListener('toggle', () => window.dispatchEvent(new Event('resize')));
+    phone.addEventListener('change', arrange); arrange();
   }
 });

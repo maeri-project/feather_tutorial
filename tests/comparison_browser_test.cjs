@@ -259,6 +259,7 @@ function check(value, label) { assert.ok(value, label); assertions++; }
         check(mobileBoxes[1].x >= mobileBoxes[0].x + mobileBoxes[0].width && Math.abs(mobileBoxes[1].y - mobileBoxes[0].y) < 2,
             "mobile arrays stay side by side with aligned canvases");
         await checkResolution();
+        await page.locator("#mobile-focus-options > summary").click();
         const bridgeViewer = page.locator('.mobile-diagram[data-diagram="comparison-bridge"]');
         await bridgeViewer.getByRole("button", {name:"Zoom in", exact:true}).click();
         check(await bridgeViewer.locator(".mobile-diagram-scroll").evaluate(node => node.scrollWidth > node.clientWidth),

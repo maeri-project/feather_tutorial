@@ -30,8 +30,14 @@ function check(value, message) { assert.ok(value, message); checks++; }
     check(fields.length === 0, `${label}: fields avoid phone focus zoom: ${fields.join(", ")}`);
   }
   const view = id => page.locator(`.mobile-diagram[data-diagram="${id}"]`);
+  const controls = id => page.locator(`.mobile-focus-zoom[data-diagram="${id}"], .mobile-diagram[data-diagram="${id}"]:has(.mobile-diagram-tools)`);
+  async function options() {
+    const panel=page.locator("#mobile-focus-options");
+    if(await panel.count() && !await panel.evaluate(e=>e.open)) await panel.locator(":scope > summary").tap();
+  }
   async function zoom(id, times=3) {
-    for (let i=0;i<times;i++) await view(id).getByRole("button",{name:"Zoom in",exact:true}).tap();
+    await options();
+    for (let i=0;i<times;i++) await controls(id).getByRole("button",{name:"Zoom in",exact:true}).tap();
     check(await view(id).locator(".mobile-diagram-scroll").evaluate(e=>e.scrollWidth>e.clientWidth*2), `${id}: local zoom preserves detail`);
     await fits(`${id}: zoom`);
   }
@@ -43,12 +49,13 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await page.touchscreen.tap(rect.x+x/width*rect.width,rect.y+y/height*rect.height);
   }
   async function maxZoom(id) {
-    const plus=view(id).getByRole("button",{name:"Zoom in",exact:true});
+    await options();
+    const plus=controls(id).getByRole("button",{name:"Zoom in",exact:true});
     while(await plus.isEnabled()) await plus.tap();
     await page.waitForTimeout(100);
     check(await page.locator(`#${id}`).evaluate(c=>c.width*c.height<=8_010_000),`${id}: maximum phone zoom bounds canvas memory`);
     await fits(`${id}: maximum zoom`);
-    await view(id).getByRole("button",{name:"Fit diagram width",exact:true}).tap();
+    await controls(id).getByRole("button",{name:"Fit diagram width",exact:true}).tap();
   }
   try {
     const files = (await fs.readdir(root)).filter(file=>file.endsWith(".html")).sort();
@@ -57,6 +64,13 @@ function check(value, message) { assert.ok(value, message); checks++; }
       await page.setViewportSize(size);
       for (const file of files) {
         await load(file); await fits(`${file} ${size.width}`); await targets(file);
+        if(await page.locator(".mobile-focus").count()) {
+          check(!await page.locator("#mobile-focus-options").evaluate(e=>e.open),`${file}: Options starts closed`);
+          check(await page.locator("main button").filter({hasText:/^Play$/}).evaluateAll(nodes=>nodes.filter(e=>e.checkVisibility()).length)===1,`${file}: one visible Play button`);
+          const play=await page.locator("#mobile-focus-play").boundingBox(), drawing=await page.locator(".mobile-focus > :last-child").boundingBox();
+          check(drawing.y>=play.y+play.height && drawing.y-play.y-play.height<20,`${file}: visualization immediately follows Play`);
+          check(await page.locator(".mobile-focus-page p").evaluateAll(nodes=>nodes.every(e=>!e.checkVisibility())),`${file}: explanatory paragraphs are hidden`);
+        }
         await page.locator("#mobile-menu-btn").tap();
         check(await page.locator(".sidebar").evaluate(e=>e.classList.contains("open")&&!e.inert),`${file}: touch menu opens`);
         check(await page.locator("main").evaluate(e=>e.inert),`${file}: background cannot steal menu touches`);
@@ -72,7 +86,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await page.locator('.sidebar a[href="RECONFIGURABLE_COMPUTE.html"]').tap();
     await page.waitForFunction(()=>window.ReconfigurableCompute);
     check(await page.locator(".sidebar").evaluate(e=>!e.classList.contains("open")),"touch navigation arrives with menu closed");
-    await page.locator("#rc-next-stage").tap();
+    await options();await page.locator("#rc-next-stage").tap();
     check((await page.evaluate(()=>ReconfigurableCompute.inspect())).stage==="head","touch advances the inference graph");
     await zoom("rc-canvas-reuse");
     await tapDrawing("rc-canvas-reuse",84+3*32+14,116+4*32+14,680,680);
@@ -90,20 +104,20 @@ function check(value, message) { assert.ok(value, message); checks++; }
       await page.waitForTimeout(120);
       check(await scroll.evaluate(e=>e.scrollLeft)>before+30,"finger swipe pans the enlarged diagram");await cdp.detach();
     }
-    await view("rc-canvas-reuse").getByRole("button",{name:"Play diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>ReconfigurableCompute.inspect().step>16);
-    await view("rc-canvas-reuse").getByRole("button",{name:"Pause diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     check(!(await page.evaluate(()=>ReconfigurableCompute.inspect())).playing,"near-diagram pause controls the original clock");
-    await view("rc-canvas-reuse").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
+    await controls("rc-canvas-reuse").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
     await view("rc-canvas-reuse").screenshot({path:path.join(output,"mapping-phone.png")});
     await maxZoom("rc-canvas-reuse");await maxZoom("rc-canvas-outputs");
 
     await load("FEATHER_VS_SYSTOLIC.html");await page.waitForFunction(()=>window.FeatherComparisonView);
     await zoom("comparison-feather");await tapDrawing("comparison-feather",112+2*25+10,126+3*25+10,640,660);
     check((await page.locator("#comparison-feather-pe").innerText()).includes("PE[3,2]"),"comparison exposes PE values on tap without hover");
-    await view("comparison-feather").getByRole("button",{name:"Play diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>FeatherComparisonView.inspect().cycle>0);
-    await view("comparison-feather").getByRole("button",{name:"Pause diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     await page.locator("#comparison-baseline").selectOption("ws");
     check(await page.locator("#comparison-baseline").inputValue()==="ws","phone can change systolic dataflow");
     await maxZoom("comparison-sa");await maxZoom("comparison-feather");
@@ -116,6 +130,7 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await maxZoom("comparison-bridge");
 
     await load("QWEN3_MINISA_VISUALIZER.html");await page.waitForFunction(()=>window.FeatherFullWorkloads);
+    await options();
     const cases=await page.locator("#operator option").evaluateAll(nodes=>nodes.map(n=>({value:n.value,text:n.textContent})));
     const prefill=cases.find(c=>/prefill/i.test(c.text));check(prefill,"prefill remains available on phone");
     await page.locator("#operator").selectOption(prefill.value);
@@ -126,22 +141,22 @@ function check(value, message) { assert.ok(value, message); checks++; }
     const qwenPE=await page.evaluate(()=>FeatherFullWorkloads.inspect().teaching);
     check(qwenPE.row===3&&qwenPE.col===2,"zoomed Qwen PE responds to a fingertip tap");
     await page.locator("#full-teach-overlap").tap();
-    await view("full-teach-canvas").getByRole("button",{name:"Play diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>FeatherFullWorkloads.inspect().teaching.playing);
-    await view("full-teach-canvas").getByRole("button",{name:"Pause diagram",exact:true}).tap();
+    await page.locator("#mobile-focus-play").tap();
     const beforeTile=await page.evaluate(()=>FeatherFullWorkloads.inspect().indices);
     await page.locator("#full-next-tile").tap();
     check(JSON.stringify(await page.evaluate(()=>FeatherFullWorkloads.inspect().indices))!==JSON.stringify(beforeTile),"phone traverses workload tiles");
     await page.locator("#full-act-trace-toggle").tap();await targets("Qwen expanded trace");await fits("Qwen expanded trace");
-    await view("full-teach-canvas").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
+    await controls("full-teach-canvas").getByRole("button",{name:"Fit diagram width",exact:true}).tap();
     await view("full-teach-canvas").screenshot({path:path.join(output,"qwen-phone.png")});
     await maxZoom("full-teach-canvas");
 
-    await load("FEATHER.html");await page.locator("#mgMobilePlay").tap();
+    await load("FEATHER.html");await page.locator("#mobile-focus-play").tap();
     await page.waitForFunction(()=>document.getElementById("mgPlayBtn").textContent==="Pause");
-    await page.locator("#mgMobilePlay").tap();
+    await page.locator("#mobile-focus-play").tap();
     check((await page.locator("#mgPlayBtn").innerText())==="Play","generic editor starts and pauses from the diagram");
-    await page.locator("#mgDiagramScale").selectOption("actual");
+    await options();await page.locator("#mgDiagramScale").selectOption("actual");
     check(await page.locator("#mg-tab-feather").evaluate(e=>e.scrollWidth>e.clientWidth),"generic diagram retains readable native zoom");
     check(await page.locator("#mgFeatherCanvas").evaluate(c=>c.width*c.height<=8_010_000),"generic phone canvas memory is bounded");
     await page.locator("#mgInspectBuffer").selectOption("I");
@@ -157,13 +172,18 @@ function check(value, message) { assert.ok(value, message); checks++; }
     await targets("instruction editor");await fits("instruction editor");
     await page.locator("#mgm_order").fill("2");await page.locator("#mgModalOk").tap();
     check(await page.locator("#mgModalOverlay").isHidden(),"instruction edit saves with touch");
-    await page.locator("#mgExpandBtn").tap();await fits("expanded generic editor");
-    await page.locator("#mgExpandBtn").tap();
-    check(await page.evaluate(()=>document.body.style.overflow!=="hidden"),"restore returns page scrolling");
+    await page.setViewportSize({width:1280,height:900});
+    await page.waitForFunction(()=>!document.body.classList.contains("mobile-demo"));
+    check(await page.locator(".mg-app > .mg-left").count()===1,"desktop restores the original configuration panel");
+    check(await page.locator("#mg-tab-feather > .mg-view-nav #mgDiagramScale").count()===1,"desktop restores the original diagram controls");
+    check(await page.locator("#mobile-focus-play").count()===0,"desktop removes the phone presentation");
+    await page.setViewportSize({width:390,height:844});
+    await page.waitForFunction(()=>document.body.classList.contains("mobile-demo"));
+    check(await page.locator("#mgDiagramScale").count()===1,"returning to phone does not duplicate controls");
     await page.emulateMedia({reducedMotion:"reduce"});
     await load("RECONFIGURABLE_COMPUTE.html");
     check(!(await page.evaluate(()=>ReconfigurableCompute.inspect())).playing,"mobile reduced motion does not autoplay");
-    await page.locator("#rc-step").tap();check((await page.evaluate(()=>ReconfigurableCompute.inspect())).step===16,"reduced-motion touch stepping works");
+    await options();await page.locator("#rc-step").tap();check((await page.evaluate(()=>ReconfigurableCompute.inspect())).step===16,"reduced-motion touch stepping works");
     assert.deepEqual(errors,[]);
     console.log(`PASS ${checks} ${engine} mobile checks; screenshots: ${output}`);
   } finally { await browser.close(); }

@@ -162,4 +162,37 @@
   .mobile-comparison .comparison-metric-grid { grid-template-columns:minmax(0,1fr); }
   .rc-arrays .rc-banks { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+@media (max-width:900px) {
+  /* One primary action, immediately followed by the live visualization. */
+  .mobile-demo .content-wrapper { padding-top:12px; }
+  .mobile-demo :is(.mobile-page-index,.on-this-page,.site-footer) { display:none; }
+  .mobile-focus-page p { display:none; }
+  .mobile-focus-page p:is([role=alert],.act-error,.mobile-pe-readout):not([hidden]) { display:block; }
+  .mobile-focus { display:flex;flex-direction:column;gap:10px;min-width:0; }
+  .mobile-focus .mobile-focus-play { align-self:stretch;min-height:48px;margin:0;padding:12px;border:1px solid var(--primary-color);border-radius:8px;background:var(--primary-color);color:white;font:600 16px/1.4 system-ui;cursor:pointer; }
+  .mobile-focus > :is(.mg-app,.mobile-comparison,#full-act-teaching) { margin:0;padding:0; }
+  .mobile-focus-options { margin:16px 0 0!important;border:1px solid var(--border-color);border-radius:8px; }
+  .mobile-focus-options > summary { padding:12px;font-weight:600;cursor:pointer; }
+  .mobile-focus-options-body { padding:12px;min-width:0; }
+  .mobile-focus-options-body > .mg-left { padding:0;margin-bottom:16px; }
+  .mobile-focus-options .mg-view-nav { position:static; }
+  .mobile-focus-zoom { min-width:0;margin:0 0 12px;padding:8px;border:1px solid var(--border-color);border-radius:8px; }
+  .mobile-focus-zoom legend { font-size:13px; }
+  .mobile-focus-zoom .mobile-diagram-tools { margin:0;padding:0; }
+  .mobile-demo .mobile-diagram-tools button[aria-pressed],
+  .mobile-demo :is(#mgPlayBtn,#rc-play,#comparison-play,#full-teach-play) { display:none; }
+  .mobile-focus .mobile-diagram-scroll { max-height:none; }
+  .mobile-focus .mobile-diagram-zoomed .mobile-diagram-scroll { max-height:65svh; }
+  .mobile-focus .mobile-diagram { overflow:hidden; }
+  .mobile-focus .mobile-comparison > :is(.rc-card,.comparison-array-card) { grid-row:span 3; }
+  .mobile-focus .mobile-comparison :is(.rc-card-head,.comparison-array-heading) { grid-row:1; }
+  .mobile-focus .mobile-comparison .mobile-diagram { grid-row:2; }
+  .mobile-focus .mobile-comparison .mobile-pe-readout { grid-row:3; }
+  .mobile-focus .mobile-comparison :is(.rc-specs,.rc-schedule,.comparison-metric-grid) { display:none; }
+  .mobile-focus .mg-app { border:0; }
+  .mobile-focus .mg-right { min-height:0; }
+  .mobile-focus :is(.mg-tab-bar,.mg-view-nav,.mg-mobile-playback,#mgMotionMount) { display:none; }
+  .mobile-focus #full-act-teaching { border:0; }
+  .mobile-focus #full-act-teaching > :not(.act-teach-viewport) { display:none; }
+}
 @media (prefers-reduced-motion:reduce) { .sidebar,body { transition:none; } }

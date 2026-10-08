@@ -71,12 +71,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||"playwright");
   await page.screenshot({path:"/tmp/reconfigurable-graph-dark.png",animations:"disabled"});
   for(const width of [1280,768,390]){
    await page.setViewportSize({width,height:1000});
+   if(width<=900){
+    await page.waitForFunction(()=>document.body.classList.contains("mobile-demo"));
+    if(!await page.locator("#mobile-focus-options").evaluate(e=>e.open))await page.locator("#mobile-focus-options > summary").click();
+   }
    for(const id of ["down","head","decode"]){await page.locator(`#rc-stage-${id}`).click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`No page overflow at ${width}px, ${id}`);}
   }
   await page.locator("#rc-stage-head").click();await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:"/tmp/reconfigurable-graph-mobile.png",fullPage:true,animations:"disabled"});
   await page.emulateMedia({reducedMotion:"reduce"});await page.reload();await page.waitForFunction(()=>window.ReconfigurableCompute);
   assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).playing,false);
+  await page.locator("#mobile-focus-options > summary").click();
   await page.locator("#rc-step").click();assert.equal((await page.evaluate(()=>ReconfigurableCompute.inspect())).step,16);
   assert.deepEqual(errors,[]);
   console.log("PASS: graph lineage, workload equations, candidate selection, PE assignments, all buffer layouts, keyboard, playback, mobile and reduced motion.");
