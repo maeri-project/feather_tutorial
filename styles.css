@@ -602,6 +602,60 @@ code {
   line-height: 1.5;
 }
 
+/* DAC organizer cards include contact links and the supplied full biographies. */
+.dac-tutorial .organizers-grid {
+  align-items: start;
+}
+
+.dac-tutorial .organizer-card {
+  height: auto;
+  min-width: 0;
+}
+
+.dac-tutorial .organizer-card a {
+  color: var(--primary-color);
+  overflow-wrap: anywhere;
+}
+
+.dac-tutorial .organizer-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dac-tutorial .organizer-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.dac-tutorial .organizer-contact {
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.dac-tutorial .organizer-biography {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.dac-tutorial .organizer-biography summary {
+  padding: 12px 0;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.dac-tutorial .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 
 /* On This Page Aside */
 .on-this-page {

@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>RAIC: Reconfigurable AI Computing</title>
-  <meta name="description" content="ASPLOS Tutorial on Reconfigurable AI Computing.">
+  <title>DAC'27 Tutorial: V-RAIC — Verified Reconfigurable AI Computing</title>
+  <meta name="description" content="DAC 2027 tutorial in San Jose on Verified Reconfigurable AI Computing with FEATHER, Allo, ACT, and G-QED.">
 
   <!-- Google Fonts: Inter & Outfit for a more modern look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
   <script src="script/mobile.js" defer></script>
 </head>
 
-<body>
+<body class="dac-tutorial">
 
   <div class="app-layout">
     <!-- Sidebar Navigation -->
@@ -37,7 +37,8 @@
         <div class="nav-section">
           <h3 class="nav-title">tutorial</h3>
           <ul class="nav-links">
-            <li><a href="index.html" class="active">ASPLOS'26@Pittsburgh</a></li>
+            <li><a href="index.html" class="active" aria-current="page">DAC'27@SanJose</a></li>
+            <li><a href="ASPLOS2026.html">ASPLOS'26@Pittsburgh</a></li>
           </ul>
         </div>
 
@@ -65,7 +66,7 @@
           </svg>
         </button>
 
-        <div class="header-title">ASPLOS'26 Tutorial: RAIC</div>
+        <div class="header-title">DAC'27 Tutorial: V-RAIC</div>
 
         <div class="top-actions">
           <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme">
@@ -88,371 +89,236 @@
       <div class="content-wrapper">
         <article class="doc-content no-heading-space">
 
-          <!-- Hero / Abstract Section -->
+          <!-- DAC 2027 content adapted from V-RAIC_Tutorial@DAC2027.md. -->
           <section id="abstract" class="hero-section">
-            <h1>Reconfigurable AI Computing</h1>
-            <p class="subtitle"><span class="gradient-text">Mar 23 (Afternoon) @ ASPLOS'26</span></p>
-
+            <h1>V-RAIC: Verified Reconfigurable AI Computing</h1>
+            <p class="subtitle"><span class="gradient-text">DAC'27 @ San Jose</span></p>
             <div class="text-block">
-              <p><strong>Abstract:</strong> The rapid proliferation of AI workloads across devices with vastly different
-                computational capabilities has created an ecosystem of irregular and dynamic runtime demands. No single
-                dataflow or layout can optimally serve all workloads, motivating years of research into reconfigurable
-                accelerators that can flexibly adapt their dataflow and layout to the workload’s needs. However, despite
-                significant academic progress, no publicly available reconfigurable accelerator platform currently
-                exists for the community to learn from or build upon.</p>
-
-              <p>This tutorial fills that gap by offering the first hands-on experience in learning, simulating, and
-                deploying a reconfigurable accelerator, from hardware to compiler co-design. Participants will gain
-                practical knowledge across three pillars:</p>
-
+              <p><strong>Abstract:</strong> The rapid proliferation of AI workloads across devices with vastly different computational capabilities has created an ecosystem of irregular and dynamic runtime demands. No single dataflow or layout can optimally serve all workloads, motivating years of research into reconfigurable accelerators that can flexibly adapt their dataflow and layout to the workload’s needs. However, despite significant academic progress, no publicly available reconfigurable accelerator platform currently exists for the community to learn from or build upon.</p>
+              <p>This tutorial fills that gap by offering the first hands-on experience in learning, simulating, verifying, and deploying a reconfigurable accelerator, from hardware to compiler co-design and formal verification. Participants will gain practical knowledge across four pillars:</p>
               <ul>
-                <li><strong>Pillar 1 – Hardware (FEATHER):</strong> We introduce FEATHER, a state-of-the-art
-                  reconfigurable accelerator architecture that enables low-cost switching between dataflows and layouts,
-                  efficiently supporting diverse workload patterns. The tutorial provides RTL simulation guidance and
-                  hands-on exercises to explore how FEATHER achieves this flexibility.</li>
-                <li><strong>Pillar 2 – Accelerator Design Language (ALLO):</strong> To enable scalable accelerator
-                  generation, we present ALLO, an Accelerator Design Language that allows participants to generate
-                  FEATHER variants of different scales with only minor frontend program modifications. This facilitates
-                  rapid scaling and evolution of the accelerator for various device classes and feature extensions.</li>
-                <li><strong>Pillar 3 – Compiler Infrastructure (ACT):</strong> Distinct workloads demand specialized
-                  dataflow and layout mappings for optimal performance. We introduce ACT, an ecosystem that
-                  automatically generates software tools like compilers for the ALLO-generated FEATHER accelerator. The
-                  generated compiler explores the large space of dataflow and layout mappings to identify the most
-                  latency-efficient configurations for workloads.</li>
+                <li><strong>Pillar 1 – Hardware (FEATHER):</strong> We introduce <strong>FEATHER</strong>, a state-of-the-art reconfigurable accelerator architecture that enables <strong>low-cost switching between dataflows and layouts</strong>, efficiently supporting diverse workload patterns. The tutorial provides RTL simulation guidance and hands-on exercises to explore how FEATHER achieves this flexibility.</li>
+                <li><strong>Pillar 2 – Accelerator Design Language (ALLO):</strong> To enable scalable accelerator generation, we present <strong>ALLO</strong>, an Accelerator Design Language that allows participants to generate FEATHER variants of different scales with only minor frontend program modifications. This facilitates <strong>rapid scaling and evolution</strong> of the accelerator for various device classes and feature extensions.</li>
+                <li><strong>Pillar 3 – Compiler Infrastructure (ACT):</strong> Distinct workloads demand specialized dataflow and layout mappings for optimal performance. We introduce <strong>ACT</strong>, an ecosystem that <strong>automatically generates software tools like compilers</strong> for the ALLO-generated FEATHER accelerator. The generated compiler explores the large space of dataflow and layout mappings to identify the most latency-efficient configurations for workloads.</li>
+                <li><strong>Pillar 4 – Generalized Quick Error Detection (G-QED):</strong> Every dataflow, layout, and ALLO-generated FEATHER variant must be functionally correct. We present G-QED (Generalized Quick Error Detection), a formal pre-silicon verification technique that needs only the accelerator's ISA from ACT, with no hand-written properties or golden models. The tutorial demonstrates how G-QED found a FEATHER corner-case bug and how its setup is reused across ALLO-generated variants.</li>
               </ul>
-
-              <p>By the end of the tutorial, participants will understand how to compile diverse workloads, generate
-                scalable accelerators, simulate performance via deployable RTL models, and tune the system for
-                real-world deployment scenarios, empowering the ASPLOS community to advance the next generation of
-                reconfigurable AI accelerators.</p>
+              <p>By the end of the tutorial, participants will understand how to <strong>compile diverse workloads, generate scalable accelerators, simulate performance via deployable RTL models, formally verify their functional correctness, and</strong> <strong>tune the system</strong> for real-world deployment scenarios, empowering the DAC community to advance the next generation of reconfigurable AI accelerators.</p>
+              <p>This tutorial connects multiple disjointed tutorials that were individually offered previously into a coherent application. Among them, ALLO has been held seven times on ASPLOS’26, C4ML workshop @ CGO'25, FPGA'25, PLDI'24, FCCM'24, UW SAMPL, UIUC AMD-Xilinx Center of Excellence (HACC) with tens of attendees each. ACT tutorials have been organized at SPLASH’25, MICRO’25, ASPLOS’26, and PLDI’26. Georgia Tech has organized AI accelerator tutorials at ASPLOS’18, HPCA’19, ISCA’21, ASPLOS’21, ASPLOS’22, ASPLOS’23, ASPLOS’26.</p>
             </div>
           </section>
 
-          <!-- Overview Figure -->
-          <section id="overview">
-            <h2>Overview</h2>
-            <div class="figure-placeholder">
-              <img src="fig/reconfigurable_AI_computing_overview.png" alt="Reconfigurable AI Computing Overview" class="repo-figure">
-              <p class="caption">Figure 1: RAIC overview — from workload compilation through reconfigurable accelerator simulation and FPGA emulation.</p>
-            </div>
-          </section>
-
-          <!-- Resources Section -->
           <section id="resources">
-            <h2>RAIC Resources</h2>
+            <h2>V-RAIC Resources</h2>
             <div class="resources-grid">
-              <a href="https://act-compiler.github.io/" target="_blank" class="resource-card">
+              <a href="https://act-compiler.github.io/" target="_blank" rel="noopener noreferrer" class="resource-card">
                 <h3>ACT Ecosystem</h3>
-                <p>Ecosystem that automatically generates software tools like compilers for the ALLO-generated FEATHER
-                  accelerator.</p>
+                <p>Ecosystem that automatically generates software tools like compilers for the ALLO-generated FEATHER accelerator.</p>
               </a>
-              <a href="https://github.com/maeri-project/FEATHER" target="_blank" class="resource-card">
+              <a href="https://github.com/maeri-project/FEATHER" target="_blank" rel="noopener noreferrer" class="resource-card">
                 <h3>FEATHER</h3>
-                <p>Reconfigurable accelerator architecture enabling low-cost switching between dataflows and layouts.
-                </p>
+                <p>Reconfigurable accelerator architecture enabling low-cost switching between dataflows and layouts.</p>
               </a>
-              <a href="https://github.com/cornell-zhang/allo" target="_blank" class="resource-card">
+              <a href="https://github.com/cornell-zhang/allo" target="_blank" rel="noopener noreferrer" class="resource-card">
                 <h3>Allo</h3>
                 <p>Hardware compiler and accelerator design language for scalable accelerator generation.</p>
               </a>
+              <a href="https://doi.org/10.1109/DAC56929.2023.10247903" target="_blank" rel="noopener noreferrer" class="resource-card">
+                <h3>G-QED Paper (DAC&#x27;23)</h3>
+                <p>Generalized Quick Error Detection for formal pre-silicon verification of accelerators.</p>
+              </a>
+              <a href="https://www.nowpublishers.com/article/Details/ICS-003" target="_blank" rel="noopener noreferrer" class="resource-card">
+                <h3>QED and Symbolic QED Monograph</h3>
+                <p>Foundations and Trends, 2024.</p>
+              </a>
+              <a href="https://dvcon-proceedings.org/wp-content/uploads/G-QED-for-Pre-Silicon-Verification-1.pdf" target="_blank" rel="noopener noreferrer" class="resource-card">
+                <h3>G-QED Tutorial Slides</h3>
+                <p>G-QED for Pre-Silicon Verification — DVCon Europe 2024.</p>
+              </a>
             </div>
           </section>
 
-          <!-- Schedule Section -->
           <section id="schedule">
             <h2>List of Topics</h2>
             <div class="timeline">
               <div class="timeline-item">
-                <div class="time">1:30 PM ~ 1:40 PM</div>
+                <div class="time">20 min</div>
                 <div class="content">
-                  <h3>Overview of the tutorial</h3>
-                  <p class="video-link"><a href="https://youtu.be/0iiaiIX1Q-Y" target="_blank">▶ Watch: RAIC @ ASPLOS'26 — Overview — Jianming Tong (Part 1)</a></p>
-                </div>
-              </div>
-              <div class="timeline-item">
-                <div class="time">1:40 PM ~ 2:20 PM</div>
-                <div class="content">
-                  <h3>Introduce to reconfigurable AI Computing</h3>
-                  <p class="speaker">Speaker: <a href="https://tusharkrishna.ece.gatech.edu/" target="_blank">Tushar Krishna</a></p>
+                  <h3>Introduction to reconfigurable AI Computing</h3>
                   <ul>
                     <li>Flexible Dataflow Demand</li>
                     <li>Flexible Layout Demand</li>
                     <li>Various Deployment Scenarios</li>
                   </ul>
-                  <p class="video-link"><a href="https://youtu.be/JrFIDVtyAMo" target="_blank">▶ Watch: RAIC @ ASPLOS'26 — Keynote — Tushar Krishna (Part 2)</a></p>
                 </div>
               </div>
               <div class="timeline-item">
-                <div class="time">2:30 PM ~ 3:30 PM</div>
+                <div class="time">40 min</div>
                 <div class="content">
-                  <h3>FEATHER – reconfigurable AI Accelerator</h3>
-                  <p class="speaker">Speaker: <a href="https://jianmingtong.github.io/" target="_blank">Jianming Tong</a></p>
+                  <h3>FEATHER – Reconfigurable AI Accelerator</h3>
                   <ul>
-                    <li>FEATHER microarchitecture (15 min)</li>
-                    <li>FEATHER+ microarchitecture (5 min)</li>
-                    <li>FEATHER's ISA (MINISA) (10 min)</li>
-                    <li>FEATHER's mapper (Mapping, Layout) Search (5 min)</li>
-                    <li>LayoutLoop: FEATHER's Analytical Modeling (5 min)</li>
-                    <li>RTL simulation flow for FEATHER(+) (5 min)</li>
-                    <li><strong>Hands-on:</strong> MINISA ISA visualization (5 min)</li>
+                    <li>Introduction to the FEATHER microarchitecture (15 min)</li>
+                    <li>Introduction to the FEATHER ISA (5 min)</li>
+                    <li><strong>Hands-on:</strong> RTL simulation for various layout choices</li>
+                    <li><strong>Hands-on:</strong> RTL simulation for various dataflow choices</li>
+                    <li><strong>Hands-on:</strong> Analytic Performance Estimation and standalone layout search</li>
                   </ul>
-                  <p class="video-link"><a href="https://youtu.be/EIBu534Rwxk" target="_blank">▶ Watch: RAIC @ ASPLOS'26 — FEATHER — Jianming Tong (Part 3)</a></p>
                 </div>
               </div>
               <div class="timeline-break">
-                <span>Break -- Setup Jupyter Notebook (3:30 PM ~ 4:00 PM) </span>
+                <span>Break (10 min)</span>
               </div>
               <div class="timeline-item">
-                <div class="time">4:00 PM ~ 4:50 PM</div>
-                <div class="content">
-                  <h3>ACT Ecosystem – Automatically generating software support for accelerators</h3>
-                  <p class="speaker">Speaker: <a href="https://devansh-dvj.github.io/" target="_blank">Devansh Jain</a></p>
-                  <ul>
-                    <li>Talk: Introduction to ACT Ecosystem (20 min)</li>
-                    <li><strong>Hands-on:</strong> ISA Specification of FEATHER in TAIDL, ACT's ISA Specification Language (15 mins)
-                    </li>
-                    <li><strong>Hands-on:</strong> Compiling GPT-OSS 20B using generated ACT-FEATHER compiler (15 mins)
-                    </li>
-                  </ul>
-                  <p class="video-link"><a href="https://youtu.be/RZxOtqsOmpA" target="_blank">▶ Watch: RAIC @ ASPLOS'26 — ACT Compiler Framework (Part 4)</a></p>
-                </div>
-              </div>
-              <div class="timeline-item">
-                <div class="time">4:50 PM ~ 5:40 PM</div>
+                <div class="time">40 min</div>
                 <div class="content">
                   <h3>Allo – Python-embedded Accelerator Design Language (ADL)</h3>
-                  <p class="speaker">Speaker: <a href="https://www.zzzdavid.tech/" target="_blank">Niansong Zhang</a></p>
                   <ul>
-                    <li>Introduction Talk (30 min)</li>
-                    <li><strong>Hands-on:</strong> Deploy MINISA Traces on Allo-FEATHER (10 min)</li> <!-- continued from Devansh's parts. Demonstrate via FPGA but audience running on C-simulation. -->
-                    <li><strong>Hands-on:</strong> End-to-end Demonstration of Matrix Multiplications -> ACT -> Allo-FEATHER (10 min)</li>
+                    <li>Introduction Talk (20 min)</li>
+                    <li><strong>Hands-on:</strong> Distribute credentials and set up the JupyterHub environment</li>
+                    <li><strong>Hands-on:</strong> Automated FEATHER generation via ALLO ADL</li>
+                    <li><strong>Hands-on:</strong> Configuration tuning of Allo-FEATHER</li>
                   </ul>
-                  <p class="video-link"><a href="https://youtu.be/vkbdI2tf0Wc" target="_blank">▶ Watch: RAIC @ ASPLOS'26 — Allo Programming Language — Niansong Zhang (Part 5)</a></p>
                 </div>
               </div>
               <div class="timeline-item">
-                <div class="time">5:40 PM ~ 6:00 PM</div>
+                <div class="time">40 min</div>
                 <div class="content">
-                  <h3>Conclusion and Ongoing Development</h3>
+                  <h3>ACT Ecosystem – Automatically generating software support for accelerators</h3>
                   <ul>
-                    <li>Conclusion and Summary (5 min)</li>
-                    <li>Q&A (15 min)</li>
-                    <!-- <li>FEATHER – call for actions</li>
-                    <li>Allo – Niansong or Hongzheng</li>
-                    <li>ACT – Devansh (3~5 min)</li> -->
+                    <li><strong>Talk:</strong> Introduction to ACT Ecosystem (20 min)</li>
+                    <li><strong>Hands-on:</strong> Quick tutorial on TAIDL (ACT’s ISA specification language) (10 min)</li>
+                    <li><strong>Hands-on:</strong> Writing FEATHER ISA in TAIDL and generating its compiler (10 min)</li>
+                    <li><strong>Hands-on:</strong> Compilation using the generated FEATHER compiler (10 min)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time">30 min</div>
+                <div class="content">
+                  <h3>G-QED – Generalized Quick Error Detection</h3>
+                  <ul>
+                    <li><strong>Talk:</strong> Why reconfigurable accelerators are hard to verify; G-QED functional consistency from the command view; soundness and completeness up to the BMC bound; industrial results (20 min)</li>
+                    <li><strong>Demo:</strong> Running BMC to rediscover a FEATHER corner-case bug, debugging the counterexample trace, and re-verifying the fix with no extra setup (5 min)</li>
+                    <li><strong>Demo:</strong> Reusing a G-QED setup across ALLO-generated accelerators (systolic array to ALLO-FEATHER), with uninterpreted-function models for encrypted floating-point IP (5 min)</li>
                   </ul>
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Organizers Section -->
           <section id="organizers">
             <h2>Organizers</h2>
             <div class="organizers-grid">
-
-              <!-- Jianming Tong -->
-              <a href="https://jianmingtong.github.io/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/jianming.jpg" alt="Jianming Tong"></div>
-                <h3>Jianming Tong</h3>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/tushar.png" alt="Tushar Krishna" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://tusharkrishna.ece.gatech.edu/" target="_blank" rel="noopener noreferrer">Tushar Krishna</a></h3>
                 <p class="affiliation">Georgia Institute of Technology</p>
-                <p class="bio">5th-year PhD candidate focusing on enabling AI systems for AI and applications beyond AI. Designer of FEATHER.</p>
-              </a>
-
-              <!-- Niansong Zhang -->
-              <a href="https://www.zzzdavid.tech/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/niansong.png" alt="Niansong Zhang"></div>
-                <h3>Niansong Zhang</h3>
+                <p class="organizer-contact"><a href="mailto:tushar@gatech.edu">tushar@gatech.edu</a></p>
+                <p class="bio">Associate Professor in ECE. Research spans computer architecture, interconnection networks, and AI/ML accelerator systems.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Tushar Krishna</span></summary>
+                  <p>Tushar Krishna is an Associate Professor in the School of ECE at Georgia Tech. He has a Ph.D. in Electrical Engineering and Computer Science from MIT. Before joining Georgia Tech in 2015, Dr. Krishna spent a year as a post-doctoral researcher at Intel, Massachusetts. Dr. Krishna’s research spans computer architecture, interconnection networks, networks-on-chip (NoC), and AI/ML accelerator systems – with a focus on optimizing data movement in modern computing platforms. His research is funded via multiple awards from NSF, DARPA, IARPA, SRC (including JUMP2.0), Department of Energy, Intel, Google, Meta/Facebook, Qualcomm and TSMC. His papers have been cited over 21,000 times. Three of his papers have been selected for IEEE Micro’s Top Picks from Computer Architecture, one more received an honorable mention, and four have won best paper awards. He is a co-author of “Data Orchestration in Deep Learning Accelerators” Synthesis Lectures on Computer Architecture, Morgan Claypool Publishers, August 2020. He has organized over ten tutorials on AI accelerator design and distributed AI system design at ASPLOS, HotI, MLSys, ISCA and MICRO.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/zhiru.png" alt="Zhiru Zhang" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://www.csl.cornell.edu/~zhiruz/" target="_blank" rel="noopener noreferrer">Zhiru Zhang</a></h3>
                 <p class="affiliation">Cornell University</p>
-                <p class="bio">5th-year PhD student. Research explores accelerator programming models, compute-in-SRAM
-                  techniques, and design automation.</p>
-              </a>
-
-              <!-- Devansh Jain -->
-              <a href="https://devansh-dvj.github.io/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/devansh.png" alt="Devansh Jain"></div>
-                <h3>Devansh Jain</h3>
-                <p class="affiliation">UIUC</p>
-                <p class="bio">Research focuses on automated generation of fast functional simulators and ML compiler infrastructure for AI accelerators</p>
-              </a>
-
-              <!-- Tushar Krishna -->
-              <a href="https://tusharkrishna.ece.gatech.edu/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/tushar.png" alt="Tushar Krishna"></div>
-                <h3>Tushar Krishna</h3>
+                <p class="organizer-contact"><a href="mailto:zhiruz@cornell.edu">zhiruz@cornell.edu</a></p>
+                <p class="bio">Professor in ECE and IEEE Fellow. Research investigates algorithms, design methodologies, and automation tools for heterogeneous computing.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Zhiru Zhang</span></summary>
+                  <p>Zhiru Zhang is a Professor in the School of ECE at Cornell University.  His current research investigates new algorithms, design methodologies, and automation tools for heterogeneous computing. Dr. Zhang is an IEEE Fellow and has received numerous recognitions, such as the Intel Outstanding Researcher Award, DAC Under-40 Innovators Award, DARPA Young Faculty Award, IEEE CEDA Ernest S. Kuh Early Career Award, and NSF CAREER Award, along with 10+ best paper awards from top computer hardware conferences and journals. Prior to joining Cornell, he co-founded AutoESL, a high-level synthesis start-up later acquired by Xilinx (now part of AMD). AutoESL's HLS tool has evolved into Vivado HLS (now Vitis HLS), widely used for designing FPGA-based hardware accelerators.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/subhasish.png" alt="Subhasish Mitra" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://profiles.stanford.edu/subhasish-mitra" target="_blank" rel="noopener noreferrer">Subhasish Mitra</a></h3>
+                <p class="affiliation">Stanford University</p>
+                <p class="organizer-contact"><a href="mailto:subh@stanford.edu">subh@stanford.edu</a></p>
+                <p class="bio">William E. Ayer Endowed Chair Professor in Electrical Engineering and Computer Science. Directs the Stanford Robust Systems Group; ACM and IEEE Fellow.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Subhasish Mitra</span></summary>
+                  <p>Subhasish Mitra holds the William E. Ayer Endowed Chair Professorship in the Departments of Electrical Engineering and Computer Science at Stanford University. He directs the Stanford Robust Systems Group, serves on the leadership team of the Microelectronics Commons AI Hardware Hub, and leads the Computation Focus Area of the Stanford SystemX Alliance. His research ranges across Robust Computing, NanoSystems, Electronic Design Automation (EDA), and Neurosciences. In Robust Computing, he has created key approaches for circuit failure prediction, CASP on-line diagnostics, QED system validation, soft error resilience, and X-Compact test compression, which has proven essential to cost-effective manufacturing and high-quality testing of almost all contemporary digital systems. His honors include the Harry H. Goode Memorial Award (IEEE Computer Society), the Newton Technical Impact Award in EDA (ACM SIGDA and IEEE CEDA), the University Researcher Award (SIA and SRC), the EDAA Achievement Award, and the Intel Achievement Award (Intel's highest honor). He and his students have published over 15 award-winning papers at venues including DAC, IEDM, ISSCC, ITC, the VLSI Symposia, and FMCAD. He is a Fellow of the ACM and the IEEE, and a Foreign Member of Academia Europaea.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/charith.png" alt="Charith Mendis" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://charithmendis.com/" target="_blank" rel="noopener noreferrer">Charith Mendis</a></h3>
+                <p class="affiliation">University of Illinois Urbana-Champaign</p>
+                <p class="organizer-contact"><a href="mailto:charithm@illinois.edu">charithm@illinois.edu</a></p>
+                <p class="bio">Assistant Professor. Research interests are at the intersection of compilers, program optimization, and machine learning.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Charith Mendis</span></summary>
+                  <p>Charith Mendis is an Assistant Professor in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign (UIUC). His broad research interests are at the intersection of compilers, program optimization, and machine learning. He received his Ph.D. and Master’s from the Massachusetts Institute of Technology and his B.Sc. from the University of Moratuwa. He is the recipient of a DARPA Young Faculty Award, an NSF CAREER Award, the William A. Martin outstanding master’s thesis award at MIT, and the university gold medal for his B.Sc. He has won numerous paper awards, including a Distinguished Paper Award at POPL, a Best Student Paper Award at the IEEE BigData conference, an honorable mention for the Best Artifact Award at SIGMOD, a Best Paper Award at ML for Systems workshop at ISCA and an IEEE Top Picks Honorable Mention.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/jianming.jpg" alt="Jianming Tong" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://jianmingtong.github.io/" target="_blank" rel="noopener noreferrer">Jianming Tong</a></h3>
                 <p class="affiliation">Georgia Institute of Technology</p>
-                <p class="bio">Associate Professor in ECE. Research spans computer architecture, interconnection
-                  networks, and AI/ML accelerator systems.</p>
-              </a>
-
-              <!-- Zhiru Zhang -->
-              <a href="https://www.csl.cornell.edu/~zhiruz/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/zhiru.png" alt="Zhiru Zhang"></div>
-                <h3>Zhiru Zhang</h3>
+                <p class="organizer-contact"><a href="mailto:jianming.tong@gatech.edu">jianming.tong@gatech.edu</a></p>
+                <p class="bio">5th-year Ph.D. candidate. Research maps cryptographic workloads onto AI ASICs and explores runtime reconfigurable accelerators.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Jianming Tong</span></summary>
+                  <p>Jianming Tong is a 5th-year PhD candidate at Georgia Tech. He developed mathematical transformations that map cryptographic workloads—homomorphic encryption (HE) for privacy-preserving AI [HPCA’26] and zero-knowledge proofs (ZKP) for verifiable AI [DAC’26] —onto AI ASICs (Google TPUs), achieving higher throughput than SoTA GPUs/FPGAs, without hardware changes. More broadly, his insight is that dedicated hardware (ASICs such as Google’s TPU) shouldn’t be pigeonholed by their original intent (“AI-only”), but by their computational capabilities (high-throughput matrix/vector engines and coarse-grained memory reordering). A mathematical transformation can systematically retarget non-AI domains onto these capabilities—expanding what “AI ASICs” can accelerate. Further, the hardware add-on of on-chip network [ISCA’24] would make it runtime reconfigurable and hence, improving efficiency for today’s workloads while providing flexibility for emerging model architectures beyond Transformers.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/hongzheng.jpg" alt="Hongzheng Chen" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://chhzh123.github.io/" target="_blank" rel="noopener noreferrer">Hongzheng Chen</a></h3>
                 <p class="affiliation">Cornell University</p>
-                <p class="bio">Professor in ECE. IEEE Fellow. Research investigates new algorithms, design
-                  methodologies, and automation tools for heterogeneous computing.</p>
-              </a>
-
-              <!-- Charith Mendis -->
-              <a href="https://charithmendis.com/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/charith.png" alt="Charith Mendis"></div>
-                <h3>Charith Mendis</h3>
-                <p class="affiliation">UIUC</p>
-                <p class="bio">Assistant Professor. Research interests are at the intersection of compilers, program
-                  optimization, and machine learning.</p>
-              </a>
-
-              <!-- Hongzheng Chen -->
-              <a href="https://chhzh123.github.io/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/hongzheng.jpg" alt="Hongzheng Chen"></div>
-                <h3>Hongzheng Chen</h3>
+                <p class="organizer-contact"><a href="mailto:hongzheng@cornell.edu">hongzheng@cornell.edu</a></p>
+                <p class="bio">Staff Research Scientist at ByteDance Seed. Pursued his Ph.D. at Cornell; research spans LLM infrastructure, heterogeneous accelerators, and agentic frameworks.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Hongzheng Chen</span></summary>
+                  <p>Hongzheng Chen is a Staff Research Scientist at ByteDance Seed, where he works on LLM infrastructure, heterogeneous accelerators, and agentic frameworks. He pursued his Ph.D. at Cornell University, supervised by Prof. Zhiru Zhang. His research broadly focuses on compilers, programming systems, and accelerator architectures for generative AI workloads. His work has received two Best Paper Awards and two Best Paper nominations at leading hardware conferences and journals. The machine learning systems developed through his research have been widely adopted across the industry, including at Google, AMD, Intel, NVIDIA, AWS, and ByteDance. He was named an ML and Systems Rising Star in 2024.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/niansong.png" alt="Niansong Zhang" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://zzzdavid.tech/" target="_blank" rel="noopener noreferrer">Niansong Zhang</a></h3>
                 <p class="affiliation">Cornell University</p>
-                <p class="bio">5th-year Ph.D. candidate. Research interests lie in compilers, programming systems, and
-                  accelerator architecture.</p>
-              </a>
-
-              <!-- Akash Pardeshi -->
-              <a href="https://www.linkedin.com/in/akashpardeshi/" target="_blank" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/akash.png" alt="Akash Pardeshi"></div>
-                <h3>Akash Pardeshi</h3>
-                <p class="affiliation">UIUC</p>
-                <p class="bio">M.S. student. Research focuses on techniques such as equality saturation and e-graph
-                  applications to ML compilers.</p>
-              </a>
-
-              <!-- Yujie Li -->
-              <a href="https://www.linkedin.com/in/yujie-li-620009237/?originalSubdomain=uk" target="_blank"
-                class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/yujie.png" alt="Yujie Li"></div>
-                <h3>Yujie Li</h3>
-                <p class="affiliation">Georgia Institute of Technology</p>
-                <p class="bio">First-year MS student working on microarchitecture design and RTL simulation for FEATHER.
-                </p>
-              </a>
-
-              <!-- Macro Frigo -->
-              <a href="#" class="organizer-card">
-                <div class="photo-placeholder"><img src="fig/macro_frigo.png" alt="Macro Frigo"></div>
-                <h3>Macro Frigo</h3>
-                <p class="affiliation">UIUC</p>
-                <p class="bio">B.S. student. Research focuses on developing fast functional simulators and e-graph optimizations.</p>
-              </a>
+                <p class="organizer-contact"><a href="mailto:niansong@cornell.edu">niansong@cornell.edu</a></p>
+                <p class="bio">5th-year Ph.D. student. Research explores accelerator programming models, compute-in-SRAM techniques, and design automation.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Niansong Zhang</span></summary>
+                  <p>Niansong Zhang is a 5th-year PhD student advised by Prof. Zhiru Zhang. His research explores accelerator programming models, compute-in-SRAM techniques, and design automation. His work has been recognized with Best Paper Awards at ACM TRETS 2023, 2026, FPGA 2024, and ISPD 2025, as well as nominations at FPL 2020 and FPGA 2025.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/devansh.png" alt="Devansh Jain" loading="lazy" width="140" height="140"></div>
+                <h3><a href="https://devansh-dvj.github.io/" target="_blank" rel="noopener noreferrer">Devansh Jain</a></h3>
+                <p class="affiliation">University of Illinois Urbana-Champaign</p>
+                <p class="organizer-contact"><a href="mailto:devansh9@illinois.edu">devansh9@illinois.edu</a></p>
+                <p class="bio">Ph.D. student developing a unified software infrastructure for architectures that accelerate tensor computations.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Devansh Jain</span></summary>
+                  <p>Devansh Jain is a Ph.D. student in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign (UIUC), advised by Prof. Charith Mendis. His research interests lie in the field of programming languages, compilers &amp; computer architecture, primarily in domain-specific languages and architectures. His primary research objective is to develop a unified software infrastructure for architectures designed for accelerating tensor computations. He has authored/co-authored multiple papers at top-tier PL &amp; systems venues, including POPL, OOPSLA, MICRO, with a Distinguished Paper Award at POPL’25.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/tom.png" alt="Tom Zelazny" loading="lazy" width="140" height="140"></div>
+                <h3>Tom Zelazny</h3>
+                <p class="affiliation">Stanford University</p>
+                <p class="organizer-contact"><a href="mailto:tzelazny@stanford.edu">tzelazny@stanford.edu</a></p>
+                <p class="bio">Ph.D. student in Computer Science. Research explores Design for Formal Verification and systematic hardware design methodologies for scalable formal verification.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Tom Zelazny</span></summary>
+                  <p>Tom Zelazny is a Ph.D. student in Computer Science at Stanford University, advised by Prof. Subhasish Mitra. His research explores Design for Formal Verification (DFV), a new approach to addressing the growing challenges of hardware verification. Working at the intersection of hardware architecture, design, and formal methods, he develops systematic and principled design methodologies that make hardware systems more amenable to formal verification, with the goal of overcoming verification bottlenecks by enabling scalable formal verification.</p>
+                </details>
+              </div>
+              <div class="organizer-card">
+                <div class="photo-placeholder"><img src="fig/saranyu.png" alt="Saranyu Chattopadhyay" loading="lazy" width="140" height="140"></div>
+                <h3>Saranyu Chattopadhyay</h3>
+                <p class="affiliation">Stanford University</p>
+                <p class="organizer-contact"><a href="mailto:saranyuc@stanford.edu">saranyuc@stanford.edu</a></p>
+                <p class="bio">Ph.D. candidate in Electrical Engineering and lead author of G-QED (DAC’23). Research focuses on formal pre-silicon verification based on self-consistency.</p>
+                <details class="organizer-biography">
+                  <summary>Full biography<span class="visually-hidden"> of Saranyu Chattopadhyay</span></summary>
+                  <p>Saranyu Chattopadhyay is a Ph.D. candidate in Electrical Engineering at Stanford University, advised by Prof. Subhasish Mitra. His research focuses on formal pre-silicon verification of hardware accelerators and processors based on self-consistency. He is the lead author of G-QED (DAC'23). In an industrial case study on production-ready AI engines, G-QED found critical bugs that an extensive industrial verification flow had missed, while improving verification productivity 18-fold. In the SRC JUMP 2.0 ACE Center, he applies G-QED to the center's AI accelerators, including FEATHER. He co-developed G-QED tutorials for DVCon Europe 2024 and the ACE Center.</p>
+                </details>
+              </div>
             </div>
-          </section>
-
-          <!-- Citation Section -->
-          <section id="citation" class="citation-section">
-            <h2>Citation</h2>
-            <div class="text-block">
-              <p>If you use <strong>FEATHER/MINISA</strong> in your research, please cite our papers:</p>
-            </div>
-            <pre><code>@inproceedings{tong2026MINISA,
-  author = {Tong, Jianming and Li, Yujie and Jain, Devansh and Mendis, Charith and Krishna, Tushar},
-  title = {MINISA: Minimal Instruction Set Architecture for Next-gen Reconfigurable Inference Accelerator},
-  year = {2026},
-  booktitle = {Proceedings of the 34th Annual International Symposium on Performance Analysis of Systems and Software},
-  keywords = {minimal instruction set architecture, reconfigurable accelerator, virtual neurons},
-  location = {Seoul, Korea},
-  series = {ISPASS '26}
-}
-
-@inproceedings{tong2024FEATHER,
-  author = {Tong, Jianming and Itagi, Anirudh and Chatarasi, Parsanth and Krishna, Tushar},
-  title = {FEATHER: A Reconfigurable Accelerator with Data Reordering Support for Low-Cost On-Chip Dataflow Switching},
-  year = {2024},
-  publisher = {Association for Computing Machinery},
-  address = {Argentina},
-  booktitle = {Proceedings of the 51th Annual International Symposium on Computer Architecture},
-  keywords = {flexible accelerator, dataflow-layout coswitching},
-  location = {Argentina},
-  series = {ISCA '24}
-}</code></pre>
-
-            <div class="text-block">
-              <p>Please refer to our <a href="https://dl.acm.org/doi/10.1145/3656401" target="_blank">PLDI'24 paper</a> for more details. If you use <strong>Allo</strong> in your research, please cite our papers:</p>
-            </div>
-            <pre><code>@article{chen2024allo,
-  author       = {Chen, Hongzheng and Zhang, Niansong and Xiang, Shaojie and Zeng, Zhichen and Dai, Mengjia and Zhang, Zhiru},
-  title        = {Allo: A Programming Model for Composable Accelerator Design},
-  journal      = {Proceedings of the ACM on Programming Languages},
-  volume       = {8},
-  number       = {PLDI},
-  articleno    = {171},
-  year         = {2024},
-  month        = jun,
-  publisher    = {ACM},
-  doi          = {10.1145/3656401}
-}
-
-@article{fang2025dato,
-  author       = {Fang, Shihan and Chen, Hongzheng and Zhang, Niansong and Li, Jiajie and Meng, Han and Liu, Adrian and Zhang, Zhiru},
-  title        = {Dato: A Task-Based Programming Model for Dataflow Accelerators},
-  journal      = {arXiv preprint arXiv:2509.06794},
-  year         = {2025},
-  url          = {https://arxiv.org/abs/2509.06794}
-}
-
-@inproceedings{zhuang2025aries,
-  author       = {Zhuang, Jinming and Xiang, Shaojie and Chen, Hongzheng and Zhang, Niansong and Yang, Zhuoping and Mao, Tony and Zhang, Zhiru and Zhou, Peipei},
-  title        = {ARIES: An Agile MLIR-Based Compilation Flow for Reconfigurable Devices with AI Engines},
-  booktitle    = {Proceedings of the ACM/SIGDA International Symposium on Field-Programmable Gate Arrays},
-  series       = {FPGA},
-  year         = {2025},
-  publisher    = {ACM},
-  note         = {Best Paper Nominee}
-}
-
-@inproceedings{pouchet2024formal,
-  author       = {Pouchet, Louis-No{\"e}l and Tucker, Emily and Zhang, Niansong and Chen, Hongzheng and Pal, Debjit and Rodr{\'i}guez, Gabriel and Zhang, Zhiru},
-  title        = {Formal Verification of Source-to-Source Transformations for HLS},
-  booktitle    = {Proceedings of the ACM/SIGDA International Symposium on Field-Programmable Gate Arrays},
-  series       = {FPGA},
-  year         = {2024},
-  publisher    = {ACM},
-  note         = {Best Paper Award}
-}
-
-@article{chen2024llmfpga,
-  author       = {Chen, Hongzheng and Zhang, Jiahao and Du, Yixiao and Xiang, Shaojie and Yue, Zichao and Zhang, Niansong and Cai, Yaohui and Zhang, Zhiru},
-  title        = {Understanding the Potential of FPGA-Based Spatial Acceleration for Large Language Model Inference},
-  journal      = {ACM Transactions on Reconfigurable Technology and Systems},
-  year         = {2024},
-  publisher    = {ACM},
-  note         = {FCCM 2024 Journal Track}
-}</code></pre>
-
-<div class="text-block">
-              <p>For TAIDL and TAIDL-TO, please cite our MICRO 2025 paper; For ACT Backend, please cite our arXiv preprint.</p>
-            </div>
-            <pre><code>
-@inproceedings{taidl-micro2025,
-  author = {Jain, Devansh and Frigo, Marco and Arora, Jai and Pardeshi, Akash and Wang, Zhihao and Patel, Krut and Mendis, Charith},
-  title = {TAIDL: Tensor Accelerator ISA Definition Language with Auto-generation of Scalable Test Oracles},
-  year = {2025},
-  isbn = {9798400715730},
-  publisher = {Association for Computing Machinery},
-  address = {New York, NY, USA},
-  url = {https://doi.org/10.1145/3725843.3756075},
-  doi = {10.1145/3725843.3756075},
-  booktitle = {Proceedings of the 2025 58th IEEE/ACM International Symposium on Microarchitecture},
-  pages = {1316–1333},
-  numpages = {18},
-  series = {MICRO '25},
-  month = oct
-}
-
-@misc{act-arxiv,
-  title = {ACT: Automatically Generating Compiler Backends from Tensor Accelerator ISA Descriptions},
-  author = {Jain, Devansh and Pardeshi, Akash and Frigo, Marco and Patel, Krut and Khulbe, Kaustubh and Arora, Jai and Mendis, Charith},
-  year = {2025},
-  eprint = {2510.09932},
-  archiveprefix = {arXiv},
-  primaryclass = {cs.PL},
-  url = {https://arxiv.org/abs/2510.09932},
-  doi = {10.48550/arXiv.2510.09932},
-  month = oct
-}</code></pre>
           </section>
 
         </article>
@@ -461,27 +327,24 @@
           <h4>On this page</h4>
           <ul>
             <li><a href="#abstract">Abstract</a></li>
-            <li><a href="#overview">Overview</a></li>
             <li><a href="#resources">Resources</a></li>
-            <li><a href="#schedule">Schedule</a></li>
+            <li><a href="#schedule">Topics</a></li>
             <li><a href="#organizers">Organizers</a></li>
-            <li><a href="#citation">Citation</a></li>
           </ul>
         </aside>
       </div>
 
-      <!-- Sponsors Section -->
-      <section id="sponsors" class="sponsors-section">
+      <section id="institutions" class="sponsors-section" aria-label="Participating institutions">
         <div class="sponsors-container">
-          <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo">
-          <img src="fig/uiuc.png" alt="UIUC" class="sponsor-logo">
-          <img src="fig/cornell.png" alt="Cornell University" class="sponsor-logo">
-          <img src="fig/ace_logo.jpg" alt="ACE Center for Evolvable Computing" class="sponsor-logo">
+          <img src="fig/GT.svg" alt="Georgia Tech" class="sponsor-logo" loading="lazy">
+          <img src="fig/cornell.png" alt="Cornell University" class="sponsor-logo" loading="lazy">
+          <img src="fig/uiuc.png" alt="University of Illinois Urbana-Champaign" class="sponsor-logo" loading="lazy">
+          <img src="fig/stanford.png" alt="Stanford University" class="sponsor-logo" loading="lazy">
         </div>
       </section>
 
       <footer class="site-footer">
-        <p>&copy; 2026 FEATHER Tutorial.</p>
+        <p>&copy; 2027 V-RAIC Tutorial.</p>
       </footer>
     </main>
   </div>
