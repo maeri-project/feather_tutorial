@@ -21,6 +21,13 @@ The left sidebar offers three complementary pages:
   packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
+  Below the workload explorer, **Attention with online softmax** follows one
+  whole attention row (QK, the softmax and PV) as a single MINISA program that
+  uses the `Activation` instruction: a decode step at 769 keys and a causal
+  prefill program, both on real Qwen3 operands. It shows one step at a time:
+  the loop the step takes through the architecture, its instructions, the HBM
+  image it writes and the `Load` that brings that result back, and its cycles
+  in a recorded RTL simulation. The exact instruction images can be downloaded.
 - `RECONFIGURABLE_COMPUTE.html` follows the final prefill MLP into the language-model
   head, then the next decode query projection. It explains why the preceding
   workload prefers a mapping and why the next workload may change it. Exact
@@ -62,6 +69,10 @@ while retaining the same logical coordinates and full zoom range.
 The generic FEATHER editor retains its **Fit width / Fit diagram / Actual size**
 selector and provides **Play / Step** beside the diagram. Its instruction
 editor and buffer inspector fit the phone viewport.
+
+On phones the online-softmax walkthrough waits in **Options** with the other
+controls. Its status line and step text are not paragraphs, so they stay
+visible there although explanations are otherwise hidden on phones.
 
 Run `tests/mobile_browser_test.cjs` with the Playwright environment below.
 It discovers every top-level HTML page and checks 320px, 390px and 844px
@@ -196,6 +207,10 @@ The importer needs only Python's standard library. `--source` can point to any
 checkout of the standalone artifact; this is a build-time dependency only.
 `--shell` preserves the selected existing page's navigation and top bar; it
 defaults to `FEATHER.html` when creating a page for the first time.
+The standalone builder also writes the two online-softmax programs again; for
+that it needs the Qwen3 attention operands named in FEATHER_GEMM's
+`RTL/fp16/visualization/README.md`. Their data is a block of its own
+(`softmax-data`), which the importer passes through unchanged.
 No GEMM checkout or Python server is needed by the published page. Do not use
 the already packaged page as input, and do not replace the original FEATHER
 editor with the Qwen page. The generated page records its source SHA-256.
@@ -209,6 +224,7 @@ that installation. Screenshots and reports are written outside the repository.
 export PLAYWRIGHT_MODULE=/path/to/node_modules/playwright
 export PLAYWRIGHT_BROWSERS_PATH=/path/to/playwright/browsers
 node tests/qwen_visualizer_browser_test.cjs
+node tests/qwen_online_softmax_browser_test.cjs
 node tests/feather_tutorial_browser_test.cjs
 node tests/feather_buffer_model_test.cjs
 node tests/feather_buffer_view_test.cjs

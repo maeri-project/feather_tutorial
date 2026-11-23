@@ -538,6 +538,12 @@ SITE_ADAPTATION = """
   scroll-margin-top: calc(var(--header-height) + 16px);
 }
 .qwen-app .nest-viewport, .qwen-app .canvas-scroll { background: #fafcfc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+/* Online softmax walkthrough: its loop diagram is drawn with the page's own
+   colours, so the highlight and the step colours follow the site theme. */
+.qwen-app #softmax-workspace { --sx-on: var(--primary-color); --sx-on-tint: hsla(var(--primary-hue), 80%, 65%, .16); }
+[data-theme="dark"] .qwen-app #softmax-workspace { --sx-gemm: #73889a; --sx-exp2: #b9a2ff; --sx-rowmax: #e2a85c; --sx-ident: #4fc4b6; --sx-recip: #ff8d85; }
+.qwen-app #online-softmax, .qwen-app #softmax-workspace { scroll-margin-top: calc(var(--header-height) + 16px); }
+.qwen-app .intro a { color: var(--primary-color); }
 .qwen-app section { margin-bottom: 24px; }
 .qwen-app .datapath-grid, .qwen-app .program-grid { min-width: 0; }
 .qwen-app .datapath-grid > *, .qwen-app .program-grid > * { min-width: 0; }

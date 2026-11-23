@@ -121,6 +121,20 @@ class PagePackagingTest(unittest.TestCase):
         self.assertIn('.qwen-app #act-trace tr[data-current=true] td', result)
         self.assertIn('.qwen-app .act-legend { background: #fafcfc;', result)
 
+    def test_online_softmax_walkthrough_follows_the_site_theme(self):
+        result = PACKAGER.build(SOURCE, self.shell)
+        self.assertIn('.qwen-app #softmax-workspace { --sx-on: var(--primary-color);', result)
+        self.assertIn('[data-theme="dark"] .qwen-app #softmax-workspace {', result)
+        self.assertIn('.qwen-app #online-softmax, .qwen-app #softmax-workspace { scroll-margin-top:', result)
+
+    def test_separate_data_blocks_and_their_scripts_pass_through(self):
+        payload = '<script id="softmax-data" type="application/json">{"cases":[{"id":"decode"}]}</script>'
+        script = '<script>/* Online softmax walkthrough: steps. */ window.walk = 1;</script>'
+        source = SOURCE.replace('</body>', payload + script + '</body>')
+        result = PACKAGER.build(source, self.shell)
+        self.assertEqual(result.count(payload), 1)
+        self.assertEqual(result.count(script), 1)
+
 
 class CommandLineTest(unittest.TestCase):
     def run_tool(self, *arguments):
