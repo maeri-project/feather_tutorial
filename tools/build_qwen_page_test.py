@@ -126,6 +126,7 @@ class PagePackagingTest(unittest.TestCase):
         self.assertIn('.qwen-app #softmax-workspace { --sx-on: var(--primary-color);', result)
         self.assertIn('[data-theme="dark"] .qwen-app #softmax-workspace {', result)
         self.assertIn('.qwen-app #online-softmax, .qwen-app #softmax-workspace { scroll-margin-top:', result)
+        self.assertIn('.qwen-app .sx-canvas-scroll { background: #fafcfc;', result)
 
     def test_separate_data_blocks_and_their_scripts_pass_through(self):
         payload = '<script id="softmax-data" type="application/json">{"cases":[{"id":"decode"}]}</script>'

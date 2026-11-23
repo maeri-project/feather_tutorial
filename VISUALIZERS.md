@@ -21,16 +21,21 @@ The left sidebar offers three complementary pages:
   packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
-  Below the workload explorer, **Attention with online softmax** follows one
-  whole attention row (QK, the softmax and PV) as a single MINISA program that
-  uses the `Activation` instruction: a decode step at 769 keys and a causal
-  prefill program, both on real Qwen3 operands. A table first lists the
-  operations of one decoder layer in order and says which are GEMM programs,
-  which the attention program covers, and which are outside. The walkthrough
-  then shows one step at a time:
-  the loop the step takes through the architecture, its instructions, the HBM
-  image it writes and the `Load` that brings that result back, and its cycles
-  in a recorded RTL simulation. The exact instruction images can be downloaded.
+  The online softmax is part of that explorer. The **Workload** list holds the
+  stages of two recorded attention programs that use the `Activation`
+  instruction (a decode step at 769 keys and a causal prefill program, on real
+  Qwen3 operands). On the last K tile of such a stage the accelerator canvas
+  continues below the output buffer: the activation core, its row state, the
+  activation engine with its walk, mask and address map, and the HBM image
+  that the next `Load` reads, drawn in the layout of the buffer it fills.
+  Every word the page writes there is compared with the recorded program.
+  Below the explorer, **Attention with online softmax** plays a whole program
+  on the loop of the hardware: each `Load`, each GEMM tile and each request
+  word by word, with the HBM images filling as they are written and read
+  back. It starts with a small sample (two key blocks, 38 steps) and also
+  plays the two long programs. Under the animation are the instructions of
+  the selected step, the cycles of the recorded RTL simulation, a table of
+  one decoder layer, and the exact instruction images for download.
 - `RECONFIGURABLE_COMPUTE.html` follows the final prefill MLP into the language-model
   head, then the next decode query projection. It explains why the preceding
   workload prefers a mapping and why the next workload may change it. Exact
@@ -73,9 +78,12 @@ The generic FEATHER editor retains its **Fit width / Fit diagram / Actual size**
 selector and provides **Play / Step** beside the diagram. Its instruction
 editor and buffer inspector fit the phone viewport.
 
-On phones the online-softmax walkthrough waits in **Options** with the other
+On phones the online-softmax animation waits in **Options** with the other
 controls. Its status line and step text are not paragraphs, so they stay
-visible there although explanations are otherwise hidden on phones.
+visible there although explanations are otherwise hidden on phones. The
+accelerator canvas of an attention stage is taller than that of an ordinary
+workload, because the activation unit and the HBM image follow the output
+buffer.
 
 Run `tests/mobile_browser_test.cjs` with the Playwright environment below.
 It discovers every top-level HTML page and checks 320px, 390px and 844px
@@ -210,10 +218,13 @@ The importer needs only Python's standard library. `--source` can point to any
 checkout of the standalone artifact; this is a build-time dependency only.
 `--shell` preserves the selected existing page's navigation and top bar; it
 defaults to `FEATHER.html` when creating a page for the first time.
-The standalone builder also writes the two online-softmax programs again; for
-that it needs the Qwen3 attention operands named in FEATHER_GEMM's
+The standalone builder also writes the three online-softmax programs again;
+for that it needs the Qwen3 attention operands named in FEATHER_GEMM's
 `RTL/fp16/visualization/README.md`. Their data is a block of its own
-(`softmax-data`), which the importer passes through unchanged.
+(`softmax-data`), which the importer passes through unchanged; the attention
+stages of the Workload list travel in the ACT bundle (`softmax_cases`,
+`softmax_designs`), and the model of the activation unit is a script of its
+own that the importer does not edit.
 No GEMM checkout or Python server is needed by the published page. Do not use
 the already packaged page as input, and do not replace the original FEATHER
 editor with the Qwen page. The generated page records its source SHA-256.
