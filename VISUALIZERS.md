@@ -24,7 +24,10 @@ The left sidebar offers three complementary pages:
   Below the workload explorer, **Attention with online softmax** follows one
   whole attention row (QK, the softmax and PV) as a single MINISA program that
   uses the `Activation` instruction: a decode step at 769 keys and a causal
-  prefill program, both on real Qwen3 operands. It shows one step at a time:
+  prefill program, both on real Qwen3 operands. A table first lists the
+  operations of one decoder layer in order and says which are GEMM programs,
+  which the attention program covers, and which are outside. The walkthrough
+  then shows one step at a time:
   the loop the step takes through the architecture, its instructions, the HBM
   image it writes and the `Load` that brings that result back, and its cycles
   in a recorded RTL simulation. The exact instruction images can be downloaded.

@@ -40,6 +40,11 @@ const id = name => `#softmax-${name}`;
     const data = await page.locator("#softmax-data").evaluate(node => JSON.parse(node.textContent));
     equal(data.cases.map(item => item.phase), ["decode", "prefill"], "a decode step and a causal prefill program are embedded");
     check(await page.locator(".qwen-app #softmax-workspace").count() === 1, "the walkthrough is part of the Qwen application");
+    equal(await page.locator(`${id("layer")} tbody tr td:nth-child(2)`).allTextContents(), data.layer.map(row => row.what),
+      "the layer procedure lists every operation of a decoder layer in order");
+    equal(data.layer.filter(row => row.where === "gemm").length, 5, "five steps of a layer are GEMM programs");
+    check((await page.locator(`${id("layer")} tr.sx-where-softmax`).textContent()).includes("8 programs, one per KV head"),
+      "the attention row says how often the program runs in a decode step");
     await page.locator('.qwen-app .intro a[href="#online-softmax"]').click();
     const heading = await page.locator("#online-softmax").boundingBox();
     check(heading.y >= 0 && heading.y < 400, "the link in the introduction opens the walkthrough below the top bar");
