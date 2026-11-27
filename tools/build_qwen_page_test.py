@@ -121,12 +121,35 @@ class PagePackagingTest(unittest.TestCase):
         self.assertIn('.qwen-app #act-trace tr[data-current=true] td', result)
         self.assertIn('.qwen-app .act-legend { background: #fafcfc;', result)
 
-    def test_online_softmax_walkthrough_follows_the_site_theme(self):
+    def test_online_softmax_steps_and_panel_follow_the_site_theme(self):
         result = PACKAGER.build(SOURCE, self.shell)
-        self.assertIn('.qwen-app #softmax-workspace { --sx-on: var(--primary-color);', result)
-        self.assertIn('[data-theme="dark"] .qwen-app #softmax-workspace {', result)
-        self.assertIn('.qwen-app #online-softmax, .qwen-app #softmax-workspace { scroll-margin-top:', result)
-        self.assertIn('.qwen-app .sx-canvas-scroll { background: #fafcfc;', result)
+        self.assertIn('.qwen-app #softmax-workspace, .qwen-app .act-teach-procedure { --sx-on: var(--primary-color);', result)
+        self.assertIn('[data-theme="dark"] .qwen-app #softmax-workspace, [data-theme="dark"] .qwen-app .act-teach-procedure {', result)
+        self.assertIn('.qwen-app #softmax-workspace { scroll-margin-top:', result)
+        # the separate section and its canvas are gone from the explorer
+        self.assertNotIn('#online-softmax', result)
+        self.assertNotIn('sx-canvas-scroll', result)
+
+    def test_a_page_with_a_path_of_a_build_machine_is_refused(self):
+        block = '<script id="softmax-data" type="application/json">{"cases":[%s]}</script>'
+        for leak in ('{"operand_source":"/mnt/work/someone/FEATHER_GEMM/tb/q_proj/decode_L769"}',
+                     '{"command":"python tb/scripts/case.py --out /tmp/work/case"}',
+                     '{"source":"C:\\\\Users\\\\someone\\\\checkout"}', '{"note":"~/checkout/tb"}'):
+            with self.subTest(leak=leak), self.assertRaisesRegex(ValueError, 'absolute path of a build machine'):
+                PACKAGER.build(SOURCE.replace('</body>', block % leak + '</body>'), self.shell)
+        with self.assertRaisesRegex(ValueError, 'absolute path of a build machine'):
+            PACKAGER.build(SOURCE.replace('<p>Self-contained', '<p data-from="/home/someone/checkout">Self-contained'), self.shell)
+        with self.assertRaisesRegex(ValueError, 'absolute path of a build machine'):
+            PACKAGER.build(SOURCE.replace('"FP16"}', '"FP16","made_in":"%s"}' % PACKAGER.ROOT), self.shell)
+        # repository paths, links, and base64 words that happen to contain slashes are no machine paths
+        fine = ('{"operand_source":"tb/q_proj/decode_L769","ob":"/usrAAAA/tmp+AA/home/x==",'
+                '"link":"https://example.org/usr/share","text":"M/K and/or N; ratio 1/home"}')
+        result = PACKAGER.build(SOURCE.replace('</body>', block % fine + '</body>'), self.shell)
+        self.assertEqual(PACKAGER.machine_paths(result), [])
+        # a regular expression in a script is not a path either
+        script = '<script>window.kept = "a data b".replace(/data/g, "x").split(/tmp/);</script>'
+        self.assertEqual(PACKAGER.machine_paths(PACKAGER.build(SOURCE.replace('</body>', script + '</body>'), self.shell)), [])
+        self.assertIn('"/usrAAAA/tmp+AA/home/x=="', result)
 
     def test_separate_data_blocks_and_their_scripts_pass_through(self):
         payload = '<script id="softmax-data" type="application/json">{"cases":[{"id":"decode"}]}</script>'

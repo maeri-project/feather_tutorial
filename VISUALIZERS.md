@@ -21,21 +21,21 @@ The left sidebar offers three complementary pages:
   packed MINISA generation/import/export remain available. The website
   shell shares `styles.css` and `script.js`; application styles are scoped so
   they cannot change the sidebar. Both light and dark site themes are supported.
-  The online softmax is part of that explorer. The **Workload** list holds the
-  stages of two recorded attention programs that use the `Activation`
-  instruction (a decode step at 769 keys and a causal prefill program, on real
-  Qwen3 operands). On the last K tile of such a stage the accelerator canvas
-  continues below the output buffer: the activation core, its row state, the
-  activation engine with its walk, mask and address map, and the HBM image
-  that the next `Load` reads, drawn in the layout of the buffer it fills.
-  Every word the page writes there is compared with the recorded program.
-  Below the explorer, **Attention with online softmax** plays a whole program
-  on the loop of the hardware: each `Load`, each GEMM tile and each request
-  word by word, with the HBM images filling as they are written and read
-  back. It starts with a small sample (two key blocks, 38 steps) and also
-  plays the two long programs. Under the animation are the instructions of
-  the selected step, the cycles of the recorded RTL simulation, a table of
-  one decoder layer, and the exact instruction images for download.
+  The online softmax is part of that explorer. The **Workload** list holds
+  three recorded attention programs that use the `Activation` instruction, on
+  real Qwen3 operands: a small sample (two key blocks, 38 steps), a decode
+  step at 769 keys and a causal prefill program. A selected program plays in
+  the accelerator animation like every other workload, tile after tile through
+  all of its GEMMs. Below the output buffer the canvas continues with the
+  activation core, its row state, the activation engine with its walk, mask
+  and address map, and the HBM image that a later `Load` reads, drawn in the
+  layout of the buffer it fills. Every word the page writes there is compared
+  with the recorded program. Above the diagram are the steps of the current
+  key block or merge; choosing one shows it. Below the animation a panel
+  takes the place of the ACT workspace: the instructions of the selected
+  step, the cycles of the recorded RTL simulation, a table of one decoder
+  layer, and the exact instruction images for download. The online softmax
+  has no animation or section of its own.
 - `RECONFIGURABLE_COMPUTE.html` follows the final prefill MLP into the language-model
   head, then the next decode query projection. It explains why the preceding
   workload prefers a mapping and why the next workload may change it. Exact
@@ -50,8 +50,9 @@ The left sidebar offers three complementary pages:
 The Qwen page's browser ISA execution is a control preview, not a connection to
 an FPGA. Its programming panel documents how to run the exported instruction
 image using the maintained FEATHER_GEMM RTL runner. Workload values in the
-animation are deterministic teaching samples, not Qwen model tensors; animation
-steps are not measured RTL cycles.
+animation are deterministic teaching samples, not Qwen model tensors, except in
+the attention programs with online softmax, which run their recorded Qwen3
+operands; animation steps are not measured RTL cycles.
 
 The improved catalog includes full decode PV/QK/q-projection and six aligned
 q-projection partitions. It regenerates from the tracked ACT layout/partition
@@ -78,12 +79,12 @@ The generic FEATHER editor retains its **Fit width / Fit diagram / Actual size**
 selector and provides **Play / Step** beside the diagram. Its instruction
 editor and buffer inspector fit the phone viewport.
 
-On phones the online-softmax animation waits in **Options** with the other
-controls. Its status line and step text are not paragraphs, so they stay
-visible there although explanations are otherwise hidden on phones. The
-accelerator canvas of an attention stage is taller than that of an ordinary
-workload, because the activation unit and the HBM image follow the output
-buffer.
+On phones the steps of an attention program and its panel wait in **Options**
+with the other controls. The panel's status line and step text are not
+paragraphs, so they stay visible there although explanations are otherwise
+hidden on phones. The accelerator canvas of an attention program is taller
+than that of an ordinary workload, because the activation unit and the HBM
+image follow the output buffer.
 
 Run `tests/mobile_browser_test.cjs` with the Playwright environment below.
 It discovers every top-level HTML page and checks 320px, 390px and 844px
@@ -222,12 +223,16 @@ The standalone builder also writes the three online-softmax programs again;
 for that it needs the Qwen3 attention operands named in FEATHER_GEMM's
 `RTL/fp16/visualization/README.md`. Their data is a block of its own
 (`softmax-data`), which the importer passes through unchanged; the attention
-stages of the Workload list travel in the ACT bundle (`softmax_cases`,
-`softmax_designs`), and the model of the activation unit is a script of its
-own that the importer does not edit.
+programs of the Workload list travel in the ACT bundle (`softmax_programs`,
+with their compiled GEMMs in `softmax_cases` and `softmax_designs`), and the
+model of the activation unit is a script of its own that the importer does not
+edit.
 No GEMM checkout or Python server is needed by the published page. Do not use
 the already packaged page as input, and do not replace the original FEATHER
 editor with the Qwen page. The generated page records its source SHA-256.
+The importer refuses a standalone page that embeds an absolute path of a
+machine, for example in a recorded measurement: the page is public, and such
+a record must name repository paths. Rebuild the standalone page first.
 
 ## Browser regressions
 

@@ -8,6 +8,7 @@ styles.css and script.js. Never use the output as the input.
 """
 
 import argparse
+import getpass
 import hashlib
 import json
 import re
@@ -44,8 +45,10 @@ def compact_phone_drawing(script):
             const width = displayWidth * scale, height = geom.height * scale;''')
     edit('ctx.setTransform(scale, 0, 0, scale, 0, 0);',
          'ctx.setTransform(scale * horizontalScale, 0, 0, scale, 0, 0);')
-    edit('''            function text(x, y, label, size = 11, color = "#263d4b", align = "left") {
-                ctx.fillStyle = color; ctx.font = `${size}px system-ui, sans-serif`; ctx.textAlign = align; ctx.fillText(label, x, y);
+    edit('''            function text(x, y, label, size = 11, color = "#263d4b", align = "left", maxWidth = undefined) {
+                ctx.fillStyle = color; ctx.font = `${size}px system-ui, sans-serif`; ctx.textAlign = align;
+                if (maxWidth !== undefined) ctx.fillText(label, x, y, maxWidth);
+                else ctx.fillText(label, x, y);
             }''', '''            function text(x, y, label, size = 11, color = "#263d4b", align = "left", maxWidth) {
                 // Position labels in diagram coordinates, then cancel horizontal
                 // compression for every glyph. Fit by font size, never by stretch.
@@ -159,8 +162,10 @@ def prepare_tutorial_catalog(source):
     source = replace_one(source, r'    <footer>.*?</footer>\n', '')
     source = source.replace('<div id="full-operator-act" hidden>', '<div id="full-operator-act">')
     source = source.replace(', #full-operator-legacy[hidden]', '').replace(', #full-operator-legacy', '')
+    # The canvas helpers (TutorialCanvas) stay: the ACT workload animation moves its packets
+    # with TutorialCanvas.pointOnPath. They only define functions.
     removed_scripts = (
-        "Canvas helpers and BIRRD topology adapted", "Whole-tile numerical teaching model",
+        "Whole-tile numerical teaching model",
         "Unified FEATHER view:", "Concurrent row-skewed teaching pipeline.",
         "Mapper-driven adapter for the tutorial canvas helpers.",
     )
@@ -538,12 +543,12 @@ SITE_ADAPTATION = """
   scroll-margin-top: calc(var(--header-height) + 16px);
 }
 .qwen-app .nest-viewport, .qwen-app .canvas-scroll { background: #fafcfc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
-/* Online softmax: the step chips and the cycle timeline follow the site
-   theme; the hardware animation stays on light paper like the other diagrams. */
-.qwen-app .sx-canvas-scroll { background: #fafcfc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
-.qwen-app #softmax-workspace { --sx-on: var(--primary-color); --sx-on-tint: hsla(var(--primary-hue), 80%, 65%, .16); }
-[data-theme="dark"] .qwen-app #softmax-workspace { --sx-gemm: #73889a; --sx-exp2: #b9a2ff; --sx-rowmax: #e2a85c; --sx-ident: #4fc4b6; --sx-recip: #ff8d85; }
-.qwen-app #online-softmax, .qwen-app #softmax-workspace { scroll-margin-top: calc(var(--header-height) + 16px); }
+/* Online softmax: the step chips above the animation and the program panel
+   below it (chips, cycle timeline) follow the site theme. */
+.qwen-app #softmax-workspace, .qwen-app .act-teach-procedure { --sx-on: var(--primary-color); --sx-on-tint: hsla(var(--primary-hue), 80%, 65%, .16); }
+[data-theme="dark"] .qwen-app #softmax-workspace, [data-theme="dark"] .qwen-app .act-teach-procedure { --sx-gemm: #73889a; --sx-exp2: #b9a2ff; --sx-rowmax: #e2a85c; --sx-ident: #4fc4b6; --sx-recip: #ff8d85; }
+.qwen-app .act-teach-procedure { border-color: var(--border-color); }
+.qwen-app #softmax-workspace { scroll-margin-top: calc(var(--header-height) + 16px); }
 .qwen-app .intro a { color: var(--primary-color); }
 .qwen-app section { margin-bottom: 24px; }
 .qwen-app .datapath-grid, .qwen-app .program-grid { min-width: 0; }
@@ -564,6 +569,48 @@ SITE_ADAPTATION = """
   .qwen-site .header-title { font-size: .9rem; }
 }
 """
+
+
+# Directories that only exist on somebody's machine. The page is public: a recorded measurement
+# or a generated command in it must name repository paths.
+_MACHINE_ROOTS = "home|usr|tmp|Users|mnt|var|opt|root|srv|proj|work|data|net|export"
+_MACHINE_PATH = re.compile(rf"(?:^|[\s=\"'(,;])(?:/(?:{_MACHINE_ROOTS})/|~/)")
+# In markup and scripts a path has further folders; /data/g alone is a regular expression.
+_MACHINE_PATH_IN_TEXT = re.compile(rf"(?:^|[\s=\"'(,;])/(?:{_MACHINE_ROOTS})/[\w.+-]+/[\w.+-]")
+_DRIVE_PATH = re.compile(r"^\s*[A-Za-z]:[\\/]")
+_JSON_BLOCK = re.compile(r'(<script id="([^"]+)" type="application/json">)(.*?)(</script>)', re.S)
+
+
+def machine_paths(page):
+    """Absolute paths of some machine in a page: in the strings of its JSON blocks and in its text.
+
+    The words of a JSON block are searched one string at a time, from the start of the string or
+    after white space: base64 data also contains slashes and must not be mistaken for a path.
+    """
+    found = []
+
+    def walk(value, where):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                walk(item, f"{where}.{key}")
+        elif isinstance(value, list):
+            for item in value:
+                walk(item, f"{where}[]")
+        elif isinstance(value, str) and (_MACHINE_PATH.search(value) or _DRIVE_PATH.match(value)):
+            found.append(f"{where}: {value[:90]}")
+
+    for match in _JSON_BLOCK.finditer(page):
+        walk(json.loads(match[3]), match[2])
+    text = _JSON_BLOCK.sub(lambda match: match[1] + match[4], page)
+    found += [f"page text: {text[max(0, match.start() - 30):match.end() + 60]!r}" for match in _MACHINE_PATH_IN_TEXT.finditer(text)]
+    # Whoever packages the page: this checkout, the home directory and the account name.
+    own = {str(ROOT), str(Path.home())}
+    try:
+        own.add(f"/{getpass.getuser()}/")
+    except (KeyError, OSError):
+        pass
+    found += [f"a path of this machine ({name})" for name in sorted(own) if len(name) >= 8 and name in page]
+    return found
 
 
 def build(source, shell):
@@ -600,6 +647,15 @@ def build(source, shell):
         "Compiler data and animation code are embedded. This page shares the tutorial's local style and navigation assets."
     )
     scoped = scope_css("\n".join(styles))
+    result = _page(digest, scoped, prefix, body)
+    leaked = machine_paths(result)
+    if leaked:
+        raise ValueError("The standalone page embeds an absolute path of a build machine; rebuild it with "
+                         f"repository-relative names before publishing ({len(leaked)} found, first: {leaked[0]})")
+    return result
+
+
+def _page(digest, scoped, prefix, body):
     return f'''<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
