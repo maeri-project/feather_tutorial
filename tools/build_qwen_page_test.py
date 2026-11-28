@@ -126,6 +126,9 @@ class PagePackagingTest(unittest.TestCase):
         self.assertIn('.qwen-app #softmax-workspace, .qwen-app .act-teach-procedure { --sx-on: var(--primary-color);', result)
         self.assertIn('[data-theme="dark"] .qwen-app #softmax-workspace, [data-theme="dark"] .qwen-app .act-teach-procedure {', result)
         self.assertIn('.qwen-app #softmax-workspace { scroll-margin-top:', result)
+        # the KV head of the selected step is filled with the site colour: its number needs a dark ink on the dark theme
+        self.assertIn('--sx-on-text: #17142a; }', result)
+        self.assertIn('.qwen-app .act-teach-part select {', result)
         # the separate section and its canvas are gone from the explorer
         self.assertNotIn('#online-softmax', result)
         self.assertNotIn('sx-canvas-scroll', result)

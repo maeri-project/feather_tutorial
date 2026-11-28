@@ -546,7 +546,9 @@ SITE_ADAPTATION = """
 /* Online softmax: the step chips above the animation and the program panel
    below it (chips, cycle timeline) follow the site theme. */
 .qwen-app #softmax-workspace, .qwen-app .act-teach-procedure { --sx-on: var(--primary-color); --sx-on-tint: hsla(var(--primary-hue), 80%, 65%, .16); }
-[data-theme="dark"] .qwen-app #softmax-workspace, [data-theme="dark"] .qwen-app .act-teach-procedure { --sx-gemm: #73889a; --sx-exp2: #b9a2ff; --sx-rowmax: #e2a85c; --sx-ident: #4fc4b6; --sx-recip: #ff8d85; }
+[data-theme="dark"] .qwen-app #softmax-workspace, [data-theme="dark"] .qwen-app .act-teach-procedure { --sx-gemm: #73889a; --sx-exp2: #b9a2ff; --sx-rowmax: #e2a85c; --sx-ident: #4fc4b6; --sx-recip: #ff8d85; --sx-on-text: #17142a; }
+/* The part selector of an attention program: the site's form type, as wide as the strip allows. */
+.qwen-app .act-teach-part select { font-weight: 550; }
 .qwen-app .act-teach-procedure { border-color: var(--border-color); }
 .qwen-app #softmax-workspace { scroll-margin-top: calc(var(--header-height) + 16px); }
 .qwen-app .intro a { color: var(--primary-color); }

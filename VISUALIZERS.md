@@ -23,19 +23,25 @@ The left sidebar offers three complementary pages:
   they cannot change the sidebar. Both light and dark site themes are supported.
   The online softmax is part of that explorer. The **Workload** list holds
   three recorded attention programs that use the `Activation` instruction, on
-  real Qwen3 operands: a small sample (two key blocks, 38 steps), a decode
-  step at 769 keys and a causal prefill program. A selected program plays in
+  real Qwen3 operands: a small sample (two key blocks, 38 steps), a causal
+  prefill program, and a full attention workload, the decode step at 769 keys
+  with all 16 query heads (8 KV heads one after the other in one program: 272
+  GEMMs, 1,096 steps, 505,101 cycles in the recorded RTL simulation). A selected
+  program plays in
   the accelerator animation like every other workload, tile after tile through
   all of its GEMMs. Below the output buffer the canvas continues with the
   activation core, its row state, the activation engine with its walk, mask
   and address map, and the HBM image that a later `Load` reads, drawn in the
   layout of the buffer it fills. Every word the page writes there is compared
   with the recorded program. Above the diagram are the steps of the current
-  key block or merge; choosing one shows it. Below the animation a panel
+  key block or merge; choosing one shows it, and a selector lists every part
+  of the program, by KV head for the decode step. Below the animation a panel
   takes the place of the ACT workspace: the instructions of the selected
-  step, the cycles of the recorded RTL simulation, a table of one decoder
-  layer, and the exact instruction images for download. The online softmax
-  has no animation or section of its own.
+  step, the cycles of the recorded RTL simulation (for the decode step also
+  per KV head), a table of one decoder layer, and the exact instruction images
+  for download. The online softmax has no animation or section of its own.
+  The decode step carries the real Kᵀ and V of all eight KV heads, which makes
+  the page about 14.7 MB (5.4 MB compressed in transfer).
 - `RECONFIGURABLE_COMPUTE.html` follows the final prefill MLP into the language-model
   head, then the next decode query projection. It explains why the preceding
   workload prefers a mapping and why the next workload may change it. Exact

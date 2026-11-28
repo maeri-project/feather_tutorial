@@ -6,6 +6,9 @@
  *    program. The steps of the part are chips above the diagram.
  *  - The program panel takes the place of the ACT workspace and follows the animation. The page has
  *    no second animation and no section of its own for the online softmax.
+ *  - One program is a full attention workload: the decode step with all 16 query heads. Its 8 KV
+ *    heads are reached through the part selector above the diagram and through the bar of KV heads
+ *    in the panel.
  *  - Both themes, desktop and phone. It reads only the published page; no FEATHER_GEMM checkout
  *    is needed.
  *
@@ -61,11 +64,12 @@ const near = (value, wanted) => Math.abs(value - wanted) < 2e-3;
     const page = await open({viewport: {width: 1440, height: 1000}});
     const data = await page.locator("#softmax-data").evaluate(node => JSON.parse(node.textContent));
     const programs = await page.locator("#case-data").evaluate(node => { const all = JSON.parse(node.textContent).act_cases, counts = new Map(all.softmax_cases.map(item => [item.id, item.loop_counts]));
-      return all.softmax_programs.map(program => ({id: program.id, program: program.program, title: program.title, sample: program.sample,
+      return all.softmax_programs.map(program => ({id: program.id, program: program.program, title: program.title, sample: program.sample, heads: program.kv_groups,
         instances: program.instances.map(entry => ({kind: entry.kind, where: entry.where, counts: counts.get(entry.case), tiles: entry.tiles.map(tile => ({step: tile.step, requests: tile.requests.map(request => request.name)}))}))})); });
     equal([await page.locator(".qwen-app #full-operator-act > #softmax-workspace").count(), await page.locator("#online-softmax, #softmax-canvas, #softmax-play").count()], [1, 0],
       "the program panel is part of the full-workload view; no section and no animation of its own are left");
-    equal(data.cases.map(item => [item.phase, item.sample]), [["decode", false], ["prefill", false], ["prefill", true]], "two long programs and the sample are embedded");
+    equal(data.cases.map(item => [item.phase, item.sample, item.kv_groups.length]), [["decode", false, data.model.kv_heads], ["prefill", false, 1], ["prefill", true, 1]],
+      "the decode step with every KV head, a long prefill program and the sample are embedded");
     equal(programs.map(program => program.program), data.cases.map(item => item.id), "each of them is a workload");
     for (const item of data.cases) {
       equal(createHash("sha256").update(item.program.hex_text).digest("hex"), item.program.sha256["minisa_instr.hex"], `${item.id}: the embedded instruction image is the hashed one`);
@@ -82,7 +86,14 @@ const near = (value, wanted) => Math.abs(value - wanted) < 2e-3;
     equal(groups, [order.map(program => `act:${program.id}`)], "one group of the Workload list holds the attention programs, the sample first");
     let now = await bench(page);
     equal([now.panelShown, now.workspaceShown, now.strip, now.real], [false, true, false, false], "a recorded ACT workload has its workspace and no steps of a program");
-    await page.locator(".qwen-app .intro a[data-open-online-softmax]").click();
+    // the full attention workload has a link of its own in the introduction
+    const full = programs.find(program => program.heads.length > 1), fullCase = data.cases.find(item => item.id === full.program);
+    await page.locator(`.qwen-app .intro a[data-open-online-softmax="${full.program}"]`).click();
+    now = await bench(page);
+    equal([now.workload, now.step, (await panel(page)).case, (await panel(page)).heads, full.instances.length], [`act:${full.id}`, 0, full.program, data.model.kv_heads, 34 * data.model.kv_heads],
+      "its link opens the decode step with all KV heads, at its first Load");
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.locator('.qwen-app .intro a[data-open-online-softmax=""]').click();
     const heading = await page.locator("#full-operator-examples").boundingBox();
     check(heading.y >= 0 && heading.y < 400, "the link in the introduction opens the full-workload view below the top bar");
     now = await bench(page);
@@ -113,6 +124,30 @@ const near = (value, wanted) => Math.abs(value - wanted) < 2e-3;
         } else equal([now.phase, now.indices.k, now.index], ["load_input", 0, 0], `${item.id}: step ${index + 1} starts at the first Load of its GEMM tile`);
       }
     }
+
+    // the full attention workload: its KV heads in the part selector and in the first bar of the panel
+    await page.locator("#operator").selectOption(`act:${full.id}`);
+    const perHead = fullCase.blocks.length + fullCase.rows;
+    equal(await page.locator("#full-teach-part-select optgroup").evaluateAll(groups => groups.map(group => [group.label, group.children.length])),
+      full.heads.map(head => [`KV head ${head.kv_group} · query heads ${head.query_heads.join(" and ")}`, perHead]), "the part selector lists the parts of every KV head under its head");
+    const far = fullCase.kv_groups[6], block = fullCase.blocks.length - 1;
+    await page.locator("#full-teach-part-select").selectOption(`g${far.kv_group}b${block}`);
+    now = await bench(page);
+    const there = fullCase.stages.findIndex(stage => stage.group === far.kv_group && stage.block === block);
+    equal([now.step, now.index, (await panel(page)).stage, (await panel(page)).head], [there, 0, there, far.kv_group], "a part chosen there is shown from its first Load, in the animation and in the panel");
+    check(now.part.includes(`KV head ${far.kv_group}`) && now.part.includes(`Key block ${block}`) && now.real, "the strip names the KV head; the operands are those of that head");
+    const third = fullCase.kv_groups[3];
+    await page.locator(`${id("bar-heads")} .sx-seg[data-head="${third.kv_group}"]`).click();
+    now = await bench(page);
+    equal([now.step, (await panel(page)).stage, await page.locator(`${id("bar-all")} .sx-seg`).count(), await page.locator(`${id("bar-heads")} .sx-seg.on`).allTextContents()],
+      [third.first_stage, third.first_stage, third.stages, [String(third.kv_group)]], "a KV head chosen in the panel is shown from its first step; the bar below holds its steps");
+    check((await page.locator(id("bar-all-label")).textContent()).includes(`KV head ${third.kv_group} · query heads ${third.query_heads.join(" and ")}`), "and is named with its query heads");
+    await page.evaluate(value => window.FeatherSoftmax.select(value), fullCase.stages.length - 1);
+    now = await bench(page);
+    check(now.requests.every(result => result.exact) && (await page.locator(id("status")).textContent()).includes(`query head ${data.model.query_heads - 1}`)
+      && (await page.locator(id("io")).textContent()).includes(`attention output O · KV head ${data.model.kv_heads - 1}`), "the last request writes the attention output of the last query head");
+    await page.locator("#softmax-workspace").screenshot({path: path.join(output, "full-attention-panel.png")});
+    await page.locator("#full-act-teaching").screenshot({path: path.join(output, "full-attention-widget.png")});
 
     // the sample in the animation: a frame of the unit, the chips, the parts, tile after tile, playback
     await page.locator("#operator").selectOption(`act:${sample.id}`);
@@ -191,7 +226,7 @@ const near = (value, wanted) => Math.abs(value - wanted) < 2e-3;
     await phone.locator("#mobile-focus-options > summary").tap();
     await phone.locator("#full-teach-steps").scrollIntoViewIfNeeded();
     check(await phone.locator("#full-teach-steps").isVisible() && await phone.locator("#softmax-workspace").isVisible(), "phone: Options contains the steps and the program panel");
-    const small = await phone.locator("#softmax-workspace button, #softmax-workspace select, #softmax-workspace summary, #softmax-workspace input, #full-teach-procedure button")
+    const small = await phone.locator("#softmax-workspace button, #softmax-workspace select, #softmax-workspace summary, #softmax-workspace input, #full-teach-procedure button, #full-teach-procedure select")
       .evaluateAll(nodes => nodes.filter(node => node.checkVisibility()).filter(node => {
         const box = node.getBoundingClientRect(); return box.width < 43.5 || box.height < 43.5;
       }).map(node => `${node.id || node.textContent.trim().slice(0, 30)}:${Math.round(node.getBoundingClientRect().width)}×${Math.round(node.getBoundingClientRect().height)}`));
@@ -204,6 +239,17 @@ const near = (value, wanted) => Math.abs(value - wanted) < 2e-3;
     await phone.locator(id("next")).tap();
     equal([(await bench(phone)).step, (await panel(phone)).stage], [4, 4], "phone: Next step of the panel moves the animation too");
     await phone.locator("#softmax-workspace").screenshot({path: path.join(output, "panel-phone.png")});
+    // the full attention workload on a phone: the part selector reaches another KV head, and the page still fits
+    await phone.locator("#operator").selectOption(`act:${full.id}`);
+    await phone.locator("#full-teach-part-select").selectOption(`g${far.kv_group}b0`);
+    now = await bench(phone);
+    equal([now.step, (await panel(phone)).head, now.real], [far.first_stage, far.kv_group, true], "phone: the part selector shows a key block of another KV head");
+    await phone.locator(`${id("bar-heads")}`).scrollIntoViewIfNeeded();
+    equal(await phone.locator(`${id("bar-heads")} .sx-seg.on`).allTextContents(), [String(far.kv_group)], "phone: the bar of KV heads marks it");
+    const wide = await phone.evaluate(() => ({viewport: innerWidth, document: document.documentElement.scrollWidth}));
+    check(wide.document <= wide.viewport + 1, `phone: the page fits with the full program too (${JSON.stringify(wide)})`);
+    await phone.locator("#full-teach-procedure").screenshot({path: path.join(output, "full-attention-strip-phone.png")});
+    await phone.locator(id("timeline")).screenshot({path: path.join(output, "full-attention-timeline-phone.png")});
     await phone.context().close();
 
     equal(errors, [], "no browser execution or console errors");
